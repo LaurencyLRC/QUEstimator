@@ -200,6 +200,11 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
     via marginal MLE with N(0,1) prior. L-BFGS-B with bounds; falls back to
     Nelder-Mead if L-BFGS-B fails to converge or returns a degenerate solution.
 
+    A weak Bayesian prior (MAP estimation) is added on the threshold parameters
+    to regularize charts with sparse lower-tail data (0 FAILED/NORMAL entries).
+    Without this, b_hard is unconstrained from below and the optimizer can
+    push it to extreme values (e.g. -24) that vary across platforms.
+
     init_b_vhard: prior guess for b_vhard (e.g. derived from the chart's level).
     """
     n = len(statuses)
@@ -212,6 +217,18 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
     theta = QUAD_THETA
     w = QUAD_W
     cat_onehots = np.stack([(statuses == k).astype(float) for k in range(4)], axis=1)
+
+    # Bayesian prior: prevents parameters from running to extremes on charts
+    # with sparse data (e.g. 0 FAILED/NORMAL → b_hard unconstrained).
+    # Centered at reasonable defaults; SD wide enough that real data dominates.
+    prior_bv = 0.0
+    prior_bh = -0.6
+    prior_bn = -1.2
+    prior_a = 1.5
+    PRIOR_SD_B = 3.0    # thresholds: ±3 logits around center
+    PRIOR_SD_A = 3.0    # discrimination: ±3 around 1.5
+    PRIOR_PREC_B = 1.0 / (PRIOR_SD_B ** 2)
+    PRIOR_PREC_A = 1.0 / (PRIOR_SD_A ** 2)
 
     def neg_log_lik(params):
         a = params[0]
@@ -231,25 +248,31 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
         probs = np.clip(probs, eps, 1.0)
         marginal = cat_onehots @ probs.T @ w
         marginal = np.clip(marginal, eps, None)
-        return -float(np.log(marginal).sum())
+        nll = -float(np.log(marginal).sum())
+        # Gaussian prior penalty (MAP estimation)
+        prior_penalty = (
+            0.5 * PRIOR_PREC_B * ((bn - prior_bn) ** 2 + (bh - prior_bh) ** 2 + (bv - prior_bv) ** 2)
+            + 0.5 * PRIOR_PREC_A * ((a - prior_a) ** 2)
+        )
+        return nll + prior_penalty
 
-    # Level-informed init: spread thresholds around init_b_vhard.
-    x0 = np.array([1.3, init_b_vhard - 1.5, init_b_vhard - 0.6, init_b_vhard])
-    # Wide bounds — no artificial caps on difficulty or discrimination.
-    # a must be positive (discrimination is a slope), but can be arbitrarily large.
-    # b thresholds can range across the full θ scale.
-    bounds = [(0.001, 100.0), (-50.0, 50.0), (-50.0, 50.0), (-50.0, 50.0)]
+    # Single fixed starting point (the prior center) for ALL charts.
+    # This makes the fit completely deterministic and cross-platform reproducible —
+    # the same data always produces the same result regardless of the chart's level.
+    # The Bayesian prior + the data together determine the optimum.
+    x0 = np.array([1.5, -1.2, -0.6, 0.0])
+    bounds = [(0.001, 50.0), (-20.0, 20.0), (-20.0, 20.0), (-20.0, 20.0)]
 
     res = None
     try:
         res = minimize(neg_log_lik, x0, method="L-BFGS-B", bounds=bounds,
-                       options={"maxiter": 500, "ftol": 1e-8})
+                       options={"maxiter": 1000, "ftol": 1e-10, "gtol": 1e-8})
     except Exception:
         res = None
+    # Fall back to Nelder-Mead if L-BFGS-B failed.
     if res is None or np.isnan(res.fun) or res.fun > 1e9:
-        # Fall back to Nelder-Mead.
         res2 = minimize(neg_log_lik, x0, method="Nelder-Mead",
-                        options={"maxiter": 2000, "xatol": 1e-5, "fatol": 1e-5})
+                        options={"maxiter": 3000, "xatol": 1e-6, "fatol": 1e-6})
         if res is None or np.isnan(res.fun) or res.fun > res2.fun:
             res = res2
     a_hat, bn_hat, bh_hat, bv_hat = res.x
