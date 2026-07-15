@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-07-15T11:11:37.036211+00:00",
+  "n_charts_total": 1476,
+  "n_charts_valid": 1162,
+  "n_charts_provisional": 314,
+  "n_players": 2806,
+  "n_clears": 162333,
+  "model": "Graded Response Model (marginal MLE, 21-node Gauss-Hermite quadrature)",
+  "categories": [
+    "FAILED",
+    "NORMAL",
+    "HARD",
+    "V-HARD"
+  ],
+  "provisional_rule": "n < 30 OR se_b_vhard > 0.5",
+  "data_source": "Qwilight IR leaderboards (real player data)",
+  "runtime_sec": 29.92
+}

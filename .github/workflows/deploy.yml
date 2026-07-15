@@ -1,0 +1,124 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly: Sunday 20:00 UTC (8 PM UTC)
+    - cron: "0 20 * * 0"
+  workflow_dispatch: # Manual trigger button in GitHub Actions UI
+
+permissions:
+  contents: write  # needed for committing refreshed data back to repo
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  refresh-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Stage 1: Refresh data (weekly cron or manual trigger only) ────
+      # On code pushes, we skip the refresh and just rebuild with existing data.
+      - name: Check if data refresh should run
+        id: should_refresh
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_refresh=true" >> $GITHUB_OUTPUT
+            echo "Running data refresh (triggered by ${{ github.event_name }})"
+          else
+            echo "should_refresh=false" >> $GITHUB_OUTPUT
+            echo "Skipping data refresh (triggered by ${{ github.event_name }})"
+          fi
+
+      - name: Set up Python
+        if: steps.should_refresh.outputs.should_refresh == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        if: steps.should_refresh.outputs.should_refresh == 'true'
+        run: pip install httpx numpy scipy pandas
+
+      - name: Refresh data (fetch U_E table → enrich → scrape leaderboards)
+        if: steps.should_refresh.outputs.should_refresh == 'true'
+        run: python3 scripts/refresh_data.py
+
+      - name: Commit refreshed data
+        if: steps.should_refresh.outputs.should_refresh == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add upload/UEtable.json upload/UEtable_enriched.json upload/6Kleaderboards/
+          if git diff --staged --quiet; then
+            echo "No data changes to commit"
+          else
+            git commit -m "data: weekly refresh $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      # ── Stage 2: Run GRM pipeline ─────────────────────────────────────
+      - name: Set up Python (for pipeline)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies (for pipeline)
+        run: pip install httpx numpy scipy pandas
+
+      - name: Run GRM pipeline
+        run: python3 scripts/pipeline.py
+
+      # ── Stage 3: Build Next.js static export ──────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build static export
+        run: bun run build
+        env:
+          NODE_ENV: production
+
+      - name: Verify build output
+        run: |
+          set -e
+          if [ ! -d "out" ]; then
+            echo "ERROR: out/ directory was not created"
+            exit 1
+          fi
+          echo "out/ exists with $(ls out/ | wc -l) entries"
+
+      # ── Stage 4: Deploy to GitHub Pages ───────────────────────────────
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+  deploy:
+    needs: refresh-and-build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
