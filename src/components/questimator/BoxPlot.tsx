@@ -51,7 +51,8 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
 
   const slotW = innerW / sorted.length;
   const xCenter = (i: number) => PAD.left + slotW * (i + 0.5);
-  const boxW = Math.min(slotW * 0.32, 16);
+  
+  const boxW = Math.min(slotW * 0.64, 32);
 
   const yTicks = useMemo(() => {
     const ticks: number[] = [];
@@ -111,8 +112,11 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
         {/* Boxes */}
         {sorted.map((d, i) => {
           const cx = xCenter(i);
-          const hardX = cx - boxW / 2 - 2;
-          const vhardX = cx + boxW / 2 + 2;
+          
+          // Aligned both boxes to the exact center of the level column
+          const hardX = cx - boxW / 2;
+          const vhardX = cx - boxW / 2;
+          
           const hasHard = d.hard_median != null && d.hard_q1 != null && d.hard_q3 != null;
           const hasVhard = d.vhard_median != null && d.vhard_q1 != null && d.vhard_q3 != null;
           return (
@@ -129,6 +133,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
               >
                 <title>{t.tooltipValid(d.level, d.n_charts_valid, d.n_charts_total)}</title>
               </rect>
+              
               {/* HARD box (red) */}
               {hasHard && (
                 <g pointerEvents="none">
@@ -153,6 +158,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                   />
                 </g>
               )}
+              
               {/* V-HARD box (purple) */}
               {hasVhard && (
                 <g pointerEvents="none">
@@ -177,6 +183,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                   />
                 </g>
               )}
+              
               <text
                 x={cx}
                 y={H - PAD.bottom + 16}
@@ -188,7 +195,6 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
               >
                 {d.level}
               </text>
-
             </g>
           );
         })}
