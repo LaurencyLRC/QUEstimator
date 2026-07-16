@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     "difficulty estimation",
     "6K",
   ],
-  authors: [{ name: "QUEstimator Project" }],
+  authors: [{ name: "Laurency" }],
 };
 
 export default function RootLayout({
