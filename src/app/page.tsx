@@ -412,7 +412,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
                   rel="noreferrer"
                   className="text-cyan-400 hover:underline"
                 >
-                  HorieYuuka&apos;s Scale Analyzer
+                  HorieYuuka의 Scale Analyzer
                 </a>
                 에서 영감을 받았습니다.
               </p>
@@ -485,7 +485,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
             <>
               <p>
                 GAS 시스템이 생성하는 순서형 클리어 상태를 처리하기 위해
-                <strong className="text-foreground"> 누적 반응 모델 (GRM)</strong>을
+                <strong className="text-foreground"> 등급 반응 모델 (GRM)</strong>을
                 사용합니다. 카테고리는 엄격한 순서형 생존 임계값을 나타냅니다:
                 FAILED → NORMAL → HARD → V-HARD.
               </p>
