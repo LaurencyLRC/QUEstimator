@@ -184,7 +184,7 @@ export const STRINGS = {
 
     // About tab
     projectOverview: "프로젝트 개요",
-    methodology: "방법론 · 누적 반응 모델 (GRM)",
+    methodology: "방법론 · 등급 반응 모델 (GRM)",
     pipelineState: "현재 파이프라인 상태",
     techStack: "기술 스택",
     mockMode: "모의 데이터 모드",
