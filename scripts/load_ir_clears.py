@@ -6,7 +6,8 @@ Loads pre-scraped Qwilight leaderboard JSONs and converts them to the
 (chart_idx, player_idx, clear_status) tuple format expected by the GRM fitter.
 
 Filtering rules:
-  - audioMultiplier >= 1     (no speed-rate manipulation)
+  - audioMultiplier < 1 is excluded.
+  - audioMultiplier > 1 is only included if handled is in {6, 2, 8} (V-HARD, FC, PFC).
   - inputFavorMode == 0      (no keymode override/convert)
   - longNoteMode == 0        (no LN mode change)
   - not isPaused             (no pauses)
@@ -52,15 +53,23 @@ HANDLED_TO_GRM = {
 # Fields that must pass the filter
 def is_valid_entry(entry: dict) -> bool:
     """Return True if this leaderboard entry is a valid clear attempt."""
-    if entry.get("audioMultiplier", 1) < 1:
+    audio_mult = entry.get("audioMultiplier", 1)
+    handled = entry.get("handled")
+    
+    if audio_mult < 1:
         return False
+        
+    # If speed is increased, only count V-HARD, FC, or PFC
+    if audio_mult > 1 and handled not in {6, 2, 8}:
+        return False
+        
     if entry.get("inputFavorMode", 0) != 0:
         return False
     if entry.get("longNoteMode", 0) != 0:
         return False
     if entry.get("isPaused", False):
         return False
-    if entry.get("handled") not in HANDLED_TO_GRM:
+    if handled not in HANDLED_TO_GRM:
         return False
     return True
 
