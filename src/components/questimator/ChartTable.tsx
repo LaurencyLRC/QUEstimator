@@ -34,6 +34,58 @@ function fmt(v: number | null, digits = 2): string {
   return `${sign}${v.toFixed(digits)}`;
 }
 
+/**
+ * Mini stacked bar showing the clear-tier breakdown for a single chart.
+ * Segments: V-HARD | HARD | LOW (NORMAL + FAILED grouped together).
+ */
+function ClearDistBar({
+  n,
+  nFailed,
+  nNormal,
+  nHard,
+  nVhard,
+}: {
+  n: number;
+  nFailed: number;
+  nNormal: number;
+  nHard: number;
+  nVhard: number;
+}) {
+  if (n === 0) return <span className="text-muted-foreground">–</span>;
+
+  const nLower = nNormal + nFailed;
+  const pct = (v: number) => (v / n) * 100;
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <div
+        className="w-20 h-2 rounded-sm overflow-hidden flex bg-muted"
+        title={`V-HARD ${nVhard} | HARD ${nHard} | NORMAL ${nNormal} | FAILED ${nFailed}`}
+      >
+        <div
+          style={{ width: `${pct(nVhard)}%`, background: "oklch(0.62 0.22 305)" }}
+          className="h-full"
+        />
+        <div
+          style={{ width: `${pct(nHard)}%`, background: "oklch(0.62 0.22 25)" }}
+          className="h-full"
+        />
+        <div
+          style={{ width: `${pct(nLower)}%`, background: "oklch(0.55 0 0)" }}
+          className="h-full"
+        />
+      </div>
+      <span className="text-[10px] font-mono text-muted-foreground leading-none">
+        <span style={{ color: "oklch(0.70 0.22 305)" }}>{nVhard}</span>
+        <span className="text-border mx-0.5">/</span>
+        <span style={{ color: "oklch(0.70 0.22 25)" }}>{nHard}</span>
+        <span className="text-border mx-0.5">/</span>
+        <span className="text-muted-foreground">{nLower}</span>
+      </span>
+    </div>
+  );
+}
+
 export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChange }: Props) {
   const { t } = useLang();
   const [query, setQuery] = useState("");
@@ -174,7 +226,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     {t.disc} <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </TableHead>
-                <TableHead className="text-right">
+                <TableHead className="text-right w-[100px]">
                   <button
                     onClick={() => toggleSort("n")}
                     className="inline-flex items-center gap-1 hover:text-foreground"
@@ -233,8 +285,14 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                   <TableCell className="text-right font-mono text-sm text-muted-foreground">
                     {c.a != null ? c.a.toFixed(2) : "–"}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <span className="text-muted-foreground">{c.n}</span>
+                  <TableCell className="text-right">
+                    <ClearDistBar
+                      n={c.n}
+                      nFailed={c.n_failed ?? 0}
+                      nNormal={c.n_normal ?? 0}
+                      nHard={c.n_hard ?? 0}
+                      nVhard={c.n_vhard ?? 0}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
