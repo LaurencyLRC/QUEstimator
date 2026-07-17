@@ -14,6 +14,10 @@ export interface Chart {
   comment: string;
   state: string;
   n: number;
+  n_failed: number;
+  n_normal: number;
+  n_hard: number;
+  n_vhard: number;
   a: number | null;
   b_hard: number | null;
   b_vhard: number | null;
