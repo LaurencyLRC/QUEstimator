@@ -3,9 +3,10 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  schedule:
+ # schedule:
     # Weekly: Sunday 20:00 UTC (8 PM UTC)
-    - cron: "0 20 * * 0"
+ #   - cron: "0 20 * * 0"
+ # AUTOMATIC PUSHING DISABLED DUE TO ISSUES
   workflow_dispatch: # Manual trigger button in GitHub Actions UI
 
 permissions:
