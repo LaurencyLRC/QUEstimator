@@ -306,9 +306,6 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
           <div className="font-semibold text-foreground mb-1.5 font-mono">
             {hoveredData.level}
           </div>
-          <div className="text-muted-foreground mb-2">
-            Charts {hoveredData.n_charts_valid}/{hoveredData.n_charts_total}
-          </div>
           
           {hoveredData.vhard_median != null && (
             <div className="flex items-center gap-2 mb-1">
