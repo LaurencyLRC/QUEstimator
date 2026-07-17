@@ -85,6 +85,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
 
   const handleLeave = useCallback(() => {
     setHovered(null);
+    setTipPos(null);
   }, []);
 
   const hoveredData = useMemo(
@@ -145,7 +146,6 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
         {sorted.map((d, i) => {
           const cx = xCenter(i);
           
-          // Aligned both boxes to the exact center of the level column
           const hardX = cx - boxW / 2;
           const vhardX = cx - boxW / 2;
           
@@ -167,35 +167,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                 style={{ cursor: "pointer" }}
                 onClick={() => onSelectLevel?.(d.level)}
                 onMouseEnter={() => handleEnter(d.level)}
-                onMouseLeave={handleLeave}
-              >
-                <title>{t.tooltipValid(d.level, d.n_charts_valid, d.n_charts_total)}</title>
-              </rect>
-              
-              {/* HARD box (red) */}
-              {hasHard && (
-                <g pointerEvents="none" opacity={dimOpacity}>
-                  <rect
-                    x={hardX}
-                    y={yScale(d.hard_q3!)}
-                    width={boxW}
-                    height={Math.max(2, yScale(d.hard_q1!) - yScale(d.hard_q3!))}
-                    fill="oklch(0.62 0.22 25)"
-                    fillOpacity={0.55}
-                    stroke="oklch(0.70 0.22 25)"
-                    strokeWidth={1.2}
-                    rx={2}
-                  />
-                  <line
-                    x1={hardX - 2}
-                    y1={yScale(d.hard_median!)}
-                    x2={hardX + boxW + 2}
-                    y2={yScale(d.hard_median!)}
-                    stroke="oklch(0.95 0.10 25)"
-                    strokeWidth={2}
-                  />
-                </g>
-              )}
+              />
               
               {/* V-HARD box (purple) */}
               {hasVhard && (
@@ -217,6 +189,31 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                     x2={vhardX + boxW + 2}
                     y2={yScale(d.vhard_median!)}
                     stroke="oklch(0.92 0.10 305)"
+                    strokeWidth={2}
+                  />
+                </g>
+              )}
+              
+              {/* HARD box (red) */}
+              {hasHard && (
+                <g pointerEvents="none" opacity={dimOpacity}>
+                  <rect
+                    x={hardX}
+                    y={yScale(d.hard_q3!)}
+                    width={boxW}
+                    height={Math.max(2, yScale(d.hard_q1!) - yScale(d.hard_q3!))}
+                    fill="oklch(0.62 0.22 25)"
+                    fillOpacity={0.55}
+                    stroke="oklch(0.70 0.22 25)"
+                    strokeWidth={1.2}
+                    rx={2}
+                  />
+                  <line
+                    x1={hardX - 2}
+                    y1={yScale(d.hard_median!)}
+                    x2={hardX + boxW + 2}
+                    y2={yScale(d.hard_median!)}
+                    stroke="oklch(0.95 0.10 25)"
                     strokeWidth={2}
                   />
                 </g>
@@ -313,24 +310,24 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
             Charts {hoveredData.n_charts_valid}/{hoveredData.n_charts_total}
           </div>
           
-          {hoveredData.hard_median != null && (
+          {hoveredData.vhard_median != null && (
             <div className="flex items-center gap-2 mb-1">
-              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "oklch(0.62 0.22 25)" }} />
-              <span className="text-muted-foreground w-12">{t.legendHard}</span>
-              <span className="font-mono text-foreground">{fmt(hoveredData.hard_median)}</span>
+              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "oklch(0.62 0.22 305)" }} />
+              <span className="text-muted-foreground w-12">V-HARD</span>
+              <span className="font-mono text-foreground">{fmt(hoveredData.vhard_median)}</span>
               <span className="font-mono text-muted-foreground text-[10px]">
-                [{fmt(hoveredData.hard_q1)}, {fmt(hoveredData.hard_q3)}]
+                [{fmt(hoveredData.vhard_q1)}, {fmt(hoveredData.vhard_q3)}]
               </span>
             </div>
           )}
           
-          {hoveredData.vhard_median != null && (
+          {hoveredData.hard_median != null && (
             <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "oklch(0.62 0.22 305)" }} />
-              <span className="text-muted-foreground w-12">{t.legendVhard}</span>
-              <span className="font-mono text-foreground">{fmt(hoveredData.vhard_median)}</span>
+              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "oklch(0.62 0.22 25)" }} />
+              <span className="text-muted-foreground w-12">HARD</span>
+              <span className="font-mono text-foreground">{fmt(hoveredData.hard_median)}</span>
               <span className="font-mono text-muted-foreground text-[10px]">
-                [{fmt(hoveredData.vhard_q1)}, {fmt(hoveredData.vhard_q3)}]
+                [{fmt(hoveredData.hard_q1)}, {fmt(hoveredData.hard_q3)}]
               </span>
             </div>
           )}
