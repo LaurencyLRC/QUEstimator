@@ -220,10 +220,11 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
 
     # Bayesian prior: prevents parameters from running to extremes on charts
     # with sparse data (e.g. 0 FAILED/NORMAL → b_hard unconstrained).
-    # Centered at reasonable defaults; SD wide enough that real data dominates.
-    prior_bv = 0.0
-    prior_bh = -0.6
-    prior_bn = -1.2
+    # Centered at the level-derived guess so low-level charts aren't pulled
+    # toward 0 and high-level charts aren't pulled toward 0.
+    prior_bv = init_b_vhard
+    prior_bh = init_b_vhard - 0.6
+    prior_bn = init_b_vhard - 1.2
     prior_a = 1.5
     PRIOR_SD_B = 3.0    # thresholds: ±3 logits around center
     PRIOR_SD_A = 3.0    # discrimination: ±3 around 1.5
@@ -256,11 +257,8 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
         )
         return nll + prior_penalty
 
-    # Single fixed starting point (the prior center) for ALL charts.
-    # This makes the fit completely deterministic and cross-platform reproducible —
-    # the same data always produces the same result regardless of the chart's level.
-    # The Bayesian prior + the data together determine the optimum.
-    x0 = np.array([1.5, -1.2, -0.6, 0.0])
+    # Starting point anchored to the level-derived prior for reproducibility.
+    x0 = np.array([1.5, prior_bn, prior_bh, prior_bv])
     bounds = [(0.001, 50.0), (-20.0, 20.0), (-20.0, 20.0), (-20.0, 20.0)]
 
     res = None
@@ -392,6 +390,19 @@ def main():
     df["se_b_vhard"] = [f["se_b_vhard"] for f in fitted]
     df["n"] = [f["n"] for f in fitted]
 
+    # ------------------------------------------------------------------ #
+    # Per-chart category counts (for the UI clear-distribution bar)
+    # ------------------------------------------------------------------ #
+    chart_cat_counts: dict[int, dict[str, int]] = {}
+    for ci in charts_with_data:
+        st = grp.get_group(ci)["status"].to_numpy()
+        chart_cat_counts[ci] = {
+            "n_failed": int(np.sum(st == 0)),
+            "n_normal": int(np.sum(st == 1)),
+            "n_hard":   int(np.sum(st == 2)),
+            "n_vhard":  int(np.sum(st == 3)),
+        }
+
     PROVISIONAL_MIN_N = 30
     PROVISIONAL_MAX_SE = 0.5
     df["provisional"] = (
@@ -419,7 +430,10 @@ def main():
     print("[5/5] Emitting JSON artifacts ...")
 
     charts_out = []
-    for _, r in df.iterrows():
+    for i, r in df.iterrows():
+        counts = chart_cat_counts.get(
+            i, {"n_failed": 0, "n_normal": 0, "n_hard": 0, "n_vhard": 0}
+        )
         charts_out.append({
             "md5": r["md5"],
             "title": r["title"],
@@ -432,6 +446,7 @@ def main():
             "comment": r["comment"],
             "state": r["state"],
             "n": int(r["n"]),
+            **counts,
             "a": None if math.isnan(r["a"]) else round(float(r["a"]), 4),
             "b_hard": None if math.isnan(r["b_hard"]) else round(float(r["b_hard"]), 4),
             "b_vhard": None if math.isnan(r["b_vhard"]) else round(float(r["b_vhard"]), 4),
