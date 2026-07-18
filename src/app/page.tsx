@@ -690,57 +690,6 @@ function AboutTab({ meta }: { meta: Meta | null }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t.pipelineState}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-            <div className="text-amber-400 font-medium text-xs uppercase tracking-wider mb-1">
-              {t.mockMode}
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {t.lang === "en" ? (
-                <>
-                  Qwilight&apos;s IR API is not yet available. This deployment
-                  uses <strong className="text-foreground">Monte-Carlo simulated
-                  clears</strong> tied to real chart metadata. Once IR
-                  access is granted, only the data ingestion step needs to be
-                  swapped – the entire modeling and visualization pipeline remains
-                  unchanged.
-                </>
-              ) : (
-                <>
-                  Qwilight의 IR API가 아직 제공되지 않습니다. 이 배포는
-                  실제 채보 메타데이터에 연결된{" "}
-                  <strong className="text-foreground">몬테카를로 시뮬레이션 클리어</strong>를
-                  사용합니다. IR 접근이 허용되면 데이터 수집 단계만 교체하면 되며,
-                  전체 모델링 및 시각화 파이프라인은 변경되지 않습니다.
-                </>
-              )}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground text-[10px] uppercase">{t.model}</div>
-              <div className="font-mono">{meta?.model}</div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground text-[10px] uppercase">{t.categories}</div>
-              <div className="font-mono">{meta?.categories.join(" → ")}</div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground text-[10px] uppercase">{t.provisionalRule}</div>
-              <div className="font-mono text-[11px]">{meta?.provisional_rule}</div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground text-[10px] uppercase">{t.runtimeLabel}</div>
-              <div className="font-mono">{meta?.runtime_sec}s</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>{t.techStack}</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-1">
