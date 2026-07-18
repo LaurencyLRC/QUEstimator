@@ -690,6 +690,32 @@ function AboutTab({ meta }: { meta: Meta | null }) {
 
       <Card>
         <CardHeader>
+          <CardTitle>{t.pipelineState}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground text-[10px] uppercase">{t.model}</div>
+              <div className="font-mono">{meta?.model}</div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground text-[10px] uppercase">{t.categories}</div>
+              <div className="font-mono">{meta?.categories.join(" → ")}</div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground text-[10px] uppercase">{t.provisionalRule}</div>
+              <div className="font-mono text-[11px]">{meta?.provisional_rule}</div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground text-[10px] uppercase">{t.runtimeLabel}</div>
+              <div className="font-mono">{meta?.runtime_sec}s</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
           <CardTitle>{t.techStack}</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-1">
