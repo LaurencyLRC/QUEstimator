@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import type { Chart } from "@/lib/questimator-types";
+import type { Chart, PlayerData } from "@/lib/questimator-types";
 import { levelLabel } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 
@@ -16,6 +16,7 @@ interface Props {
   chart: Chart | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  activePlayer?: { id: string; data: PlayerData } | null;
 }
 
 function fmt(v: number | null, digits = 3): string {
@@ -24,16 +25,14 @@ function fmt(v: number | null, digits = 3): string {
   return `${sign}${v.toFixed(digits)}`;
 }
 
-// SE is always positive – no sign prefix.
-function fmtSE(v: number | null, digits = 3): string {
-  if (v == null || Number.isNaN(v)) return "–";
-  return v.toFixed(digits);
+// 95% confidence interval helper: center ± 1.96 · SE.
+function fmtCI(center: number, se: number, digits = 2): string {
+  const lo = center - 1.96 * se;
+  const hi = center + 1.96 * se;
+  const s = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(digits)}`;
+  return `[${s(lo)}, ${s(hi)}]`;
 }
 
-// Confidence color bands based on the pipeline's provisional threshold (SE > 0.5).
-//   SE ≤ 0.20  → emerald (excellent)
-//   SE ≤ 0.50  → amber   (acceptable, still valid)
-//   SE > 0.50  → rose    (provisional-level uncertainty)
 function seColorClass(se: number | null): string {
   if (se == null || Number.isNaN(se)) return "text-muted-foreground";
   if (se <= 0.20) return "text-emerald-400";
@@ -41,7 +40,15 @@ function seColorClass(se: number | null): string {
   return "text-rose-400";
 }
 
-export function ChartDetailDialog({ chart, open, onOpenChange }: Props) {
+function getClearBadge(status?: number) {
+  if (status === 3) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-purple-500/40 text-purple-400 ml-2">V-HARD</Badge>;
+  if (status === 2) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-red-500/40 text-red-400 ml-2">HARD</Badge>;
+  if (status === 1) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-yellow-500/40 text-yellow-400 ml-2">NORMAL</Badge>;
+  if (status === 0) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-gray-500/40 text-gray-400 ml-2">FAILED</Badge>;
+  return null;
+}
+
+export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer }: Props) {
   const { t } = useLang();
   if (!chart) return null;
 
@@ -56,10 +63,13 @@ export function ChartDetailDialog({ chart, open, onOpenChange }: Props) {
             {chart.provisional && (
               <Badge
                 variant="outline"
-                className="text-amber-400 border-amber-500/40"
+                className="text-blue-400 border-blue-500/40"
               >
                 {t.provisional}
               </Badge>
+            )}
+            {activePlayer && activePlayer.data.c[chart.id.toString()] !== undefined && (
+              getClearBadge(activePlayer.data.c[chart.id.toString()])
             )}
             <a
               href={`https://ez2pattern.kr/bms/chart?md5=${chart.md5}`}
@@ -70,11 +80,6 @@ export function ChartDetailDialog({ chart, open, onOpenChange }: Props) {
               {t.ez2pattern}
             </a>
           </div>
-          {/* Chart title, artist, and notemaker are displayed as-is from the
-              source data (UEtable.json). The BMS ecosystem is Japanese-centric,
-              so these fields remain in their original Japanese form regardless
-              of the selected UI language. The .font-jp class forces Japanese
-              glyph shapes to avoid Han-unification clashes. */}
           <DialogTitle className="text-xl leading-tight font-jp">
             {chart.title}
           </DialogTitle>
@@ -94,18 +99,21 @@ export function ChartDetailDialog({ chart, open, onOpenChange }: Props) {
             <ParamCard
               label={t.hardClear}
               value={fmt(chart.b_hard_display)}
+              ciCenter={chart.b_hard}
               seValue={chart.se_b_hard}
               color="oklch(0.70 0.22 25)"
             />
             <ParamCard
               label={t.vhardClear}
               value={fmt(chart.b_vhard_display)}
+              ciCenter={chart.b_vhard}
               seValue={chart.se_b_vhard}
               color="oklch(0.70 0.22 305)"
             />
             <ParamCard
               label={t.discrimination}
               value={fmt(chart.a, 3)}
+              ciCenter={chart.a}
               seValue={chart.se_a}
             />
             <ParamCard
@@ -129,11 +137,14 @@ export function ChartDetailDialog({ chart, open, onOpenChange }: Props) {
 function ParamCard({
   label,
   value,
+  ciCenter,
   seValue,
   color,
 }: {
   label: string;
   value: string;
+  /** Numeric center used to compute the 95% CI (= center ± 1.96 · SE). */
+  ciCenter?: number | null;
   seValue?: number | null;
   color?: string;
 }) {
@@ -142,18 +153,18 @@ function ParamCard({
       <div className="flex items-center gap-1.5">
         {color && (
           <span
-            className="inline-block w-2 h-2 rounded-full"
+            className="inline-block w-2 h-2 rounded-full shrink-0"
             style={{ background: color }}
           />
         )}
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+        <span className="text-[9px] uppercase tracking-wider text-muted-foreground whitespace-nowrap truncate">
           {label}
         </span>
       </div>
       <div className="font-mono text-base font-semibold mt-0.5">{value}</div>
-      {seValue != null && (
-        <div className={`text-[10px] font-mono ${seColorClass(seValue)}`}>
-          SE {fmtSE(seValue)}
+      {seValue != null && ciCenter != null && !Number.isNaN(ciCenter) && !Number.isNaN(seValue) && (
+        <div className={`text-[9px] font-mono ${seColorClass(seValue)}`}>
+          95% CI {fmtCI(ciCenter, seValue)}
         </div>
       )}
     </div>

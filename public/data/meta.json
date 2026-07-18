@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-15T11:11:37.036211+00:00",
+  "generated_at": "2026-07-18T16:54:54.234845+00:00",
   "n_charts_total": 1476,
-  "n_charts_valid": 1162,
-  "n_charts_provisional": 314,
-  "n_players": 2806,
-  "n_clears": 162333,
+  "n_charts_valid": 1243,
+  "n_charts_provisional": 233,
+  "n_players": 2800,
+  "n_clears": 167589,
   "model": "Graded Response Model (marginal MLE, 21-node Gauss-Hermite quadrature)",
   "categories": [
     "FAILED",
@@ -14,5 +14,5 @@
   ],
   "provisional_rule": "n < 30 OR se_b_vhard > 0.5",
   "data_source": "Qwilight IR leaderboards (real player data)",
-  "runtime_sec": 29.92
+  "runtime_sec": 17.4
 }

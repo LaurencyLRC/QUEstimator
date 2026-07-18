@@ -20,14 +20,12 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize
+from scipy.optimize import minimize, minimize_scalar
 from scipy.special import roots_hermite, expit
 
 # --------------------------------------------------------------------------- #
 # Configuration
 # --------------------------------------------------------------------------- #
-# Resolve paths relative to the project root (two levels up from scripts/).
-# This makes the pipeline portable across sandbox, CI, and local machines.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INPUT_PATH = _PROJECT_ROOT / "upload" / "UEtable_enriched.json"
 OUT_DIR = _PROJECT_ROOT / "public" / "data"
@@ -68,13 +66,11 @@ def load_charts() -> pd.DataFrame:
     df = pd.DataFrame(rows).drop_duplicates(subset="md5").reset_index(drop=True)
     return df
 
-
 def level_sort_key(level: str):
     specials_order = {"-_-": 100, "?!": 101, "◆": 102, "Ω": 103}
     if level.isdigit():
         return (0, int(level))
     return (1, specials_order.get(level, 999))
-
 
 # --------------------------------------------------------------------------- #
 # Stage 2
@@ -92,7 +88,6 @@ def hidden_difficulty_for_level(level: str):
         "Ω":   (3.0, 0.4, 1.6),
     }
     return profiles.get(level, (0.0, 0.8, 1.3))
-
 
 def assign_hidden_params(df: pd.DataFrame) -> pd.DataFrame:
     b_vhard = np.zeros(len(df))
@@ -112,13 +107,11 @@ def assign_hidden_params(df: pd.DataFrame) -> pd.DataFrame:
     df["true_b_vhard"] = b_vhard
     return df
 
-
 # --------------------------------------------------------------------------- #
 # Stage 3
 # --------------------------------------------------------------------------- #
 def sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x))
-
 
 def generate_clears(df: pd.DataFrame):
     n_charts = len(df)
@@ -143,7 +136,6 @@ def generate_clears(df: pd.DataFrame):
     b_h = df["true_b_hard"].to_numpy()
     b_v = df["true_b_vhard"].to_numpy()
 
-    # Only iterate over charts whose sample size survived the truncation above.
     n_charts_to_sim = len(sample_sizes)
     for ci in range(n_charts_to_sim):
         n = int(sample_sizes[ci])
@@ -184,7 +176,6 @@ def generate_clears(df: pd.DataFrame):
     clears = np.array(records, dtype=np.int64)
     return clears, player_theta
 
-
 # --------------------------------------------------------------------------- #
 # Stage 4 - GRM marginal MLE fit (Gauss-Hermite quadrature)
 # --------------------------------------------------------------------------- #
@@ -193,20 +184,7 @@ _nodes, _weights = roots_hermite(N_QUAD)
 QUAD_THETA = _nodes * math.sqrt(2.0)
 QUAD_W = _weights / math.sqrt(math.pi)
 
-
 def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
-    """
-    Fit a 3-threshold GRM (NORMAL/HARD/V-HARD) to a single chart's responses
-    via marginal MLE with N(0,1) prior. L-BFGS-B with bounds; falls back to
-    Nelder-Mead if L-BFGS-B fails to converge or returns a degenerate solution.
-
-    A weak Bayesian prior (MAP estimation) is added on the threshold parameters
-    to regularize charts with sparse lower-tail data (0 FAILED/NORMAL entries).
-    Without this, b_hard is unconstrained from below and the optimizer can
-    push it to extreme values (e.g. -24) that vary across platforms.
-
-    init_b_vhard: prior guess for b_vhard (e.g. derived from the chart's level).
-    """
     n = len(statuses)
     if n < 15 or len(np.unique(statuses)) < 2:
         return {"a": float("nan"), "b_normal": float("nan"),
@@ -218,16 +196,12 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
     w = QUAD_W
     cat_onehots = np.stack([(statuses == k).astype(float) for k in range(4)], axis=1)
 
-    # Bayesian prior: prevents parameters from running to extremes on charts
-    # with sparse data (e.g. 0 FAILED/NORMAL → b_hard unconstrained).
-    # Centered at the level-derived guess so low-level charts aren't pulled
-    # toward 0 and high-level charts aren't pulled toward 0.
     prior_bv = init_b_vhard
     prior_bh = init_b_vhard - 0.6
     prior_bn = init_b_vhard - 1.2
     prior_a = 1.5
-    PRIOR_SD_B = 3.0    # thresholds: ±3 logits around center
-    PRIOR_SD_A = 3.0    # discrimination: ±3 around 1.5
+    PRIOR_SD_B = 3.0
+    PRIOR_SD_A = 3.0
     PRIOR_PREC_B = 1.0 / (PRIOR_SD_B ** 2)
     PRIOR_PREC_A = 1.0 / (PRIOR_SD_A ** 2)
 
@@ -236,7 +210,6 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
         bn, bh, bv = params[1], params[2], params[3]
         if not (bn < bh < bv):
             return 1e10
-        # expit is numerically stable - no overflow even for huge arguments.
         ps_n = expit(a * (theta - bn))
         ps_h = expit(a * (theta - bh))
         ps_v = expit(a * (theta - bv))
@@ -250,14 +223,12 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
         marginal = cat_onehots @ probs.T @ w
         marginal = np.clip(marginal, eps, None)
         nll = -float(np.log(marginal).sum())
-        # Gaussian prior penalty (MAP estimation)
         prior_penalty = (
             0.5 * PRIOR_PREC_B * ((bn - prior_bn) ** 2 + (bh - prior_bh) ** 2 + (bv - prior_bv) ** 2)
             + 0.5 * PRIOR_PREC_A * ((a - prior_a) ** 2)
         )
         return nll + prior_penalty
 
-    # Starting point anchored to the level-derived prior for reproducibility.
     x0 = np.array([1.5, prior_bn, prior_bh, prior_bv])
     bounds = [(0.001, 50.0), (-20.0, 20.0), (-20.0, 20.0), (-20.0, 20.0)]
 
@@ -267,7 +238,6 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
                        options={"maxiter": 1000, "ftol": 1e-10, "gtol": 1e-8})
     except Exception:
         res = None
-    # Fall back to Nelder-Mead if L-BFGS-B failed.
     if res is None or np.isnan(res.fun) or res.fun > 1e9:
         res2 = minimize(neg_log_lik, x0, method="Nelder-Mead",
                         options={"maxiter": 3000, "xatol": 1e-6, "fatol": 1e-6})
@@ -275,13 +245,8 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
             res = res2
     a_hat, bn_hat, bh_hat, bv_hat = res.x
 
-    # Analytical SE approximation based on IRT asymptotic theory.
-    # For a 2PL-style threshold, SE(b_k) ~ 1 / (a * sqrt(n * p*(1-p)))
-    # where p = 0.5 at the threshold. The GRM shares `a` across thresholds,
-    # so we inflate by ~1.2 to account for the cross-threshold correlation.
-    # We additionally penalise charts whose upper-tier observations are sparse.
     n_total = n
-    n_upper = int(np.sum(statuses >= 2))  # HARD + V-HARD
+    n_upper = int(np.sum(statuses >= 2))
     p_upper = n_upper / max(n_total, 1)
     if p_upper < 0.05:
         sparse_mult = 2.5
@@ -294,15 +259,14 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
     base_se_b = 2.4 / (max(a_hat, 0.01) * math.sqrt(max(n_total, 1))) * sparse_mult
     base_se_a = (1.0 + a_hat * a_hat) / (max(a_hat, 0.01) * math.sqrt(max(n_total, 1))) * sparse_mult
     se_a = base_se_a
-    se_bn = base_se_b * 1.1  # NORMAL threshold is less constrained
+    se_bn = base_se_b * 1.1
     se_bh = base_se_b
-    se_bv = base_se_b * 1.05  # V-HARD threshold often has the sparsest data
+    se_bv = base_se_b * 1.05
 
     return {"a": float(a_hat), "b_normal": float(bn_hat),
             "b_hard": float(bh_hat), "b_vhard": float(bv_hat),
             "se_a": float(se_a), "se_b_hard": float(se_bh),
             "se_b_vhard": float(se_bv), "n": n, "ok": True}
-
 
 # --------------------------------------------------------------------------- #
 # Stage 5
@@ -336,7 +300,6 @@ def aggregate_by_level(df: pd.DataFrame) -> list:
     rows.sort(key=lambda r: level_sort_key(r["level"]))
     return rows
 
-
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
@@ -362,7 +325,6 @@ def main():
     charts_with_data = sorted(grp.groups.keys())
     print(f"      fitting {len(charts_with_data)} charts with data ...")
     bad = 0
-    # Precompute a level-derived prior for b_vhard to warm-start each fit.
     level_center = {lvl: hidden_difficulty_for_level(lvl)[0] for lvl in df["level"].unique()}
     for k, ci in enumerate(charts_with_data):
         st = grp.get_group(ci)["status"].to_numpy()
@@ -390,9 +352,6 @@ def main():
     df["se_b_vhard"] = [f["se_b_vhard"] for f in fitted]
     df["n"] = [f["n"] for f in fitted]
 
-    # ------------------------------------------------------------------ #
-    # Per-chart category counts (for the UI clear-distribution bar)
-    # ------------------------------------------------------------------ #
     chart_cat_counts: dict[int, dict[str, int]] = {}
     for ci in charts_with_data:
         st = grp.get_group(ci)["status"].to_numpy()
@@ -405,24 +364,143 @@ def main():
 
     PROVISIONAL_MIN_N = 30
     PROVISIONAL_MAX_SE = 0.5
+    PROVISIONAL_FALLBACK_N = 10  # below this, GRM fit is too noisy — use level prior
     df["provisional"] = (
         (df["n"] < PROVISIONAL_MIN_N) |
         (df["se_b_vhard"] > PROVISIONAL_MAX_SE) |
         (df["se_b_vhard"].isna())
     )
 
+    # Display values: prefer the actual GRM fit when available, even for
+    # provisional charts — as long as the chart had enough data (n >
+    # PROVISIONAL_FALLBACK_N) for the fit to be meaningful. For very sparse
+    # charts (n <= PROVISIONAL_FALLBACK_N) or charts where the GRM fit
+    # returned NaN, fall back to the level-derived prior center.
     df["b_hard_display"] = df["b_hard"]
     df["b_vhard_display"] = df["b_vhard"]
     mask_prov = df["provisional"]
     if mask_prov.any():
         level_center = {lvl: hidden_difficulty_for_level(lvl)[0] for lvl in df["level"].unique()}
         for i in df.index[mask_prov]:
+            n_i = int(df.at[i, "n"])
+            bh_i = df.at[i, "b_hard"]
+            bv_i = df.at[i, "b_vhard"]
+            # Use the GRM fit if the chart had enough data and the fit
+            # returned finite values. Otherwise fall back to the level prior.
+            if n_i > PROVISIONAL_FALLBACK_N and not (math.isnan(bh_i) or math.isnan(bv_i)):
+                continue  # keep the fitted values in b_*_display
             lvl = df.at[i, "level"]
             c = level_center.get(lvl, 0.0)
             df.at[i, "b_hard_display"] = c - 0.6
             df.at[i, "b_vhard_display"] = c
 
     print(f"      fits complete. provisional charts: {int(df['provisional'].sum())} / {len(df)}")
+
+    print("[3.5/5] Estimating player theta values ...")
+    player_data = {}
+    inv_player_map = {v: k for k, v in player_map.items()}
+    
+    a_arr = df["a"].to_numpy()
+    bn_arr = df["b_normal"].to_numpy()
+    bh_arr = df["b_hard"].to_numpy()
+    bv_arr = df["b_vhard"].to_numpy()
+
+    # Pre-compute eligibility mask for skill estimation.
+    # Exclude:
+    #   - provisional charts (high uncertainty — would inject noise into θ)
+    #   - numeric levels 1-19 (floor effect — almost everyone V-HARD clears them,
+    #     so they carry almost no information about a player's skill)
+    #   - special levels -_- , ?! , ◆ (eclectic mix, not on the main U_E ladder)
+    # KEEP:
+    #   - numeric levels 20-30
+    #   - special level Ω (the flagship non-numeral tier — well-calibrated)
+    eligible_mask = (~df["provisional"].to_numpy()).copy()
+    for i in range(len(df)):
+        if not eligible_mask[i]:
+            continue
+        lvl = df.at[i, "level"]
+        if lvl == "Ω":
+            continue  # eligible
+        if lvl.isdigit() and int(lvl) >= 20:
+            continue  # eligible
+        eligible_mask[i] = False
+    print(f"      eligibility: {int(eligible_mask.sum())} / {len(df)} charts "
+          f"count toward skill estimation (U_E 20+ and Ω, non-provisional)")
+
+    p_clears = pd.DataFrame({"chart": clears[:, 0], "player": clears[:, 1], "status": clears[:, 2]}).groupby("player")
+    
+    k = 0
+    bad_theta = 0
+    for pid, group in p_clears:
+        k += 1
+        avatar_id = inv_player_map[pid]
+        p_c = {}
+        # First pass: collect eligible responses + find hardest HARD-cleared chart.
+        # "Hardest" is measured by b_hard (the HARD-clear threshold). A
+        # HARD-cleared chart has status >= 2.
+        responses = []
+        hardest_h_bh = -math.inf
+        has_hard_clear = False
+        for _, row in group.iterrows():
+            c_idx = int(row["chart"])
+            st = int(row["status"])
+            p_c[str(c_idx)] = st
+            
+            if not eligible_mask[c_idx]:
+                continue
+            a = a_arr[c_idx]
+            bn = bn_arr[c_idx]
+            bh = bh_arr[c_idx]
+            bv = bv_arr[c_idx]
+            if math.isnan(a) or math.isnan(bh) or math.isnan(bv):
+                continue
+            
+            responses.append((a, bn, bh, bv, st, bh))
+            if st >= 2 and bh > hardest_h_bh:
+                hardest_h_bh = bh
+                has_hard_clear = True
+
+        # Second pass: exclude NORMAL/FAILED entries on charts harder than the
+        # player's hardest HARD-cleared chart (compared by b_hard). Rationale:
+        # if a player has demonstrated they can HARD-clear a chart at HARD
+        # difficulty X, then any NORMAL or FAILED on a chart with a higher
+        # b_hard is likely a "didn't try" or "first attempt" rather than
+        # genuine evidence of their skill ceiling. Keeping those would bias
+        # θ downward.
+        valid_responses = []
+        for a, bn, bh, bv, st, _ in responses:
+            if has_hard_clear and st < 2 and bh > hardest_h_bh:
+                continue
+            valid_responses.append((a, bn, bh, bv, st))
+        
+        if valid_responses:
+            def neg_log_post(theta):
+                nll = 0
+                for a, bn, bh, bv, status in valid_responses:
+                    ps_n = expit(a * (theta - bn))
+                    ps_h = expit(a * (theta - bh))
+                    ps_v = expit(a * (theta - bv))
+                    if status == 0:
+                        p = 1.0 - ps_n
+                    elif status == 1:
+                        p = ps_n - ps_h
+                    elif status == 2:
+                        p = ps_h - ps_v
+                    else:
+                        p = ps_v
+                    p = max(p, 1e-12)
+                    nll -= math.log(p)
+                return nll + 0.5 * (theta / 1.1)**2
+
+            res = minimize_scalar(neg_log_post, bounds=(-5, 5), method='bounded')
+            theta_est = float(res.x)
+        else:
+            theta_est = 0.0
+            bad_theta += 1
+            
+        player_data[avatar_id] = {"t": round(theta_est, 3), "c": p_c}
+        if k % 1000 == 0:
+            print(f"        progress: {k}/{len(player_map)}  (failed estimates: {bad_theta})")
 
     print("[4/5] Aggregating per U_E level ...")
     level_summary = aggregate_by_level(df)
@@ -435,6 +513,7 @@ def main():
             i, {"n_failed": 0, "n_normal": 0, "n_hard": 0, "n_vhard": 0}
         )
         charts_out.append({
+            "id": i,
             "md5": r["md5"],
             "title": r["title"],
             "artist": r["artist"],
@@ -480,6 +559,8 @@ def main():
         json.dump(level_summary, f, ensure_ascii=False)
     with open(os.path.join(OUT_DIR, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
+    with open(os.path.join(OUT_DIR, "players.json"), "w", encoding="utf-8") as f:
+        json.dump(player_data, f, separators=(',', ':'))
 
     print()
     print("=== Pipeline complete (real IR data) ===")
@@ -488,7 +569,6 @@ def main():
     print(f"  Players:        {meta['n_players']:,}")
     print(f"  Clears:         {meta['n_clears']:,}")
     print(f"  Outputs in:     {OUT_DIR}/")
-
 
 if __name__ == "__main__":
     main()

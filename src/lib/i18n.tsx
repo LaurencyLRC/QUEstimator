@@ -1,12 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 export type Lang = "en" | "ko";
 
-// All UI strings. Keys are namespaced by section for clarity.
-// Numeric values like {n} are interpolated at call sites via template strings
-// rather than ICU syntax – simpler for our small string set.
 export const STRINGS = {
   en: {
     // Header
@@ -18,6 +15,8 @@ export const STRINGS = {
     // Tabs
     overview: "Overview",
     chartsTab: "Charts",
+    player: "Player",
+    ranking: "Ranking",
     about: "About",
 
     // Overview tab
@@ -82,6 +81,30 @@ export const STRINGS = {
     notemaker: "notemaker",
     comment: "Comment:",
 
+    // Player tab
+    playerProfile: "Player Profile",
+    playerProfileDesc: "Enter your Qwilight Avatar ID to view your estimated skill (θ) and get personalized V-HARD chart recommendations.",
+    playerIdPlaceholder: "Enter Avatar ID (e.g. Laurency)",
+    search: "Search",
+    playerNotFound: "Player not found. Make sure you typed the exact Avatar ID.",
+    estimatedSkill: "Estimated Skill (θ)",
+    clearsCount: (n: number) => `${n} clears logged`,
+    recommendedCharts: "Recommended Targets (V-HARD)",
+    yourProbabilities: "Your Clear Probabilities",
+    noRecommendations: "No suitable recommendations found. You might be too good!",
+
+    // Ranking tab
+    rankingTitle: "Player Ranking",
+    rankingDesc: "All tracked players sorted by estimated latent skill θ. Click any row to load that player into the Player tab. Eligibility requires ≥ 10 plays AND ≥ 1 HARD-or-better clear on valid U_E 20+ charts (or Ω) — plays on lower levels, provisional charts, and -_- / ?! / ◆ do not count.",
+    rankingSearchPlaceholder: "Filter by Avatar ID...",
+    rankCol: "#",
+    playerCol: "Player",
+    thetaCol: "θ (skill)",
+    clearsCol: "Clears",
+    vhardCol: "V-HARD",
+    hardCol: "HARD",
+    unrankedNote: (n: number) => `${n} players are ineligible for ranking (< 10 valid-chart plays or no HARD-or-better clear on U_E 20+ / Ω).`,
+
     // Footer
     onDifficultyTable: "on",
     generated: "Generated",
@@ -113,6 +136,8 @@ export const STRINGS = {
     // Tabs
     overview: "개요",
     chartsTab: "채보",
+    player: "플레이어",
+    ranking: "랭킹",
     about: "소개",
 
     // Overview tab
@@ -177,6 +202,30 @@ export const STRINGS = {
     notemaker: "채보 제작자",
     comment: "코멘트:",
 
+    // Player tab
+    playerProfile: "플레이어 프로필",
+    playerProfileDesc: "Qwilight Avatar ID를 입력하여 추정 실력(θ)을 확인하고 맞춤형 V-HARD 추천 채보를 받아보세요.",
+    playerIdPlaceholder: "Avatar ID 입력 (예: Laurency)",
+    search: "검색",
+    playerNotFound: "플레이어를 찾을 수 없습니다. 정확한 Avatar ID를 입력했는지 확인하세요.",
+    estimatedSkill: "추정 실력 (θ)",
+    clearsCount: (n: number) => `클리어 기록 ${n}개`,
+    recommendedCharts: "추천 목표 (V-HARD)",
+    yourProbabilities: "예상 클리어 확률",
+    noRecommendations: "적합한 추천을 찾을 수 없습니다. 이미 모든 채보를 클리어하셨을 수도 있습니다!",
+
+    // Ranking tab
+    rankingTitle: "플레이어 랭킹",
+    rankingDesc: "추정 잠재 실력 θ 기준 정렬된 전체 플레이어 목록입니다. 행을 클릭하면 해당 플레이어가 플레이어 탭에 로드됩니다. 랭킹 대상이 되려면 유효한 U_E 20+ 채보(또는 Ω)에서 10플레이 이상 AND HARD 이상 클리어 1건 이상이 필요합니다 — 하위 레벨, 임시 채보, -_- / ?! / ◆에서의 플레이는 집계되지 않습니다.",
+    rankingSearchPlaceholder: "Avatar ID로 필터링...",
+    rankCol: "#",
+    playerCol: "플레이어",
+    thetaCol: "θ (실력)",
+    clearsCol: "클리어",
+    vhardCol: "V-HARD",
+    hardCol: "HARD",
+    unrankedNote: (n: number) => `${n}명의 플레이어는 랭킹 대상이 아닙니다 (유효 채보 플레이 10건 미만 또는 U_E 20+ / Ω에서 HARD 이상 클리어 없음).`,
+
     // Footer
     onDifficultyTable: "",
     generated: "생성일",
@@ -214,7 +263,11 @@ export function LangProvider({ children }: { children: ReactNode }) {
   const value: LangContextValue = {
     lang,
     setLang,
-    t: { ...STRINGS[lang], lang },
+    // Cast: STRINGS.en and STRINGS.ko have structurally identical shapes but
+    // different string literal types (because of `as const`), so without
+    // this cast TypeScript complains that the union isn't assignable to the
+    // intersection type. Runtime is unaffected.
+    t: { ...(STRINGS[lang] as StringDict), lang },
   };
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }

@@ -4,23 +4,33 @@ import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { BoxPlot } from "@/components/questimator/BoxPlot";
 import { ChartTable, type SortKey, type SortDir } from "@/components/questimator/ChartTable";
 import { ChartDetailDialog } from "@/components/questimator/ChartDetailDialog";
 import { LangToggle } from "@/components/questimator/LangToggle";
+import { RankingTab } from "@/components/questimator/RankingTab";
 import { useLang } from "@/lib/i18n";
+import type {
+  Chart,
+  LevelSummary,
+  Meta,
+  PlayerData,
+  PlayersDict
+} from "@/lib/questimator-types";
 import {
-  type Chart,
-  type LevelSummary,
-  type Meta,
   levelSortKey,
   levelLabel,
   isSpecialLevel,
+  pStar
 } from "@/lib/questimator-types";
 import {
   BarChart3,
   ListTree,
   Sigma,
+  Trophy,
+  User
 } from "lucide-react";
 
 export default function Home() {
@@ -37,6 +47,12 @@ export default function Home() {
   const [tab, setTab] = useState("overview");
   const [sortKey, setSortKey] = useState<SortKey>("b_vhard");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const [playersData, setPlayersData] = useState<PlayersDict | null>(null);
+  const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData } | null>(null);
+  const [playerQuery, setPlayerQuery] = useState("");
+  const [playerLoading, setPlayerLoading] = useState(false);
+  const [playerError, setPlayerError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -67,14 +83,10 @@ export default function Home() {
     [levels]
   );
 
-  // Box plot only shows levels where the GRM has meaningful discriminative
-  // power. U_E 1-19 suffer from a floor effect (70-96% of players V-HARD
-  // clear them), so their difficulty estimates cluster together and don't
-  // provide useful visual information. See the About tab for details.
   const plotLevels = useMemo(
     () =>
       sortedLevels.filter((l) => {
-        if (isSpecialLevel(l.level)) return true; // always show special folders
+        if (isSpecialLevel(l.level)) return true;
         const n = parseInt(l.level, 10);
         return n >= 20;
       }),
@@ -100,6 +112,69 @@ export default function Home() {
   const handleSelectLevelFromPlot = (level: string) => {
     setSelectedLevel(level);
     setTab("charts");
+  };
+
+  // Called from the Ranking tab when a row is clicked. Loads the player into
+  // `activePlayer` (which annotates Chart Table rows + ChartDetailDialog) and
+  // switches to the Player tab so the user sees the full profile + recommendations.
+  const handleSelectPlayerFromRanking = (id: string, data: PlayerData) => {
+    setActivePlayer({ id, data });
+    setPlayerQuery(id);
+    setPlayerError(null);
+    setTab("player");
+  };
+
+  const handleSearchPlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!playerQuery.trim()) return;
+    setPlayerLoading(true);
+    setPlayerError(null);
+    try {
+      let data = playersData;
+      if (!data) {
+        const res = await fetch("data/players.json");
+        if (!res.ok) throw new Error("Players data not available.");
+        data = await res.json() as PlayersDict;
+        setPlayersData(data);
+      }
+      const target = playerQuery.trim().toLowerCase();
+      const foundId = Object.keys(data!).find(k => k.toLowerCase() === target);
+      if (foundId) {
+        setActivePlayer({ id: foundId, data: data![foundId] });
+        setPlayerQuery("");
+      } else {
+        setPlayerError(t.playerNotFound);
+        setActivePlayer(null);
+      }
+    } catch (err) {
+      setPlayerError(String(err));
+    } finally {
+      setPlayerLoading(false);
+    }
+  };
+
+  const getRecommendations = () => {
+    if (!activePlayer) return [];
+    // Excluded from recommendations: provisional charts, special off-ladder
+    // levels (-_-, ?!, ◆). Ω is kept because it's the flagship non-numeral
+    // tier and is well-calibrated.
+    const EXCLUDED_LEVELS = new Set(["-_-", "?!", "◆"]);
+    const candidates = charts.filter(c => {
+      if (c.provisional || c.a == null || c.b_vhard == null) return false;
+      if (EXCLUDED_LEVELS.has(c.level)) return false;
+      const status = activePlayer.data.c[c.id.toString()] ?? -1;
+      if (status >= 3) return false;
+      const prob = pStar(activePlayer.data.t, c.a, c.b_vhard);
+      return prob >= 0.05 && prob <= 0.95;
+    });
+    
+    candidates.sort((a, b) => {
+      const pA = pStar(activePlayer.data.t, a.a!, a.b_vhard!);
+      const pB = pStar(activePlayer.data.t, b.a!, b.b_vhard!);
+      return Math.abs(pA - 0.5) - Math.abs(pB - 0.5);
+    });
+    
+    return candidates.slice(0, 30);
   };
 
   if (loading) {
@@ -151,21 +226,26 @@ export default function Home() {
       {/* Main */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 max-w-md">
+          <TabsList className="grid w-full grid-cols-5 mb-6 max-w-2xl">
             <TabsTrigger value="overview" className="text-xs sm:text-sm">
-              <BarChart3 className="w-4 h-4 mr-1.5" /> {t.overview}
+              <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.overview}
             </TabsTrigger>
             <TabsTrigger value="charts" className="text-xs sm:text-sm">
-              <ListTree className="w-4 h-4 mr-1.5" /> {t.chartsTab}
+              <ListTree className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.chartsTab}
+            </TabsTrigger>
+            <TabsTrigger value="player" className="text-xs sm:text-sm">
+              <User className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.player}
+            </TabsTrigger>
+            <TabsTrigger value="ranking" className="text-xs sm:text-sm">
+              <Trophy className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.ranking}
             </TabsTrigger>
             <TabsTrigger value="about" className="text-xs sm:text-sm">
-              <Sigma className="w-4 h-4 mr-1.5" /> {t.about}
+              <Sigma className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.about}
             </TabsTrigger>
           </TabsList>
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-6 mt-0">
-            {/* Primary box plot */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -186,7 +266,6 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* Level summary table */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">
@@ -252,7 +331,6 @@ export default function Home() {
           {/* CHARTS TAB */}
           <TabsContent value="charts" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
-              {/* Level sidebar */}
               <Card className="h-fit md:sticky md:top-[88px]">
                 <CardHeader className="py-3">
                   <CardTitle className="text-sm">{t.levels}</CardTitle>
@@ -299,7 +377,6 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              {/* Chart table */}
               <div>
                 <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
                   <div>
@@ -319,9 +396,83 @@ export default function Home() {
                   sortKey={sortKey}
                   sortDir={sortDir}
                   onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
+                  activePlayer={activePlayer}
                 />
               </div>
             </div>
+          </TabsContent>
+
+          {/* PLAYER TAB */}
+          <TabsContent value="player" className="mt-0 space-y-6">
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  {t.playerProfile}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t.playerProfileDesc}</p>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSearchPlayer} className="flex gap-2 max-w-sm mb-4">
+                  <Input 
+                    placeholder={t.playerIdPlaceholder} 
+                    value={playerQuery} 
+                    onChange={e => setPlayerQuery(e.target.value)} 
+                  />
+                  <Button type="submit" disabled={playerLoading}>
+                    {playerLoading ? "..." : t.search}
+                  </Button>
+                </form>
+                {playerError && <p className="text-sm text-rose-400 mb-4">{playerError}</p>}
+                
+                {activePlayer && (
+                  <div className="mt-8 space-y-8 animate-in fade-in duration-300">
+                    <div>
+                      <h3 className="text-2xl font-bold tracking-tight">{activePlayer.id}</h3>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        {t.estimatedSkill}: <span className="font-mono font-medium text-foreground">{activePlayer.data.t > 0 ? `+${activePlayer.data.t.toFixed(3)}` : activePlayer.data.t.toFixed(3)}</span>
+                        {" · "} {t.clearsCount(Object.keys(activePlayer.data.c).length)}
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <h4 className="text-base font-semibold">{t.recommendedCharts}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {getRecommendations().map(c => (
+                          <div 
+                            key={c.md5} 
+                            className="p-3 border border-border/50 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors flex flex-col justify-between h-full bg-card shadow-sm" 
+                            onClick={() => handleSelectChart(c)}
+                          >
+                            <div>
+                              <div className="text-sm font-semibold line-clamp-1 mb-0.5 font-jp">{c.title}</div>
+                              <div className="text-[11px] text-muted-foreground line-clamp-1 font-jp">{c.artist || "unknown"}</div>
+                            </div>
+                            <div className="text-xs flex items-center justify-between mt-3 pt-2 border-t border-border/40">
+                              <span className="font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-[10px]">{levelLabel(c.level)}</span>
+                              <span className="text-muted-foreground">P(V-HARD): <span className="text-foreground font-mono font-medium ml-0.5" style={{ color: "oklch(0.70 0.22 305)" }}>{(pStar(activePlayer.data.t, c.a ?? 1.5, c.b_vhard ?? 0) * 100).toFixed(0)}%</span></span>
+                            </div>
+                          </div>
+                        ))}
+                        {getRecommendations().length === 0 && (
+                          <div className="col-span-full py-8 text-center text-muted-foreground text-sm border border-dashed rounded-lg">
+                            {t.noRecommendations}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* RANKING TAB */}
+          <TabsContent value="ranking" className="mt-0">
+            <RankingTab
+              charts={charts}
+              onSelectPlayer={handleSelectPlayerFromRanking}
+            />
           </TabsContent>
 
           {/* ABOUT TAB */}
@@ -335,6 +486,7 @@ export default function Home() {
         chart={selectedChart}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+        activePlayer={activePlayer}
       />
     </div>
   );

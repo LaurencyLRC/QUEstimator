@@ -13,8 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Search } from "lucide-react";
-import type { Chart } from "@/lib/questimator-types";
-import { levelLabel, levelSortKey, isSpecialLevel } from "@/lib/questimator-types";
+import type { Chart, PlayerData } from "@/lib/questimator-types";
+import { levelLabel, levelSortKey, isSpecialLevel, pStar } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 
 export type SortKey = "title" | "level" | "b_vhard" | "b_hard" | "a" | "n";
@@ -26,6 +26,7 @@ interface Props {
   sortKey: SortKey;
   sortDir: SortDir;
   onSortChange: (key: SortKey, dir: SortDir) => void;
+  activePlayer?: { id: string; data: PlayerData } | null;
 }
 
 function fmt(v: number | null, digits = 2): string {
@@ -34,10 +35,6 @@ function fmt(v: number | null, digits = 2): string {
   return `${sign}${v.toFixed(digits)}`;
 }
 
-/**
- * Mini stacked bar showing the clear-tier breakdown for a single chart.
- * Segments: V-HARD | HARD | LOW (NORMAL + FAILED grouped together).
- */
 function ClearDistBar({
   n,
   nFailed,
@@ -86,10 +83,18 @@ function ClearDistBar({
   );
 }
 
-export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChange }: Props) {
+export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChange, activePlayer }: Props) {
   const { t } = useLang();
   const [query, setQuery] = useState("");
-  const [showProvisional, setShowProvisional] = useState(true);
+  const [showProvisional, setShowProvisional] = useState(false);
+
+  const getClearBadge = (status?: number) => {
+    if (status === 3) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-purple-500/40 text-purple-400 ml-2">V-HARD</Badge>;
+    if (status === 2) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-red-500/40 text-red-400 ml-2">HARD</Badge>;
+    if (status === 1) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-yellow-500/40 text-yellow-400 ml-2">NORMAL</Badge>;
+    if (status === 0) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-gray-500/40 text-gray-400 ml-2">FAILED</Badge>;
+    return null;
+  };
 
   const filtered = useMemo(() => {
     let out = charts;
@@ -107,7 +112,6 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
       out = out.filter((c) => !c.provisional);
     }
     const sorted = [...out].sort((a, b) => {
-      // Level sort uses the canonical levelSortKey for proper ordering.
       if (sortKey === "level") {
         const [ax, ay] = levelSortKey(a.level);
         const [bx, by] = levelSortKey(b.level);
@@ -252,7 +256,10 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                 >
                   <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-sm leading-snug line-clamp-3">{c.title}</span>
+                      <span className="text-sm leading-snug line-clamp-3">
+                        {c.title}
+                        {activePlayer && activePlayer.data.c[c.id.toString()] !== undefined && getClearBadge(activePlayer.data.c[c.id.toString()])}
+                      </span>
                       <span className="text-[11px] text-muted-foreground">
                         {c.artist || "unknown"}
                         {c.name_diff && ` · ${c.name_diff}`}
@@ -260,7 +267,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                       {c.provisional && (
                         <Badge
                           variant="outline"
-                          className="text-[9px] py-0 px-1 text-amber-400 border-amber-500/40 w-fit"
+                          className="text-[9px] py-0 px-1 text-blue-400 border-blue-500/40 w-fit"
                         >
                           {t.provisional}
                         </Badge>
@@ -273,14 +280,36 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     </span>
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    <span style={{ color: "oklch(0.78 0.18 25)" }}>
-                      {fmt(c.b_hard_display)}
-                    </span>
+                    <div className="flex flex-col items-end leading-tight">
+                      <span style={{ color: "oklch(0.78 0.18 25)" }}>
+                        {fmt(c.b_hard_display)}
+                      </span>
+                      {activePlayer && c.a != null && c.b_hard != null && (
+                        <span
+                          className="text-[10px] font-semibold tabular-nums"
+                          style={{ color: "oklch(0.70 0.22 25)" }}
+                          title="Your HARD clear probability"
+                        >
+                          {(pStar(activePlayer.data.t, c.a, c.b_hard) * 100).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    <span style={{ color: "oklch(0.78 0.18 305)" }}>
-                      {fmt(c.b_vhard_display)}
-                    </span>
+                    <div className="flex flex-col items-end leading-tight">
+                      <span style={{ color: "oklch(0.78 0.18 305)" }}>
+                        {fmt(c.b_vhard_display)}
+                      </span>
+                      {activePlayer && c.a != null && c.b_vhard != null && (
+                        <span
+                          className="text-[10px] font-semibold tabular-nums"
+                          style={{ color: "oklch(0.70 0.22 305)" }}
+                          title="Your V-HARD clear probability"
+                        >
+                          {(pStar(activePlayer.data.t, c.a, c.b_vhard) * 100).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm text-muted-foreground">
                     {c.a != null ? c.a.toFixed(2) : "–"}

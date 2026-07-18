@@ -10,6 +10,12 @@ interface Props {
   b_normal?: number;
   width?: number;
   height?: number;
+  /**
+   * Optional: a player's latent skill θ. When provided, a vertical marker
+   * line is drawn at this θ so users can see where the player sits relative
+   * to the survival curves.
+   */
+  playerTheta?: number;
 }
 
 /**
@@ -22,6 +28,7 @@ export function GrmCurveChart({
   b_hard,
   b_vhard,
   b_normal,
+  playerTheta,
   width = 560,
   height = 280,
 }: Props) {
@@ -143,6 +150,51 @@ export function GrmCurveChart({
         strokeOpacity={0.4}
         strokeDasharray="3 3"
       />
+
+      {/* Player θ marker (overlay). Clamped to the visible range so extreme
+          players (|θ| > 4) still render on the chart edge rather than
+          spilling outside the plot area. */}
+      {playerTheta != null && Number.isFinite(playerTheta) && (
+        <g>
+          {(() => {
+            const clamped = Math.max(thetaMin, Math.min(thetaMax, playerTheta));
+            const x = xScale(clamped);
+            const pV = pStar(playerTheta, a, b_vhard);
+            const y = yScale(Math.max(0, Math.min(1, pV)));
+            return (
+              <>
+                <line
+                  x1={x}
+                  y1={PAD.top}
+                  x2={x}
+                  y2={height - PAD.bottom}
+                  stroke="oklch(0.85 0.20 200)"
+                  strokeWidth={1.8}
+                />
+                {/* P*(V-HARD) dot on the V-HARD curve */}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={3.5}
+                  fill="oklch(0.85 0.20 200)"
+                  stroke="white"
+                  strokeWidth={1}
+                />
+                <text
+                  x={x}
+                  y={PAD.top - 2}
+                  textAnchor="middle"
+                  fontSize={10}
+                  className="fill-foreground"
+                  fontFamily="var(--font-geist-mono)"
+                >
+                  θ={playerTheta >= 0 ? `+${playerTheta.toFixed(2)}` : playerTheta.toFixed(2)}
+                </text>
+              </>
+            );
+          })()}
+        </g>
+      )}
 
       {/* Curves */}
       <path d={pathFor("pn")} fill="none" stroke="oklch(0.72 0.16 95)" strokeWidth={2} />

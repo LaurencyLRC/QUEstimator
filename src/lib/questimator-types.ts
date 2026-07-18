@@ -3,6 +3,7 @@
 export type ClearStatus = "FAILED" | "NORMAL" | "HARD" | "V-HARD";
 
 export interface Chart {
+  id: number;
   md5: string;
   title: string;
   artist: string;
@@ -27,6 +28,15 @@ export interface Chart {
   se_b_hard: number | null;
   se_b_vhard: number | null;
   provisional: boolean;
+}
+
+export interface PlayerData {
+  t: number; // theta (estimated skill level)
+  c: Record<string, number>; // map of chart_id (string) -> status
+}
+
+export interface PlayersDict {
+  [avatarID: string]: PlayerData;
 }
 
 export interface LevelSummary {
@@ -65,8 +75,6 @@ export interface SamplePlayers {
 }
 
 // Special-folder ordering helper.
-// Ω is featured first (as the flagship non-numeral tier), then the others
-// retain their original relative order.
 const SPECIAL_ORDER: Record<string, number> = {
   "Ω": 100,
   "-_-": 101,
