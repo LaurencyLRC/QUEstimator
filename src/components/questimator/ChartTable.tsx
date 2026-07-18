@@ -53,12 +53,22 @@ function ClearDistBar({
   const nLower = nNormal + nFailed;
   const pct = (v: number) => (v / n) * 100;
 
+  // Three-layer stack (right-aligned):
+  //   top    — percentages "XX.X%/XX.X%/XX.X%" summing to 100%
+  //   middle — 3-segment mini bar (V-HARD / HARD / NORMAL+FAILED)
+  //   bottom — raw counts "V / H / lower"
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div
-        className="w-20 h-2 rounded-sm overflow-hidden flex bg-muted"
-        title={`V-HARD ${nVhard} | HARD ${nHard} | NORMAL ${nNormal} | FAILED ${nFailed}`}
-      >
+    <div className="flex flex-col items-end gap-1" title={`V-HARD ${nVhard} | HARD ${nHard} | NORMAL+FAILED ${nLower} (n=${n})`}>
+      {/* Percentages on top */}
+      <span className="text-[10px] font-mono leading-none tabular-nums">
+        <span style={{ color: "oklch(0.70 0.22 305)" }}>{pct(nVhard).toFixed(1)}%</span>
+        <span className="text-border mx-0.5">/</span>
+        <span style={{ color: "oklch(0.70 0.22 25)" }}>{pct(nHard).toFixed(1)}%</span>
+        <span className="text-border mx-0.5">/</span>
+        <span className="text-muted-foreground">{pct(nLower).toFixed(1)}%</span>
+      </span>
+      {/* Mini bar in the middle */}
+      <div className="w-20 h-2 rounded-sm overflow-hidden flex bg-muted">
         <div
           style={{ width: `${pct(nVhard)}%`, background: "oklch(0.62 0.22 305)" }}
           className="h-full"
@@ -72,7 +82,8 @@ function ClearDistBar({
           className="h-full"
         />
       </div>
-      <span className="text-[10px] font-mono text-muted-foreground leading-none">
+      {/* Raw counts on bottom */}
+      <span className="text-[10px] font-mono text-muted-foreground leading-none tabular-nums">
         <span style={{ color: "oklch(0.70 0.22 305)" }}>{nVhard}</span>
         <span className="text-border mx-0.5">/</span>
         <span style={{ color: "oklch(0.70 0.22 25)" }}>{nHard}</span>
@@ -88,12 +99,15 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
   const [query, setQuery] = useState("");
   const [showProvisional, setShowProvisional] = useState(false);
 
-  const getClearBadge = (status?: number) => {
-    if (status === 3) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-purple-500/40 text-purple-400 ml-2">V-HARD</Badge>;
-    if (status === 2) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-red-500/40 text-red-400 ml-2">HARD</Badge>;
-    if (status === 1) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-yellow-500/40 text-yellow-400 ml-2">NORMAL</Badge>;
-    if (status === 0) return <Badge variant="outline" className="text-[9px] py-0 px-1 border-gray-500/40 text-gray-400 ml-2">FAILED</Badge>;
-    return null;
+  // Dark, low-opacity row tints for the active player's best clear status.
+  // Applied as the TableRow background — the existing hover:bg-muted/40 still
+  // works on top. Colors are deliberately dark so the tint is subtle but
+  // scannable at a glance.
+  const STATUS_ROW_TINT: Record<number, string> = {
+    3: "oklch(0.28 0.10 305 / 0.18)",  // V-HARD — deep purple
+    2: "oklch(0.28 0.12 25 / 0.18)",   // HARD — deep red
+    1: "oklch(0.28 0.10 95 / 0.15)",   // NORMAL — deep yellow/brown
+    0: "oklch(0.25 0 0 / 0.18)",        // FAILED — dark gray
   };
 
   const filtered = useMemo(() => {
@@ -248,32 +262,36 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map((c) => (
-                <TableRow
-                  key={c.md5}
-                  onClick={() => onSelectChart(c)}
-                  className="cursor-pointer hover:bg-muted/40"
-                >
-                  <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm leading-snug line-clamp-3">
-                        {c.title}
-                        {activePlayer && activePlayer.data.c[c.id.toString()] !== undefined && getClearBadge(activePlayer.data.c[c.id.toString()])}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {c.artist || "unknown"}
-                        {c.name_diff && ` · ${c.name_diff}`}
-                      </span>
-                      {c.provisional && (
-                        <Badge
-                          variant="outline"
-                          className="text-[9px] py-0 px-1 text-blue-400 border-blue-500/40 w-fit"
-                        >
-                          {t.provisional}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
+              {filtered.map((c) => {
+                const status = activePlayer?.data.c[c.id.toString()];
+                const hasStatus = status != null && status >= 0 && status <= 3;
+                const rowTint = hasStatus ? STATUS_ROW_TINT[status] : undefined;
+                return (
+                  <TableRow
+                    key={c.md5}
+                    onClick={() => onSelectChart(c)}
+                    className="cursor-pointer hover:bg-muted/40"
+                    style={rowTint ? { background: rowTint } : undefined}
+                  >
+                    <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm leading-snug line-clamp-3">
+                          {c.title}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {c.artist || "unknown"}
+                          {c.name_diff && ` · ${c.name_diff}`}
+                        </span>
+                        {c.provisional && (
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] py-0 px-1 text-blue-400 border-blue-500/40 w-fit"
+                          >
+                            {t.provisional}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                   <TableCell className="text-center font-mono text-sm">
                     <span className={isSpecialLevel(c.level) ? "text-amber-400" : "text-muted-foreground"}>
                       {c.level}
@@ -324,7 +342,8 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     />
                   </TableCell>
                 </TableRow>
-              ))}
+              );
+            })}
             </TableBody>
           </Table>
         </div>
