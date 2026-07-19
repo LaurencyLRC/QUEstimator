@@ -53,6 +53,9 @@ export default function Home() {
   const [playerQuery, setPlayerQuery] = useState("");
   const [playerLoading, setPlayerLoading] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
+  
+  // Target gauge for player recommendations
+  const [targetGauge, setTargetGauge] = useState<"HARD" | "V-HARD">("V-HARD");
 
   useEffect(() => {
     (async () => {
@@ -114,9 +117,6 @@ export default function Home() {
     setTab("charts");
   };
 
-  // Called from the Ranking tab when a row is clicked. Loads the player into
-  // `activePlayer` (which annotates Chart Table rows + ChartDetailDialog) and
-  // switches to the Player tab so the user sees the full profile + recommendations.
   const handleSelectPlayerFromRanking = (id: string, data: PlayerData) => {
     setActivePlayer({ id, data });
     setPlayerQuery(id);
@@ -155,22 +155,29 @@ export default function Home() {
 
   const getRecommendations = () => {
     if (!activePlayer) return [];
-    // Excluded from recommendations: provisional charts, special off-ladder
-    // levels (-_-, ?!, ◆). Ω is kept because it's the flagship non-numeral
-    // tier and is well-calibrated.
     const EXCLUDED_LEVELS = new Set(["-_-", "?!", "◆"]);
     const candidates = charts.filter(c => {
-      if (c.provisional || c.a == null || c.b_vhard == null) return false;
+      if (c.provisional || c.a == null) return false;
+      
+      const b_val = targetGauge === "V-HARD" ? c.b_vhard : c.b_hard;
+      if (b_val == null) return false;
+      
       if (EXCLUDED_LEVELS.has(c.level)) return false;
+      
       const status = activePlayer.data.c[c.id.toString()] ?? -1;
-      if (status >= 3) return false;
-      const prob = pStar(activePlayer.data.t, c.a, c.b_vhard);
+      const cleared = targetGauge === "V-HARD" ? status >= 3 : status >= 2;
+      if (cleared) return false;
+      
+      const prob = pStar(activePlayer.data.t, c.a, b_val);
       return prob >= 0.05 && prob <= 0.95;
     });
     
     candidates.sort((a, b) => {
-      const pA = pStar(activePlayer.data.t, a.a!, a.b_vhard!);
-      const pB = pStar(activePlayer.data.t, b.a!, b.b_vhard!);
+      const b_val_a = targetGauge === "V-HARD" ? a.b_vhard! : a.b_hard!;
+      const b_val_b = targetGauge === "V-HARD" ? b.b_vhard! : b.b_hard!;
+      
+      const pA = pStar(activePlayer.data.t, a.a!, b_val_a);
+      const pB = pStar(activePlayer.data.t, b.a!, b_val_b);
       return Math.abs(pA - 0.5) - Math.abs(pB - 0.5);
     });
     
@@ -436,24 +443,47 @@ export default function Home() {
                     </div>
                     
                     <div className="space-y-4">
-                      <h4 className="text-base font-semibold">{t.recommendedCharts}</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {getRecommendations().map(c => (
-                          <div 
-                            key={c.md5} 
-                            className="p-3 border border-border/50 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors flex flex-col justify-between h-full bg-card shadow-sm" 
-                            onClick={() => handleSelectChart(c)}
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <h4 className="text-base font-semibold">{t.recommendedCharts}</h4>
+                        <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-md border border-border/50">
+                          <button 
+                            onClick={() => setTargetGauge("HARD")}
+                            className={`px-3 py-1 text-xs font-medium rounded-sm transition-colors ${targetGauge === "HARD" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                           >
-                            <div>
-                              <div className="text-sm font-semibold line-clamp-1 mb-0.5 font-jp">{c.title}</div>
-                              <div className="text-[11px] text-muted-foreground line-clamp-1 font-jp">{c.artist || "unknown"}</div>
+                            HARD
+                          </button>
+                          <button 
+                            onClick={() => setTargetGauge("V-HARD")}
+                            className={`px-3 py-1 text-xs font-medium rounded-sm transition-colors ${targetGauge === "V-HARD" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                          >
+                            V-HARD
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {getRecommendations().map(c => {
+                          const b_val = (targetGauge === "V-HARD" ? c.b_vhard : c.b_hard) ?? 0;
+                          const prob = pStar(activePlayer.data.t, c.a ?? 1.5, b_val);
+                          const color = targetGauge === "V-HARD" ? "oklch(0.70 0.22 305)" : "oklch(0.70 0.22 25)";
+
+                          return (
+                            <div 
+                              key={c.md5} 
+                              className="p-3 border border-border/50 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors flex flex-col justify-between h-full bg-card shadow-sm" 
+                              onClick={() => handleSelectChart(c)}
+                            >
+                              <div>
+                                <div className="text-sm font-semibold line-clamp-1 mb-0.5 font-jp">{c.title}</div>
+                                <div className="text-[11px] text-muted-foreground line-clamp-1 font-jp">{c.artist || "unknown"}</div>
+                              </div>
+                              <div className="text-xs flex items-center justify-between mt-3 pt-2 border-t border-border/40">
+                                <span className="font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-[10px]">{levelLabel(c.level)}</span>
+                                <span className="text-muted-foreground">P({targetGauge}): <span className="text-foreground font-mono font-medium ml-0.5" style={{ color }}>{(prob * 100).toFixed(0)}%</span></span>
+                              </div>
                             </div>
-                            <div className="text-xs flex items-center justify-between mt-3 pt-2 border-t border-border/40">
-                              <span className="font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-[10px]">{levelLabel(c.level)}</span>
-                              <span className="text-muted-foreground">P(V-HARD): <span className="text-foreground font-mono font-medium ml-0.5" style={{ color: "oklch(0.70 0.22 305)" }}>{(pStar(activePlayer.data.t, c.a ?? 1.5, c.b_vhard ?? 0) * 100).toFixed(0)}%</span></span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         {getRecommendations().length === 0 && (
                           <div className="col-span-full py-8 text-center text-muted-foreground text-sm border border-dashed rounded-lg">
                             {t.noRecommendations}
