@@ -260,6 +260,7 @@ def main():
     df["se_b_vhard"] = [f["se_b_vhard"] for f in fitted]
     df["n"] = [f["n"] for f in fitted]
 
+    # Pre-calculate clear counts per category
     chart_cat_counts: dict[int, dict[str, int]] = {}
     for ci in charts_with_data:
         st = grp.get_group(ci)["status"].to_numpy()
@@ -270,11 +271,20 @@ def main():
             "n_vhard":  int(np.sum(st == 3)),
         }
 
-    PROVISIONAL_MIN_N = 30
+    # Map category counts into the dataframe
+    df["n_failed"] = [chart_cat_counts.get(ci, {}).get("n_failed", 0) for ci in df.index]
+    df["n_normal"] = [chart_cat_counts.get(ci, {}).get("n_normal", 0) for ci in df.index]
+    df["n_hard"]   = [chart_cat_counts.get(ci, {}).get("n_hard", 0) for ci in df.index]
+    df["n_vhard"]  = [chart_cat_counts.get(ci, {}).get("n_vhard", 0) for ci in df.index]
+
+    PROVISIONAL_MIN_N = 25
     PROVISIONAL_MAX_SE = 0.5
     PROVISIONAL_FALLBACK_N = 10  # below this, GRM fit is too noisy — use level prior
+
+    # Flag chart as provisional if it fails sample size bounds, variance, or lacks bottom-end data
     df["provisional"] = (
         (df["n"] < PROVISIONAL_MIN_N) |
+        ((df["n_failed"] + df["n_normal"]) < 1) |
         (df["se_b_vhard"] > PROVISIONAL_MAX_SE) |
         (df["se_b_vhard"].isna())
     )
@@ -403,9 +413,6 @@ def main():
 
     charts_out = []
     for i, r in df.iterrows():
-        counts = chart_cat_counts.get(
-            i, {"n_failed": 0, "n_normal": 0, "n_hard": 0, "n_vhard": 0}
-        )
         charts_out.append({
             "id": i,
             "md5": r["md5"],
@@ -419,7 +426,10 @@ def main():
             "comment": r["comment"],
             "state": r["state"],
             "n": int(r["n"]),
-            **counts,
+            "n_failed": int(r["n_failed"]),
+            "n_normal": int(r["n_normal"]),
+            "n_hard": int(r["n_hard"]),
+            "n_vhard": int(r["n_vhard"]),
             "a": None if math.isnan(r["a"]) else round(float(r["a"]), 4),
             "b_hard": None if math.isnan(r["b_hard"]) else round(float(r["b_hard"]), 4),
             "b_vhard": None if math.isnan(r["b_vhard"]) else round(float(r["b_vhard"]), 4),
@@ -442,7 +452,7 @@ def main():
         "n_clears": int(len(clears)),
         "model": "Graded Response Model (marginal MLE, 21-node Gauss-Hermite quadrature)",
         "categories": ["FAILED", "NORMAL", "HARD", "V-HARD"],
-        "provisional_rule": f"n < {PROVISIONAL_MIN_N} OR se_b_vhard > {PROVISIONAL_MAX_SE}",
+        "provisional_rule": f"n < {PROVISIONAL_MIN_N} OR (NORMAL+FAILED) < 1 OR se_b_vhard > {PROVISIONAL_MAX_SE}",
         "data_source": "Qwilight IR leaderboards (real player data)",
         "runtime_sec": round(time.time() - t0, 2),
     }
