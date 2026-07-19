@@ -3,10 +3,10 @@
 QUEstimator data pipeline.
 
 Stage 1: Parse UEtable.json -> chart database (real metadata).
-Stage 2: Assign hidden GRM parameters per chart based on nominal level.
-Stage 3: Monte-Carlo generate ~100K mock clears tied to real charts.
-Stage 4: Fit Graded Response Model via marginal MLE (Gauss-Hermite quadrature)
+Stage 2: Load real IR leaderboard data.
+Stage 3: Fit Graded Response Model via marginal MLE (Gauss-Hermite quadrature)
          to recover a, b_HARD, b_V-HARD and their standard errors.
+Stage 4: Estimate player theta (skill) values based on their clears.
 Stage 5: Aggregate per U_E level (median + IQR).
 Stage 6: Emit static JSON artifacts for the Next.js dashboard.
 """
@@ -30,16 +30,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INPUT_PATH = _PROJECT_ROOT / "upload" / "UEtable_enriched.json"
 OUT_DIR = _PROJECT_ROOT / "public" / "data"
 
-N_PLAYERS = 5_000
-MIN_PLAYERS_PER_CHART = 25
-MAX_PLAYERS_PER_CHART = 220
-TARGET_TOTAL_CLEARS = 100_000
-SIGMA_THETA = 1.1
-
-RNG = np.random.default_rng(20260714)
-
 # --------------------------------------------------------------------------- #
-# Stage 1
+# Stage 1 - Metadata loading
 # --------------------------------------------------------------------------- #
 def load_charts() -> pd.DataFrame:
     with open(INPUT_PATH, "r", encoding="utf-8") as f:
@@ -73,111 +65,24 @@ def level_sort_key(level: str):
     return (1, specials_order.get(level, 999))
 
 # --------------------------------------------------------------------------- #
-# Stage 2
+# Stage 2 - Priors & Fallbacks
 # --------------------------------------------------------------------------- #
-def hidden_difficulty_for_level(level: str):
+def get_level_prior_center(level: str) -> float:
+    """Returns a rough prior difficulty center for a given nominal level."""
     if level.isdigit():
         L = int(level)
-        b_center = -3.0 + (L - 1) / 29.0 * 6.0
-        sigma = 0.35 + 0.02 * abs(L - 18)
-        return b_center, sigma, 1.5
+        return -3.0 + (L - 1) / 29.0 * 6.0
+    
     profiles = {
-        "-_-": (0.8, 0.9, 1.1),
-        "?!":  (1.6, 0.7, 1.2),
-        "◆":   (2.3, 0.5, 1.4),
-        "Ω":   (3.0, 0.4, 1.6),
+        "-_-": 0.8,
+        "?!":  1.6,
+        "◆":   2.3,
+        "Ω":   3.0,
     }
-    return profiles.get(level, (0.0, 0.8, 1.3))
-
-def assign_hidden_params(df: pd.DataFrame) -> pd.DataFrame:
-    b_vhard = np.zeros(len(df))
-    b_hard = np.zeros(len(df))
-    a = np.zeros(len(df))
-    for i, level in enumerate(df["level"].to_numpy()):
-        center, sigma, a_center = hidden_difficulty_for_level(level)
-        bv = RNG.normal(center, sigma)
-        bh = bv - 0.6 - abs(RNG.normal(0, 0.15))
-        ai = float(np.clip(RNG.normal(a_center, 0.35), 0.6, 2.6))
-        b_vhard[i] = bv
-        b_hard[i] = bh
-        a[i] = ai
-    df = df.copy()
-    df["true_a"] = a
-    df["true_b_hard"] = b_hard
-    df["true_b_vhard"] = b_vhard
-    return df
+    return profiles.get(level, 0.0)
 
 # --------------------------------------------------------------------------- #
-# Stage 3
-# --------------------------------------------------------------------------- #
-def sigmoid(x):
-    return 1.0 / (1.0 + np.exp(-x))
-
-def generate_clears(df: pd.DataFrame):
-    n_charts = len(df)
-    player_theta = RNG.normal(0.0, SIGMA_THETA, size=N_PLAYERS)
-    sample_sizes = RNG.integers(MIN_PLAYERS_PER_CHART, MAX_PLAYERS_PER_CHART + 1, size=n_charts)
-    total_planned = int(sample_sizes.sum())
-    if total_planned > TARGET_TOTAL_CLEARS:
-        scale = TARGET_TOTAL_CLEARS / total_planned
-        sample_sizes = np.maximum(MIN_PLAYERS_PER_CHART, (sample_sizes * scale).astype(int))
-        cum = np.cumsum(sample_sizes)
-        if cum[-1] > TARGET_TOTAL_CLEARS:
-            cut = int(np.searchsorted(cum, TARGET_TOTAL_CLEARS))
-            sample_sizes = sample_sizes[:cut + 1].copy()
-            if cut > 0:
-                sample_sizes[-1] = max(MIN_PLAYERS_PER_CHART,
-                                       TARGET_TOTAL_CLEARS - int(cum[cut - 1]))
-            else:
-                sample_sizes[-1] = min(sample_sizes[-1], TARGET_TOTAL_CLEARS)
-
-    records = []
-    a_arr = df["true_a"].to_numpy()
-    b_h = df["true_b_hard"].to_numpy()
-    b_v = df["true_b_vhard"].to_numpy()
-
-    n_charts_to_sim = len(sample_sizes)
-    for ci in range(n_charts_to_sim):
-        n = int(sample_sizes[ci])
-        if n <= 0:
-            continue
-        pidx = RNG.choice(N_PLAYERS, size=n, replace=False)
-        theta = player_theta[pidx]
-        a, bv, bh = a_arr[ci], b_v[ci], b_h[ci]
-        bn = bh - 1.2
-
-        p_star_v = sigmoid(a * (theta - bv))
-        p_star_h = sigmoid(a * (theta - bh))
-        p_star_n = sigmoid(a * (theta - bn))
-
-        p_vhard = p_star_v
-        p_hard = p_star_h - p_star_v
-        p_normal = p_star_n - p_star_h
-        p_failed = 1.0 - p_star_n
-
-        eps = 1e-9
-        p_vhard = np.clip(p_vhard, eps, 1.0)
-        p_hard = np.clip(p_hard, eps, 1.0)
-        p_normal = np.clip(p_normal, eps, 1.0)
-        p_failed = np.clip(p_failed, eps, 1.0)
-        total = p_vhard + p_hard + p_normal + p_failed
-        p_vhard /= total; p_hard /= total; p_normal /= total; p_failed /= total
-
-        u = RNG.random(n)
-        cdf_v = p_vhard
-        cdf_h = cdf_v + p_hard
-        cdf_n = cdf_h + p_normal
-        status = np.where(u < cdf_v, 3,
-                          np.where(u < cdf_h, 2,
-                                   np.where(u < cdf_n, 1, 0)))
-        for pi, st in zip(pidx, status):
-            records.append((ci, int(pi), int(st)))
-
-    clears = np.array(records, dtype=np.int64)
-    return clears, player_theta
-
-# --------------------------------------------------------------------------- #
-# Stage 4 - GRM marginal MLE fit (Gauss-Hermite quadrature)
+# Stage 3 - GRM marginal MLE fit (Gauss-Hermite quadrature)
 # --------------------------------------------------------------------------- #
 N_QUAD = 21
 _nodes, _weights = roots_hermite(N_QUAD)
@@ -269,7 +174,7 @@ def fit_grm_single(statuses: np.ndarray, init_b_vhard: float = 0.0) -> dict:
             "se_b_vhard": float(se_bv), "n": n, "ok": True}
 
 # --------------------------------------------------------------------------- #
-# Stage 5
+# Stage 5 - Aggregation
 # --------------------------------------------------------------------------- #
 def aggregate_by_level(df: pd.DataFrame) -> list:
     rows = []
@@ -301,7 +206,7 @@ def aggregate_by_level(df: pd.DataFrame) -> list:
     return rows
 
 # --------------------------------------------------------------------------- #
-# Main
+# Main Execution
 # --------------------------------------------------------------------------- #
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -325,7 +230,9 @@ def main():
     charts_with_data = sorted(grp.groups.keys())
     print(f"      fitting {len(charts_with_data)} charts with data ...")
     bad = 0
-    level_center = {lvl: hidden_difficulty_for_level(lvl)[0] for lvl in df["level"].unique()}
+    
+    level_center = {lvl: get_level_prior_center(lvl) for lvl in df["level"].unique()}
+    
     for k, ci in enumerate(charts_with_data):
         st = grp.get_group(ci)["status"].to_numpy()
         lvl = df.at[ci, "level"]
@@ -336,6 +243,7 @@ def main():
             bad += 1
         if (k + 1) % 200 == 0:
             print(f"        progress: {k+1}/{len(charts_with_data)}  (failed fits: {bad})")
+            
     for ci in range(len(df)):
         if fitted[ci] is None:
             fitted[ci] = {"a": float("nan"), "b_normal": float("nan"),
@@ -380,15 +288,16 @@ def main():
     df["b_vhard_display"] = df["b_vhard"]
     mask_prov = df["provisional"]
     if mask_prov.any():
-        level_center = {lvl: hidden_difficulty_for_level(lvl)[0] for lvl in df["level"].unique()}
         for i in df.index[mask_prov]:
             n_i = int(df.at[i, "n"])
             bh_i = df.at[i, "b_hard"]
             bv_i = df.at[i, "b_vhard"]
+            
             # Use the GRM fit if the chart had enough data and the fit
             # returned finite values. Otherwise fall back to the level prior.
             if n_i > PROVISIONAL_FALLBACK_N and not (math.isnan(bh_i) or math.isnan(bv_i)):
                 continue  # keep the fitted values in b_*_display
+            
             lvl = df.at[i, "level"]
             c = level_center.get(lvl, 0.0)
             df.at[i, "b_hard_display"] = c - 0.6
@@ -406,14 +315,6 @@ def main():
     bv_arr = df["b_vhard"].to_numpy()
 
     # Pre-compute eligibility mask for skill estimation.
-    # Exclude:
-    #   - provisional charts (high uncertainty — would inject noise into θ)
-    #   - numeric levels 1-19 (floor effect — almost everyone V-HARD clears them,
-    #     so they carry almost no information about a player's skill)
-    #   - special levels -_- , ?! , ◆ (eclectic mix, not on the main U_E ladder)
-    # KEEP:
-    #   - numeric levels 20-30
-    #   - special level Ω (the flagship non-numeral tier — well-calibrated)
     eligible_mask = (~df["provisional"].to_numpy()).copy()
     for i in range(len(df)):
         if not eligible_mask[i]:
@@ -436,8 +337,6 @@ def main():
         avatar_id = inv_player_map[pid]
         p_c = {}
         # First pass: collect eligible responses + find hardest HARD-cleared chart.
-        # "Hardest" is measured by b_hard (the HARD-clear threshold). A
-        # HARD-cleared chart has status >= 2.
         responses = []
         hardest_h_bh = -math.inf
         has_hard_clear = False
@@ -461,12 +360,7 @@ def main():
                 has_hard_clear = True
 
         # Second pass: exclude NORMAL/FAILED entries on charts harder than the
-        # player's hardest HARD-cleared chart (compared by b_hard). Rationale:
-        # if a player has demonstrated they can HARD-clear a chart at HARD
-        # difficulty X, then any NORMAL or FAILED on a chart with a higher
-        # b_hard is likely a "didn't try" or "first attempt" rather than
-        # genuine evidence of their skill ceiling. Keeping those would bias
-        # θ downward.
+        # player's hardest HARD-cleared chart.
         valid_responses = []
         for a, bn, bh, bv, st, _ in responses:
             if has_hard_clear and st < 2 and bh > hardest_h_bh:
