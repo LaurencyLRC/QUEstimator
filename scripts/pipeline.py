@@ -281,10 +281,11 @@ def main():
     PROVISIONAL_MAX_SE = 0.5
     PROVISIONAL_FALLBACK_N = 10  # below this, GRM fit is too noisy — use level prior
 
-    # Flag chart as provisional if it fails sample size bounds, variance, or lacks bottom-end data
+    # Flag chart as provisional if it fails sample size bounds, lacks bottom/top data, or has high variance
     df["provisional"] = (
         (df["n"] < PROVISIONAL_MIN_N) |
         ((df["n_failed"] + df["n_normal"]) < 1) |
+        ((df["n_hard"] + df["n_vhard"]) < 1) |
         (df["se_b_vhard"] > PROVISIONAL_MAX_SE) |
         (df["se_b_vhard"].isna())
     )
@@ -452,7 +453,7 @@ def main():
         "n_clears": int(len(clears)),
         "model": "Graded Response Model (marginal MLE, 21-node Gauss-Hermite quadrature)",
         "categories": ["FAILED", "NORMAL", "HARD", "V-HARD"],
-        "provisional_rule": f"n < {PROVISIONAL_MIN_N} OR (NORMAL+FAILED) < 1 OR se_b_vhard > {PROVISIONAL_MAX_SE}",
+        "provisional_rule": f"n < {PROVISIONAL_MIN_N} OR (NORMAL+FAILED) < 1 OR (HARD+V-HARD) < 1 OR se_b_vhard > {PROVISIONAL_MAX_SE}",
         "data_source": "Qwilight IR leaderboards (real player data)",
         "runtime_sec": round(time.time() - t0, 2),
     }
