@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
 export type Lang = "en" | "ko";
 
@@ -83,13 +83,13 @@ export const STRINGS = {
 
     // Player tab
     playerProfile: "Player Profile",
-    playerProfileDesc: "Enter your Qwilight Avatar ID to view your estimated skill (θ) and get personalized V-HARD chart recommendations.",
+    playerProfileDesc: "Enter your Qwilight Avatar ID to view your estimated skill (θ) and get personalized chart recommendations.",
     playerIdPlaceholder: "Enter Avatar ID (e.g. Laurency)",
     search: "Search",
     playerNotFound: "Player not found. Make sure you typed the exact Avatar ID.",
     estimatedSkill: "Estimated Skill (θ)",
     clearsCount: (n: number) => `${n} clears logged`,
-    recommendedCharts: "Recommended Targets (V-HARD)",
+    recommendedCharts: "Recommended Targets",
     yourProbabilities: "Your Clear Probabilities",
     noRecommendations: "No suitable recommendations found. You might be too good!",
 
@@ -204,13 +204,13 @@ export const STRINGS = {
 
     // Player tab
     playerProfile: "플레이어 프로필",
-    playerProfileDesc: "Qwilight Avatar ID를 입력하여 추정 실력(θ)을 확인하고 맞춤형 V-HARD 추천 채보를 받아보세요.",
+    playerProfileDesc: "Qwilight Avatar ID를 입력하여 추정 실력(θ)을 확인하고 맞춤형 추천 채보를 받아보세요.",
     playerIdPlaceholder: "Avatar ID 입력 (예: Laurency)",
     search: "검색",
     playerNotFound: "플레이어를 찾을 수 없습니다. 정확한 Avatar ID를 입력했는지 확인하세요.",
     estimatedSkill: "추정 실력 (θ)",
     clearsCount: (n: number) => `클리어 기록 ${n}개`,
-    recommendedCharts: "추천 목표 (V-HARD)",
+    recommendedCharts: "추천 목표",
     yourProbabilities: "예상 클리어 확률",
     noRecommendations: "적합한 추천을 찾을 수 없습니다. 이미 모든 채보를 클리어하셨을 수도 있습니다!",
 
@@ -259,16 +259,29 @@ interface LangContextValue {
 const LangContext = createContext<LangContextValue | null>(null);
 
 export function LangProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>("ko");
+  const [lang, setLangState] = useState<Lang>("ko");
+
+  // Load language from localStorage or browser preferences on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("questimator_lang") as Lang;
+    if (saved === "en" || saved === "ko") {
+      setLangState(saved);
+    } else if (navigator.language.startsWith("en")) {
+      setLangState("en");
+    }
+  }, []);
+
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    localStorage.setItem("questimator_lang", l);
+  };
+
   const value: LangContextValue = {
     lang,
     setLang,
-    // Cast: STRINGS.en and STRINGS.ko have structurally identical shapes but
-    // different string literal types (because of `as const`), so without
-    // this cast TypeScript complains that the union isn't assignable to the
-    // intersection type. Runtime is unaffected.
     t: { ...(STRINGS[lang] as StringDict), lang },
   };
+  
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }
 
