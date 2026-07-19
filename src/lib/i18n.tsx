@@ -31,7 +31,7 @@ export const STRINGS = {
       `U_E ${level} – ${valid}/${total} valid charts (click to drill in)`,
     perLevelAggregates: "Per-Level Aggregates",
     perLevelDesc:
-      "Median b values per level. Charts with insufficient data (n < 30 or SE > 0.5) are tagged provisional and excluded from medians.",
+      "Median b values per level. Charts with insufficient data (n < 25, zero FAILED/NORMAL or zero HARD/V-HARD clears, or SE > 0.5) are tagged provisional and excluded from medians.",
     level: "Level",
     chartsCol: "Charts",
     hardMed: "HARD med",
@@ -152,7 +152,7 @@ export const STRINGS = {
       `U_E ${level} – 유효 ${valid}/${total}개 채보 (클릭하면 이동)`,
     perLevelAggregates: "레벨별 집계",
     perLevelDesc:
-      "레벨별 b 값 중앙값. 데이터가 부족한 채보 (n < 30 또는 SE > 0.5)는 임시로 표기되며 중앙값 계산에서 제외됩니다.",
+      "레벨별 b 값 중앙값. 데이터가 부족한 채보 (n < 25, FAILED/NORMAL 또는 HARD/V-HARD 클리어가 0건, 또는 SE > 0.5)는 임시로 표기되며 중앙값 계산에서 제외됩니다.",
     level: "레벨",
     chartsCol: "채보",
     hardMed: "HARD 중앙값",
