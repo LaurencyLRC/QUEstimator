@@ -201,8 +201,8 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
                       <TableHead>{t.playerCol}</TableHead>
                       <TableHead className="text-right">{t.thetaCol(mode === "lerp")}</TableHead>
                       <TableHead className="text-right">{t.clearsCol}</TableHead>
-                      <TableHead className="text-right">{t.vhardCol}</TableHead>
                       <TableHead className="text-right">{t.hardCol}</TableHead>
+                      <TableHead className="text-right">{t.vhardCol}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -265,13 +265,13 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
                             {r.nClears}
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            <span style={{ color: r.nVhard > 0 ? "oklch(0.78 0.18 305)" : "text-muted-foreground" }}>
-                              {r.nVhard}
+                            <span style={{ color: r.nHard > 0 ? "oklch(0.78 0.18 25)" : "text-muted-foreground" }}>
+                              {r.nHard}
                             </span>
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            <span style={{ color: r.nHard > 0 ? "oklch(0.78 0.18 25)" : "text-muted-foreground" }}>
-                              {r.nHard}
+                            <span style={{ color: r.nVhard > 0 ? "oklch(0.78 0.18 305)" : "text-muted-foreground" }}>
+                              {r.nVhard}
                             </span>
                           </TableCell>
                         </TableRow>

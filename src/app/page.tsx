@@ -47,7 +47,7 @@ export default function Home() {
   const [selectedChart, setSelectedChart] = useState<Chart | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [tab, setTab] = useState("overview");
-  const [sortKey, setSortKey] = useState<SortKey>("b_vhard");
+  const [sortKey, setSortKey] = useState<SortKey>("b_hard");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const [playersData, setPlayersData] = useState<PlayersDict | null>(null);
@@ -303,11 +303,11 @@ export default function Home() {
                 onSelectChart={handleSelectChart}
                 activePlayerExternal={activePlayer}
                 onPlayerChange={(id, player) => {
-                  if (player) {
-                    setActivePlayer({ id: id!, data: player });
-                  } else {
-                    setActivePlayer(null);
-                  }
+                  setActivePlayer((prev) => {
+                    if (!player) return prev === null ? prev : null;
+                    if (prev?.id === id) return prev;
+                    return { id: id!, data: player };
+                  });
                 }}
               />
             </TabsContent>

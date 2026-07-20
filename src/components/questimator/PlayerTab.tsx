@@ -57,9 +57,9 @@ function fmtPct(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
 }
 
-function pVhard(theta: number, c: Chart): number | null {
-  if (c.a == null || c.b_vhard == null) return null;
-  return pStar(theta, c.a, c.b_vhard);
+function pHard(theta: number, c: Chart): number | null {
+  if (c.a == null || c.b_hard == null) return null;
+  return pStar(theta, c.a, c.b_hard);
 }
 
 export function PlayerTab({
@@ -157,10 +157,10 @@ export function PlayerTab({
 
     for (const c of charts) {
       if (c.provisional) continue;
-      const p = pVhard(theta, c);
+      const p = pHard(theta, c);
       if (p == null) continue;
       const status = currentPlayer.c[String(c.id)];
-      if (status === 3) continue;
+      if (status >= 2) continue; // Skip if HARD or V-HARD cleared
 
       if (p >= PROB_MIN_THRESHOLD) {
         allProbabilities.push({ chart: c, p });
@@ -174,7 +174,7 @@ export function PlayerTab({
       const da = Math.abs(a.p - 0.5);
       const db = Math.abs(b.p - 0.5);
       if (Math.abs(da - db) > 1e-6) return da - db;
-      return (b.chart.b_vhard_display ?? -99) - (a.chart.b_vhard_display ?? -99);
+      return (b.chart.b_hard_display ?? -99) - (a.chart.b_hard_display ?? -99);
     });
     const recommendationsLimited = recommendations.slice(0, REC_LIMIT);
 
@@ -183,7 +183,7 @@ export function PlayerTab({
 
     const clearedByLevel = new Map<string, number>();
     for (const [idStr, status] of Object.entries(currentPlayer.c)) {
-      if (status !== 3) continue;
+      if (status < 2) continue; // 2 is HARD, 3 is V-HARD
       const c = chartById.get(Number(idStr));
       if (!c) continue;
       clearedByLevel.set(c.level, (clearedByLevel.get(c.level) ?? 0) + 1);
@@ -309,7 +309,7 @@ export function PlayerTab({
                     }}
                   />
                   <div className="text-[10px] text-muted-foreground text-center mt-1">
-                    {t.histogramXAxis}
+                    {t.histogramXAxis(mode === 'lerp')}
                   </div>
                   </div>
                 )}
@@ -339,15 +339,15 @@ export function PlayerTab({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">
-                  {t.lang === "en" ? "V-HARD Clears by Level" : "레벨별 V-HARD 클리어"}
+                  {t.lang === "en" ? "HARD+ Clears by Level" : "레벨별 HARD+ 클리어"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {analytics.clearedLevels.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
                     {t.lang === "en"
-                      ? "No V-HARD clears logged yet."
-                      : "V-HARD 클리어 기록이 없습니다."}
+                      ? "No HARD+ clears logged yet."
+                      : "HARD 이상 클리어 기록이 없습니다."}
                   </p>
                 ) : (
                   <ScrollArea className="h-[220px] pr-2">
@@ -384,8 +384,8 @@ export function PlayerTab({
               </CardTitle>
               <p className="text-xs text-muted-foreground">
                 {t.lang === "en"
-                  ? `Charts you haven't V-HARD cleared where P(V-HARD) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] — challenging but achievable. Top ${REC_LIMIT} shown.`
-                  : `V-HARD 클리어 미달성 채보 중 P(V-HARD) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}]인 도전 가능한 채보. 상위 ${REC_LIMIT}개.`}
+                  ? `Charts you haven't HARD cleared where P(HARD) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] — challenging but achievable. Top ${REC_LIMIT} shown.`
+                  : `HARD 미클리어 채보 중 P(HARD) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}]인 도전 가능한 채보. 상위 ${REC_LIMIT}개.`}
               </p>
             </CardHeader>
             <CardContent>
@@ -414,13 +414,13 @@ export function PlayerTab({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <Target className="w-4 h-4 text-purple-400" />
+                <Target className="w-4 h-4 text-rose-400" />
                 {t.yourProbabilities}
               </CardTitle>
               <p className="text-xs text-muted-foreground">
                 {t.lang === "en"
-                  ? `All uncompleted charts with P(V-HARD) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
-                  : `P(V-HARD) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
+                  ? `All uncompleted charts with P(HARD) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
+                  : `P(HARD) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
               </p>
             </CardHeader>
             <CardContent>
@@ -431,8 +431,8 @@ export function PlayerTab({
                       <tr className="border-b border-border/60 text-left">
                         <th className="px-3 py-2 font-medium text-muted-foreground text-xs">{t.chart}</th>
                         <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-center w-[60px]">{t.level}</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">P(V-HARD)</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">{t.bVhard(mode === "lerp")}</th>
+                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">P(HARD)</th>
+                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">{t.bHard(mode === "lerp")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -460,8 +460,8 @@ export function PlayerTab({
                             <ProbabilityBadge p={p} />
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            <span style={{ color: "oklch(0.78 0.18 305)" }}>
-                              {format(chart.b_vhard_display)}
+                            <span style={{ color: "oklch(0.78 0.18 25)" }}>
+                              {format(chart.b_hard_display)}
                             </span>
                           </TableCell>
                         </tr>
@@ -511,7 +511,7 @@ function RecommendationCard({
           {chart.artist || "unknown"}
           {chart.name_diff && ` · ${chart.name_diff}`}
         </span>
-        <span className="font-mono font-semibold" style={{ color: "oklch(0.78 0.18 305)" }}>
+        <span className="font-mono font-semibold" style={{ color: "oklch(0.78 0.18 25)" }}>
           {fmtPct(p)}
         </span>
       </div>
@@ -520,13 +520,13 @@ function RecommendationCard({
           className="h-full"
           style={{
             width: `${Math.min(100, p * 100)}%`,
-            background: "oklch(0.70 0.22 305)",
+            background: "oklch(0.70 0.22 25)",
           }}
         />
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          {t.bVhard(mode === "lerp")}: <span style={{ color: "oklch(0.78 0.18 305)" }}>{formatFn(chart.b_vhard_display)}</span>
+          {t.bHard(mode === "lerp")}: <span style={{ color: "oklch(0.78 0.18 25)" }}>{formatFn(chart.b_hard_display)}</span>
         </span>
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>

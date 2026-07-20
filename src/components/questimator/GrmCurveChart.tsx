@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { pStar } from "@/lib/questimator-types";
+import { useScale } from "@/lib/value-scale";
+import { useLang } from "@/lib/i18n";
 
 interface Props {
   a: number;
@@ -32,6 +34,9 @@ export function GrmCurveChart({
   width = 560,
   height = 280,
 }: Props) {
+  const { mode, format } = useScale();
+  const { t } = useLang();
+  
   const PAD = { top: 16, right: 16, bottom: 36, left: 44 };
   const innerW = width - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
@@ -69,10 +74,10 @@ export function GrmCurveChart({
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
       {/* Grid */}
-      {yTicks.map((t) => {
-        const y = yScale(t);
+      {yTicks.map((tick) => {
+        const y = yScale(tick);
         return (
-          <g key={`yg-${t}`}>
+          <g key={`yg-${tick}`}>
             <line
               x1={PAD.left}
               y1={y}
@@ -89,15 +94,15 @@ export function GrmCurveChart({
               className="fill-muted-foreground"
               fontFamily="var(--font-geist-mono)"
             >
-              {t.toFixed(2)}
+              {tick.toFixed(2)}
             </text>
           </g>
         );
       })}
-      {xTicks.map((t) => {
-        const x = xScale(t);
+      {xTicks.map((tk) => {
+        const x = xScale(tk);
         return (
-          <g key={`xg-${t}`}>
+          <g key={`xg-${tk}`}>
             <line
               x1={x}
               y1={PAD.top}
@@ -114,7 +119,7 @@ export function GrmCurveChart({
               className="fill-muted-foreground"
               fontFamily="var(--font-geist-mono)"
             >
-              {t >= 0 ? `+${t}` : t}
+              {mode === "lerp" ? format(tk, 0) : (tk >= 0 ? `+${tk}` : tk)}
             </text>
           </g>
         );
@@ -188,7 +193,7 @@ export function GrmCurveChart({
                   className="fill-foreground"
                   fontFamily="var(--font-geist-mono)"
                 >
-                  θ={playerTheta >= 0 ? `+${playerTheta.toFixed(2)}` : playerTheta.toFixed(2)}
+                  {mode === "lerp" ? format(playerTheta, 1) : `θ=${playerTheta >= 0 ? `+${playerTheta.toFixed(2)}` : playerTheta.toFixed(2)}`}
                 </text>
               </>
             );
@@ -207,7 +212,7 @@ export function GrmCurveChart({
 
       {/* Axis labels */}
       <text x={width / 2} y={height - 6} textAnchor="middle" fontSize={11} className="fill-muted-foreground">
-        Player skill θ (logits)
+        {t.histogramXAxis(mode === 'lerp')}
       </text>
       <text
         x={14}

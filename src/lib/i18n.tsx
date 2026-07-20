@@ -46,7 +46,7 @@ export const STRINGS = {
     allCharts: "All charts",
     allChartsTitle: "All Charts",
     chartsCount: (n: number) => `${n} charts`,
-    sortedByVhard: "sorted by V-HARD difficulty",
+    sortedByHard: "sorted by HARD difficulty",
     sortBy: (key: string, dir: string) => `sorted by ${key} (${dir})`,
     sortKeys: {
       title: "title",
@@ -94,7 +94,7 @@ export const STRINGS = {
     recommendedCharts: "Recommended Targets",
     yourProbabilities: "Your Clear Probabilities",
     noRecommendations: "No suitable recommendations found. You might be too good!",
-    histogramXAxis: "Player skill θ (Raw logits)",
+    histogramXAxis: (isLerp: boolean) => isLerp ? "Player skill (U_E scale)" : "Player skill θ (Raw logits)",
 
     // Ranking tab
     rankingTitle: "Player Ranking",
@@ -170,7 +170,7 @@ export const STRINGS = {
     allCharts: "전체 채보",
     allChartsTitle: "전체 채보",
     chartsCount: (n: number) => `${n}개 채보`,
-    sortedByVhard: "V-HARD 난이도순 정렬",
+    sortedByHard: "HARD 난이도순 정렬",
     sortBy: (key: string, dir: string) => `${key}순 정렬 (${dir})`,
     sortKeys: {
       title: "제목",
@@ -218,7 +218,7 @@ export const STRINGS = {
     recommendedCharts: "추천 목표",
     yourProbabilities: "예상 클리어 확률",
     noRecommendations: "적합한 추천을 찾을 수 없습니다. 이미 모든 채보를 클리어하셨을 수도 있습니다!",
-    histogramXAxis: "플레이어 실력 θ (원시 로짓)",
+    histogramXAxis: (isLerp: boolean) => isLerp ? "플레이어 실력 (U_E 스케일)" : "플레이어 실력 θ (원시 로짓)",
 
     // Ranking tab
     rankingTitle: "플레이어 랭킹",

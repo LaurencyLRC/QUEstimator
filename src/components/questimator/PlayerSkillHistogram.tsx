@@ -1,6 +1,7 @@
 "use client";
 
 import type { SamplePlayers } from "@/lib/questimator-types";
+import { useScale } from "@/lib/value-scale";
 
 interface Props {
   data: SamplePlayers;
@@ -17,6 +18,7 @@ export function PlayerSkillHistogram({
   width = 460,
   height = 180,
 }: Props) {
+  const { mode, format } = useScale();
   const PAD = { top: 14, right: 14, bottom: 36, left: 36 };
   const innerW = width - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
@@ -84,7 +86,7 @@ export function PlayerSkillHistogram({
         className="fill-muted-foreground"
         fontFamily="var(--font-geist-mono)"
       >
-        μ={data.theta_mean.toFixed(2)}
+        {mode === "lerp" ? `μ=${format(data.theta_mean, 2)}` : `μ=${data.theta_mean.toFixed(2)}`}
       </text>
 
       {xTicks.map((t) => (
@@ -97,14 +99,11 @@ export function PlayerSkillHistogram({
           className="fill-muted-foreground"
           fontFamily="var(--font-geist-mono)"
         >
-          {t >= 0 ? `+${t}` : t}
+          {mode === "lerp" ? format(t, 0) : (t >= 0 ? `+${t}` : t)}
         </text>
       ))}
       <line x1={PAD.left} y1={PAD.top + innerH} x2={width - PAD.right} y2={PAD.top + innerH} stroke="currentColor" strokeOpacity={0.3} />
       <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + innerH} stroke="currentColor" strokeOpacity={0.3} />
-      <text x={width / 2} y={height - 4} textAnchor="middle" fontSize={10} className="fill-muted-foreground">
-        Player skill θ
-      </text>
     </svg>
   );
 }

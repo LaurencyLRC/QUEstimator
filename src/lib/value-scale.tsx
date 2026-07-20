@@ -32,8 +32,8 @@ export function ScaleProvider({ children, levels }: { children: ReactNode; level
     for (const l of levels) {
       let num = parseInt(l.level);
       if (l.level === "Ω") num = 31;
-      if (!isNaN(num) && l.vhard_median != null) {
-        pts.push({ num, val: l.vhard_median });
+      if (!isNaN(num) && l.hard_median != null) {
+        pts.push({ num, val: l.hard_median });
       }
     }
     pts.sort((a, b) => a.num - b.num);
