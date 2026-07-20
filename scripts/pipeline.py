@@ -1,4 +1,3 @@
-# scripts/pipeline.py
 #!/usr/bin/env python3
 """
 QUEstimator data pipeline.
@@ -72,7 +71,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     import jax.numpy as jnp
     import numpyro
     import numpyro.distributions as dist
-    from numpyro.infer import MCMC, NUTS
+    from numpyro.infer import MCMC, NUTS, init_to_median
 
     n_charts = len(df)
     
@@ -94,8 +93,9 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
 
     def model(player_idx, chart_idx, y, level_num, is_gimmick, n_players, n_charts):
         # Hyperparameters for the linear prior mapping
-        a = numpyro.sample("prior_a", dist.Normal(0, 5))
-        b = numpyro.sample("prior_b", dist.Normal(0, 2))
+        # Maps [1, 31] roughly to [-3, +3] standard deviations on the ability axis
+        a = numpyro.sample("prior_a", dist.Normal(-3.0, 2.0))
+        b = numpyro.sample("prior_b", dist.Normal(0.2, 0.2))
         
         # Prior location anchored to numerical rank
         loc = a + b * level_num
@@ -107,11 +107,11 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
             delta = numpyro.sample("delta", dist.Normal(loc, scale))
             
             # Chart discrimination (gatekeeping severity)
-            alpha = numpyro.sample("alpha", dist.LogNormal(0, 1.0))
+            alpha = numpyro.sample("alpha", dist.LogNormal(0, 0.5))
             
             # Distance bounds for intermediate gauges
-            tau1 = numpyro.sample("tau1", dist.HalfNormal(2.0))
-            tau2 = numpyro.sample("tau2", dist.HalfNormal(2.0))
+            tau1 = numpyro.sample("tau1", dist.HalfNormal(1.0))
+            tau2 = numpyro.sample("tau2", dist.HalfNormal(1.0))
         
         with numpyro.plate("players", n_players):
             # Player skill tied to N(0, 1) standard identifiability constraint
@@ -139,7 +139,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
 
     print("      compiling and running NUTS MCMC...")
     mcmc = MCMC(
-        NUTS(model),
+        NUTS(model, init_strategy=init_to_median),
         num_warmup=500,
         num_samples=1000,
         num_chains=1,
@@ -204,7 +204,6 @@ def main():
 
     print("[2/5] Loading real IR leaderboard data ...")
     import sys
-    # Add scripts to path to import load_ir_clears if running from root
     sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
     from load_ir_clears import load_ir_clears, print_stats as print_ir_stats
     clears, player_map, ir_stats = load_ir_clears(df)
@@ -227,7 +226,6 @@ def main():
     b_normal = delta_mean - tau2_mean - tau1_mean
     
     se_b_vhard = delta_se
-    # The true SE of derived threshold parameter:
     b_hard_samples = samples["delta"] - samples["tau2"]
     se_b_hard = np.array(b_hard_samples.std(axis=0))
 
@@ -239,7 +237,6 @@ def main():
     df["se_b_hard"] = se_b_hard
     df["se_b_vhard"] = se_b_vhard
 
-    # Pre-calculate clear counts per category
     chart_idx = clears[:, 0]
     statuses = clears[:, 2]
     grp = pd.DataFrame({"chart": chart_idx, "status": statuses}).groupby("chart")
@@ -255,7 +252,6 @@ def main():
             "n_total":  len(st)
         }
 
-    # Map category counts into the dataframe
     df["n_failed"] = [chart_cat_counts.get(ci, {}).get("n_failed", 0) for ci in df.index]
     df["n_normal"] = [chart_cat_counts.get(ci, {}).get("n_normal", 0) for ci in df.index]
     df["n_hard"]   = [chart_cat_counts.get(ci, {}).get("n_hard", 0) for ci in df.index]
@@ -265,15 +261,12 @@ def main():
     PROVISIONAL_MIN_N = 10
     PROVISIONAL_MAX_SE = 1.0
 
-    # Flag chart as provisional if it has very little data or huge posterior variance
     df["provisional"] = (
         (df["n"] < PROVISIONAL_MIN_N) |
         (df["se_b_vhard"] > PROVISIONAL_MAX_SE) |
         (df["se_b_vhard"].isna())
     )
 
-    # With Bayesian posteriors, the parameters automatically shrink gracefully to the
-    # informative U_E prior. We can safely display the posterior means directly.
     df["b_hard_display"] = df["b_hard"]
     df["b_vhard_display"] = df["b_vhard"]
 
@@ -281,6 +274,7 @@ def main():
 
     print("[4/5] Extracting player theta values ...")
     theta_mean = np.array(samples["theta"].mean(axis=0))
+    theta_std = float(np.std(theta_mean))
     player_data = {}
     inv_player_map = {v: k for k, v in player_map.items()}
     
@@ -341,6 +335,8 @@ def main():
         "model": "Bayesian Graded Response Model (MCMC NUTS)",
         "categories": ["FAILED", "NORMAL", "HARD", "V-HARD"],
         "provisional_rule": f"n < {PROVISIONAL_MIN_N} OR se_b_vhard > {PROVISIONAL_MAX_SE}",
+        "player_theta_mean": float(np.mean(theta_mean)),
+        "player_theta_std": theta_std,
         "data_source": "Qwilight IR leaderboards (real player data)",
         "runtime_sec": round(time.time() - t0, 2),
     }
