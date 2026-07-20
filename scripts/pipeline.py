@@ -102,23 +102,25 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         loc = jnp.where(is_gimmick, 0.0, loc)
         scale = jnp.where(is_gimmick, 3.0, 0.4) # Tight adherence for 1-31 scale, loose for gimmicks
         
-        # The primary difficulty anchor for the chart (V-HARD)
-        delta = numpyro.sample("delta", dist.Normal(loc, scale))
+        with numpyro.plate("charts", n_charts):
+            # The primary difficulty anchor for the chart (V-HARD)
+            delta = numpyro.sample("delta", dist.Normal(loc, scale))
+            
+            # Chart discrimination (gatekeeping severity)
+            alpha = numpyro.sample("alpha", dist.LogNormal(0, 1.0))
+            
+            # Distance bounds for intermediate gauges
+            tau1 = numpyro.sample("tau1", dist.HalfNormal(2.0))
+            tau2 = numpyro.sample("tau2", dist.HalfNormal(2.0))
         
-        # Chart discrimination (gatekeeping severity)
-        alpha = numpyro.sample("alpha", dist.LogNormal(0, 1.0).expand([n_charts]))
-        
-        # Distance bounds for intermediate gauges
-        tau1 = numpyro.sample("tau1", dist.HalfNormal(2.0).expand([n_charts]))
-        tau2 = numpyro.sample("tau2", dist.HalfNormal(2.0).expand([n_charts]))
+        with numpyro.plate("players", n_players):
+            # Player skill tied to N(0, 1) standard identifiability constraint
+            theta = numpyro.sample("theta", dist.Normal(0, 1))
         
         # Unroll into respective cutpoints
         beta3 = delta
         beta2 = delta - tau2
         beta1 = delta - tau2 - tau1
-        
-        # Player skill tied to N(0, 1) standard identifiability constraint
-        theta = numpyro.sample("theta", dist.Normal(0, 1).expand([n_players]))
         
         # Subset parameters by index
         theta_obs = theta[player_idx]
@@ -137,7 +139,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
 
     print("      compiling and running NUTS MCMC...")
     mcmc = MCMC(
-        NUTS(),
+        NUTS(model),
         num_warmup=500,
         num_samples=1000,
         num_chains=1,
@@ -201,6 +203,9 @@ def main():
     print(f"      loaded {len(df)} charts across {df['level'].nunique()} levels")
 
     print("[2/5] Loading real IR leaderboard data ...")
+    import sys
+    # Add scripts to path to import load_ir_clears if running from root
+    sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
     from load_ir_clears import load_ir_clears, print_stats as print_ir_stats
     clears, player_map, ir_stats = load_ir_clears(df)
     print_ir_stats(ir_stats)
