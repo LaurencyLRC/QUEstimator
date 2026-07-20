@@ -1,20 +1,16 @@
+# .github/workflows/deploy.yml
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
- # schedule:
-    # Weekly: Sunday 20:00 UTC (8 PM UTC)
- #   - cron: "0 20 * * 0"
- # AUTOMATIC PUSHING DISABLED DUE TO ISSUES
-  workflow_dispatch: # Manual trigger button in GitHub Actions UI
+  workflow_dispatch:
 
 permissions:
-  contents: write  # needed for committing refreshed data back to repo
+  contents: write
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -26,8 +22,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Stage 1: Refresh data (weekly cron or manual trigger only) ────
-      # On code pushes, we skip the refresh and just rebuild with existing data.
       - name: Check if data refresh should run
         id: should_refresh
         run: |
@@ -49,7 +43,7 @@ jobs:
         if: steps.should_refresh.outputs.should_refresh == 'true'
         run: pip install httpx numpy scipy pandas
 
-      - name: Refresh data (fetch U_E table → enrich → scrape leaderboards)
+      - name: Refresh data
         if: steps.should_refresh.outputs.should_refresh == 'true'
         run: python3 scripts/refresh_data.py
 
@@ -66,19 +60,17 @@ jobs:
             git push
           fi
 
-      # ── Stage 2: Run GRM pipeline ─────────────────────────────────────
       - name: Set up Python (for pipeline)
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install Python dependencies (for pipeline)
-        run: pip install httpx numpy scipy pandas
+        run: pip install httpx numpy scipy pandas numpyro jax jaxlib
 
       - name: Run GRM pipeline
         run: python3 scripts/pipeline.py
 
-      # ── Stage 3: Build Next.js static export ──────────────────────────
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -104,7 +96,6 @@ jobs:
           fi
           echo "out/ exists with $(ls out/ | wc -l) entries"
 
-      # ── Stage 4: Deploy to GitHub Pages ───────────────────────────────
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
