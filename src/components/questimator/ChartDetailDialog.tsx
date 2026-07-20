@@ -18,6 +18,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activePlayer?: { id: string; data: PlayerData } | null;
+  onClearStatusChange?: (chartId: number, status: number) => void;
 }
 
 function fmtRaw(v: number | null, digits = 3): string {
@@ -41,7 +42,7 @@ function getClearBadge(status?: number) {
   return null;
 }
 
-export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer }: Props) {
+export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onClearStatusChange }: Props) {
   const { t } = useLang();
   const { format, mode } = useScale();
   if (!chart) return null;
@@ -91,11 +92,11 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer }: P
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 mt-2">
+        <div className="space-y-4 mt-2">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
             {t.irtParams}
           </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             <ParamCard
               label={t.hardClear}
               value={format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}

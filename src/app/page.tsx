@@ -15,6 +15,8 @@ import { RankingTab } from "@/components/questimator/RankingTab";
 import { PlayerTab } from "@/components/questimator/PlayerTab";
 import { useLang } from "@/lib/i18n";
 import { ScaleProvider, useScale } from "@/lib/value-scale";
+import { useCustomProfiles } from "@/hooks/use-custom-profiles";
+import { estimateTheta } from "@/lib/questimator-types";
 import type {
   Chart,
   LevelSummary,
@@ -51,7 +53,8 @@ export default function Home() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const [playersData, setPlayersData] = useState<PlayersDict | null>(null);
-  const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData } | null>(null);
+  const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
+  const { profiles: customProfiles, saveProfile, deleteProfile } = useCustomProfiles();
 
   useEffect(() => {
     (async () => {
@@ -143,10 +146,10 @@ export default function Home() {
   return (
     <ScaleProvider levels={levels}>
       <div className="min-h-screen flex flex-col bg-background">
-        <header className="border-b border-border/60 bg-card/40 backdrop-blur-sm sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <header className="border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-30 shadow-sm shadow-black/5">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-500 via-purple-500 to-cyan-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl shadow-sm bg-gradient-to-br from-rose-500 via-purple-500 to-cyan-500 flex items-center justify-center">
                 <Sigma className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -165,22 +168,22 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+        <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 md:py-10">
           <Tabs value={tab} onValueChange={setTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6 max-w-2xl">
-              <TabsTrigger value="overview" className="text-xs sm:text-sm">
+            <TabsList className="flex w-full overflow-x-auto no-scrollbar mb-8 max-w-3xl bg-muted/50 p-1.5 rounded-lg items-center gap-1">
+              <TabsTrigger value="overview" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
                 <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.overview}
               </TabsTrigger>
-              <TabsTrigger value="charts" className="text-xs sm:text-sm">
+              <TabsTrigger value="charts" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
                 <ListTree className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.chartsTab}
               </TabsTrigger>
-              <TabsTrigger value="player" className="text-xs sm:text-sm">
+              <TabsTrigger value="player" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
                 <User className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.player}
               </TabsTrigger>
-              <TabsTrigger value="ranking" className="text-xs sm:text-sm">
+              <TabsTrigger value="ranking" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
                 <Trophy className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.ranking}
               </TabsTrigger>
-              <TabsTrigger value="about" className="text-xs sm:text-sm">
+              <TabsTrigger value="about" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
                 <Sigma className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.about}
               </TabsTrigger>
             </TabsList>
@@ -302,11 +305,14 @@ export default function Home() {
                 playerThetaStd={meta?.player_theta_std ?? 1}
                 onSelectChart={handleSelectChart}
                 activePlayerExternal={activePlayer}
+                customProfiles={customProfiles}
+                onSaveCustomProfile={saveProfile}
+                onDeleteCustomProfile={deleteProfile}
                 onPlayerChange={(id, player) => {
                   setActivePlayer((prev) => {
                     if (!player) return prev === null ? prev : null;
                     if (prev?.id === id) return prev;
-                    return { id: id!, data: player };
+                    return { id: id!, data: player, isCustom: arguments[2] };
                   });
                 }}
               />
@@ -331,6 +337,14 @@ export default function Home() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         activePlayer={activePlayer}
+        onClearStatusChange={activePlayer?.isCustom ? (chartId, status) => {
+          const newData = { ...activePlayer.data, c: { ...activePlayer.data.c } };
+          if (status < 0) delete newData.c[String(chartId)];
+          else newData.c[String(chartId)] = status;
+          newData.t = estimateTheta(charts, newData.c);
+          setActivePlayer({ id: activePlayer.id, data: newData, isCustom: true });
+          saveProfile(activePlayer.id, newData);
+        } : undefined}
       />
     </ScaleProvider>
   );
@@ -360,26 +374,26 @@ function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[
               className="border-b border-border/30 hover:bg-muted/30 cursor-pointer"
               onClick={() => onSelectLevel(l.level)}
             >
-              <td className="px-3 py-1.5 font-mono">
+              <td className="px-3 py-2 font-mono">
                 <span className={isSpecialLevel(l.level) ? "text-amber-400" : ""}>
                   {l.level}
                 </span>
               </td>
-              <td className="px-3 py-1.5 text-right font-mono text-muted-foreground">
+              <td className="px-3 py-2 text-right font-mono text-muted-foreground">
                 {l.n_charts_valid}/{l.n_charts_total}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono" style={{ color: "oklch(0.78 0.18 25)" }}>
+              <td className="px-3 py-2 text-right font-mono" style={{ color: "oklch(0.78 0.18 25)" }}>
                 {format(l.hard_median)}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono text-[11px] text-muted-foreground">
+              <td className="px-3 py-2 text-right font-mono text-[11px] text-muted-foreground">
                 {l.hard_q1 != null && l.hard_q3 != null
                   ? `[${format(l.hard_q1)}, ${format(l.hard_q3)}]`
                   : "–"}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono" style={{ color: "oklch(0.78 0.18 305)" }}>
+              <td className="px-3 py-2 text-right font-mono" style={{ color: "oklch(0.78 0.18 305)" }}>
                 {format(l.vhard_median)}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono text-[11px] text-muted-foreground">
+              <td className="px-3 py-2 text-right font-mono text-[11px] text-muted-foreground">
                 {l.vhard_q1 != null && l.vhard_q3 != null
                   ? `[${format(l.vhard_q1)}, ${format(l.vhard_q3)}]`
                   : "–"}

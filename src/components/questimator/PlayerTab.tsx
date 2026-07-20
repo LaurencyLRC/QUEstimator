@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -14,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, User, Target, Sparkles, TrendingUp } from "lucide-react";
+import { Search, User, Target, Sparkles, TrendingUp, Save, Trash2, Download, Upload } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import {
@@ -36,7 +43,10 @@ interface Props {
   playerThetaStd: number;
   onSelectChart: (c: Chart) => void;
   activePlayerExternal?: { id: string; data: PlayerData } | null;
-  onPlayerChange: (avatarID: string | null, player: PlayerData | null) => void;
+  onPlayerChange: (avatarID: string | null, player: PlayerData | null, isCustom?: boolean) => void;
+  customProfiles?: Record<string, PlayerData>;
+  onSaveCustomProfile?: (id: string, data: PlayerData) => void;
+  onDeleteCustomProfile?: (id: string) => void;
 }
 
 const STATUS_LABELS: Record<number, { short: string; color: string }> = {
@@ -62,6 +72,11 @@ function pHard(theta: number, c: Chart): number | null {
   return pStar(theta, c.a, c.b_hard);
 }
 
+function pVHard(theta: number, c: Chart): number | null {
+  if (c.a == null || c.b_vhard == null) return null;
+  return pStar(theta, c.a, c.b_vhard);
+}
+
 export function PlayerTab({
   charts,
   samplePlayers,
@@ -70,15 +85,22 @@ export function PlayerTab({
   onSelectChart,
   activePlayerExternal,
   onPlayerChange,
+  customProfiles = {},
+  onSaveCustomProfile,
+  onDeleteCustomProfile,
 }: Props) {
   const { t } = useLang();
   const { mode, format } = useScale();
   const [query, setQuery] = useState("");
   const [submittedID, setSubmittedID] = useState("");
+  const [isCustomProfile, setIsCustomProfile] = useState(false);
+  const [newProfileName, setNewProfileName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
   const [players, setPlayers] = useState<PlayersDict | null>(null);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
 
   const fetchPlayers = useRef<( () => Promise<PlayersDict | null> ) | null>(null);
 
@@ -104,13 +126,16 @@ export function PlayerTab({
 
   const currentPlayer = useMemo<PlayerData | null>(() => {
     if (activePlayerExternal) return activePlayerExternal.data;
+    if (isCustomProfile) return customProfiles[submittedID] ?? null;
     if (!players || !submittedID) return null;
     return players[submittedID] ?? null;
-  }, [players, submittedID, activePlayerExternal]);
+  }, [players, submittedID, activePlayerExternal, customProfiles, isCustomProfile]);
 
   useEffect(() => {
-    onPlayerChange(currentPlayer ? (activePlayerExternal?.id ?? submittedID) : null, currentPlayer);
-  }, [currentPlayer, submittedID, activePlayerExternal, onPlayerChange]);
+    if (!activePlayerExternal) {
+      onPlayerChange(currentPlayer ? submittedID : null, currentPlayer, isCustomProfile);
+    }
+  }, [currentPlayer, submittedID, isCustomProfile, onPlayerChange, activePlayerExternal]);
 
   const handleSearch = async () => {
     const id = query.trim();
@@ -134,6 +159,7 @@ export function PlayerTab({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      setIsCustomProfile(false);
       handleSearch();
     }
   };
@@ -157,10 +183,10 @@ export function PlayerTab({
 
     for (const c of charts) {
       if (c.provisional) continue;
-      const p = pHard(theta, c);
+      const p = targetStatus === "HARD" ? pHard(theta, c) : pVHard(theta, c);
       if (p == null) continue;
       const status = currentPlayer.c[String(c.id)];
-      if (status >= 2) continue; // Skip if HARD or V-HARD cleared
+      if (status >= (targetStatus === "HARD" ? 2 : 3)) continue; // Skip if target status or higher is cleared
 
       if (p >= PROB_MIN_THRESHOLD) {
         allProbabilities.push({ chart: c, p });
@@ -174,7 +200,9 @@ export function PlayerTab({
       const da = Math.abs(a.p - 0.5);
       const db = Math.abs(b.p - 0.5);
       if (Math.abs(da - db) > 1e-6) return da - db;
-      return (b.chart.b_hard_display ?? -99) - (a.chart.b_hard_display ?? -99);
+      const aVal = targetStatus === "HARD" ? a.chart.b_hard_display : a.chart.b_vhard_display;
+      const bVal = targetStatus === "HARD" ? b.chart.b_hard_display : b.chart.b_vhard_display;
+      return (bVal ?? -99) - (aVal ?? -99);
     });
     const recommendationsLimited = recommendations.slice(0, REC_LIMIT);
 
@@ -200,8 +228,9 @@ export function PlayerTab({
       recommendations: recommendationsLimited,
       allProbabilities: allProbabilitiesLimited,
       clearedLevels,
+      targetStatus,
     };
-  }, [currentPlayer, charts]);
+  }, [currentPlayer, charts, targetStatus]);
 
   const percentile = useMemo(() => {
     if (!currentPlayer || !samplePlayers) return null;
@@ -252,7 +281,7 @@ export function PlayerTab({
               />
             </div>
             <Button
-              onClick={handleSearch}
+              onClick={() => { setIsCustomProfile(false); handleSearch(); }}
               disabled={loadingPlayers || !query.trim()}
               size="sm"
             >
@@ -272,8 +301,153 @@ export function PlayerTab({
               <span className="font-mono text-foreground">{activePlayerExternal?.id ?? submittedID}</span>
               <span className="mx-1.5">·</span>
               {t.clearsCount(analytics?.totalClears ?? 0)}
+              <span className="mx-1.5">·</span>
+              <span className="font-mono">θ = {currentPlayer.t.toFixed(3)}</span>
+              {percentile != null && (
+                <>
+                  <span className="mx-1.5">·</span>
+                  <span className="font-mono">Top {((1 - percentile) * 100).toFixed(1)}%</span>
+                </>
+              )}
+              {isCustomProfile && <Badge variant="outline" className="ml-2 text-[9px] py-0 border-blue-500/40 text-blue-400">OFFLINE PROFILE</Badge>}
+              {isCustomProfile && <span className="ml-2">Click any chart in the table to edit clear status.</span>}
             </div>
           )}
+
+          <div className="flex gap-6 mt-6 border-t border-border/40 pt-5 flex-col sm:flex-row">
+            <div className="flex-1 space-y-3">
+              <div className="text-sm font-medium">Offline Profiles</div>
+              <Select
+                value={isCustomProfile ? submittedID : ""}
+                onValueChange={(v) => {
+                  if (v) {
+                    setIsCustomProfile(true);
+                    setSubmittedID(v);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue placeholder="Select an offline profile..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(customProfiles).map((id) => (
+                    <SelectItem key={id} value={id}>{id}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex-1 space-y-3">
+              <div className="text-sm font-medium">Manage</div>
+              
+              {isCreating ? (
+                <div className="flex items-center gap-2">
+                  <Input 
+                    placeholder="Profile name..." 
+                    value={newProfileName}
+                    onChange={e => setNewProfileName(e.target.value)}
+                    className="h-8 text-xs"
+                    autoFocus
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newProfileName.trim() && onSaveCustomProfile) {
+                        const name = newProfileName.trim();
+                        onSaveCustomProfile(name, currentPlayer ? { ...currentPlayer, c: { ...currentPlayer.c } } : { t: 0, c: {} });
+                        setIsCustomProfile(true);
+                        setSubmittedID(name);
+                        setIsCreating(false);
+                        setNewProfileName("");
+                      } else if (e.key === "Escape") {
+                        setIsCreating(false);
+                      }
+                    }}
+                  />
+                  <Button size="sm" className="h-8 text-xs" onClick={() => {
+                    if (newProfileName.trim() && onSaveCustomProfile) {
+                        const name = newProfileName.trim();
+                        onSaveCustomProfile(name, currentPlayer ? { ...currentPlayer, c: { ...currentPlayer.c } } : { t: 0, c: {} });
+                        setIsCustomProfile(true);
+                        setSubmittedID(name);
+                        setIsCreating(false);
+                        setNewProfileName("");
+                    }
+                  }}>Save</Button>
+                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setIsCreating(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  <Button 
+                    size="sm" variant="outline" className="text-xs"
+                    onClick={() => {
+                      setIsCreating(true);
+                    }}
+                  >
+                    <Save className="w-3 h-3 mr-1" /> {currentPlayer ? "Clone" : "New"}
+                  </Button>
+                  
+                  {isCustomProfile && currentPlayer && (
+                    <>
+                      <Button 
+                        size="sm" variant="outline" className="text-xs text-rose-400 border-rose-400/30 hover:bg-rose-400/10"
+                        onClick={() => {
+                          if (onDeleteCustomProfile) {
+                            onDeleteCustomProfile(submittedID);
+                            setIsCustomProfile(false);
+                            setSubmittedID("");
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" /> Delete
+                      </Button>
+                      <Button 
+                        size="sm" variant="outline" className="text-xs"
+                        onClick={() => {
+                          const blob = new Blob([JSON.stringify(currentPlayer)], { type: "application/json" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `profile-${submittedID}.json`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download className="w-3 h-3 mr-1" /> Export
+                      </Button>
+                    </>
+                  )}
+                  
+                  <Button 
+                    size="sm" variant="outline" className="text-xs relative overflow-hidden"
+                  >
+                    <Upload className="w-3 h-3 mr-1" /> Import
+                    <input 
+                      type="file" 
+                      accept=".json"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          try {
+                            const data = JSON.parse(e.target?.result);
+                            if (data && typeof data.t === 'number' && typeof data.c === 'object') {
+                              const name = file.name.replace('.json', '');
+                              if (onSaveCustomProfile) onSaveCustomProfile(name, data);
+                              setIsCustomProfile(true);
+                              setSubmittedID(name);
+                            }
+                          } catch (err) {}
+                        };
+                        reader.readAsText(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
         </CardContent>
       </Card>
 
@@ -378,14 +552,25 @@ export function PlayerTab({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                {t.recommendedCharts}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  {t.recommendedCharts}
+                </CardTitle>
+                <Select value={targetStatus} onValueChange={(v: any) => setTargetStatus(v)}>
+                  <SelectTrigger className="w-[110px] h-8 text-xs font-mono">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HARD">HARD</SelectItem>
+                    <SelectItem value="V-HARD">V-HARD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
                 {t.lang === "en"
-                  ? `Charts you haven't HARD cleared where P(HARD) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] — challenging but achievable. Top ${REC_LIMIT} shown.`
-                  : `HARD 미클리어 채보 중 P(HARD) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}]인 도전 가능한 채보. 상위 ${REC_LIMIT}개.`}
+                  ? `Charts you haven't ${targetStatus} cleared where P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] — challenging but achievable. Top ${REC_LIMIT} shown.`
+                  : `${targetStatus} 미클리어 채보 중 P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}]인 도전 가능한 채보. 상위 ${REC_LIMIT}개.`}
               </p>
             </CardHeader>
             <CardContent>
@@ -404,6 +589,7 @@ export function PlayerTab({
                       formatFn={format}
                       t={t}
                       mode={mode}
+                      targetStatus={targetStatus}
                     />
                   ))}
                 </div>
@@ -417,27 +603,27 @@ export function PlayerTab({
                 <Target className="w-4 h-4 text-rose-400" />
                 {t.yourProbabilities}
               </CardTitle>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t.lang === "en"
-                  ? `All uncompleted charts with P(HARD) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
-                  : `P(HARD) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
+                  ? `All uncompleted charts with P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
+                  : `P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
               </p>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border border-border/60 overflow-hidden">
                 <ScrollArea className="h-[480px]">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-card z-10">
-                      <tr className="border-b border-border/60 text-left">
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs">{t.chart}</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-center w-[60px]">{t.level}</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">P(HARD)</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">{t.bHard(mode === "lerp")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table className="w-full text-sm">
+                    <TableHeader className="sticky top-0 bg-card z-10">
+                      <TableRow className="border-b border-border/60 text-left">
+                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs">{t.chart}</TableHead>
+                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-center w-[60px]">{t.level}</TableHead>
+                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">P({targetStatus})</TableHead>
+                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">b_{targetStatus === "HARD" ? "hard" : "vhard"}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {analytics.allProbabilities.map(({ chart, p }) => (
-                        <tr
+                        <TableRow
                           key={chart.md5}
                           onClick={() => onSelectChart(chart)}
                           className="border-b border-border/30 hover:bg-muted/40 cursor-pointer"
@@ -461,13 +647,13 @@ export function PlayerTab({
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
                             <span style={{ color: "oklch(0.78 0.18 25)" }}>
-                              {format(chart.b_hard_display)}
+                              {format(targetStatus === "HARD" ? chart.b_hard_display : chart.b_vhard_display)}
                             </span>
                           </TableCell>
-                        </tr>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </ScrollArea>
               </div>
             </CardContent>
@@ -492,7 +678,9 @@ function RecommendationCard({
   formatFn: (val: number | null | undefined) => string;
   t: any;
   mode: string;
+  targetStatus: "HARD" | "V-HARD";
 }) {
+  const bVal = targetStatus === "HARD" ? chart.b_hard_display : chart.b_vhard_display;
   return (
     <button
       onClick={onClick}
@@ -526,7 +714,7 @@ function RecommendationCard({
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          {t.bHard(mode === "lerp")}: <span style={{ color: "oklch(0.78 0.18 25)" }}>{formatFn(chart.b_hard_display)}</span>
+          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span style={{ color: "oklch(0.78 0.18 25)" }}>{formatFn(bVal)}</span>
         </span>
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>

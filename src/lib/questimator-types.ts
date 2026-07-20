@@ -104,7 +104,40 @@ export function pStar(theta: number, a: number, b: number): number {
   return e / (1 + e);
 }
 
-// Compute category probabilities for a chart given theta.
+export function estimateTheta(
+  charts: Chart[],
+  clears: Record<string, number>
+): number {
+  let O = 0;
+  for (const c of charts) {
+    if (c.provisional) continue;
+    const s = clears[String(c.id)];
+    if (s >= 2) O += 1;
+    if (s >= 3) O += 1;
+  }
+
+  const calcE = (theta: number) => {
+    let E = 0;
+    for (const c of charts) {
+      if (c.provisional) continue;
+      if (c.a != null && c.b_hard != null) E += pStar(theta, c.a, c.b_hard);
+      if (c.a != null && c.b_vhard != null) E += pStar(theta, c.a, c.b_vhard);
+    }
+    return E;
+  };
+
+  let low = -10;
+  let high = 10;
+  for (let i = 0; i < 40; i++) {
+    const mid = (low + high) / 2;
+    if (calcE(mid) > O) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+  return (low + high) / 2;
+}
 export function categoryProbabilities(
   theta: number,
   a: number,
