@@ -15,40 +15,23 @@ import {
 } from "@/components/ui/table";
 import { Trophy, Search } from "lucide-react";
 import { useLang } from "@/lib/i18n";
+import { useScale } from "@/lib/value-scale";
 import type { Chart, PlayerData, PlayersDict } from "@/lib/questimator-types";
 
 interface Props {
-  /**
-   * The full chart array. Used to build the set of "valid U_E 20+" chart
-   * IDs that count toward ranking eligibility.
-   */
   charts: Chart[];
-  /**
-   * Called when the user clicks a row. The parent loads the player into
-   * `activePlayer` and switches to the Player tab so they can see the
-   * full profile + recommendations.
-   */
   onSelectPlayer: (id: string, data: PlayerData) => void;
 }
 
-// Row model used internally for sorting/filtering.
 interface RankRow {
   id: string;
   data: PlayerData;
-  nClears: number;          // total plays (all charts, for display)
-  nVhard: number;           // total V-HARD clears (all charts, for display)
-  nHard: number;            // total HARD clears (all charts, for display)
-  // `true` if the player meets the ranking eligibility criteria based on
-  // valid U_E 20+ charts only (see MIN_PLAYS / MIN_HARD_OR_BETTER below).
+  nClears: number;
+  nVhard: number;
+  nHard: number;
   eligible: boolean;
 }
 
-// Ranking eligibility thresholds. These count only plays on "valid" charts:
-//   - non-provisional
-//   - numeric U_E level >= 20
-//   - level not in {-_-, ?!, ◆} (Ω is allowed)
-// This matches the pipeline's skill-estimation eligibility, so a player
-// ranked here is one whose θ estimate is based on meaningful evidence.
 const MIN_PLAYS = 10;
 const MIN_HARD_OR_BETTER = 1;
 const EXCLUDED_LEVELS = new Set(["-_", "?!", "◆"]);
@@ -56,33 +39,24 @@ const EXCLUDED_LEVELS = new Set(["-_", "?!", "◆"]);
 function isValidRankingChart(c: Chart): boolean {
   if (c.provisional) return false;
   if (EXCLUDED_LEVELS.has(c.level)) return false;
-  // Numeric levels: must be >= 20 (avoids the floor effect on lower levels).
   if (/^\d+$/.test(c.level)) return parseInt(c.level, 10) >= 20;
-  // Ω is the only special level that counts toward ranking.
   return c.level === "Ω";
 }
 
-function fmtTheta(v: number): string {
-  const sign = v >= 0 ? "+" : "";
-  return `${sign}${v.toFixed(3)}`;
-}
-
-// Medal color for top-3 ranks.
 function rankBadgeColor(rank: number): string | null {
-  if (rank === 1) return "oklch(0.80 0.15 85)";    // gold
-  if (rank === 2) return "oklch(0.75 0.05 250)";   // silver
-  if (rank === 3) return "oklch(0.65 0.12 50)";    // bronze
+  if (rank === 1) return "oklch(0.80 0.15 85)";
+  if (rank === 2) return "oklch(0.75 0.05 250)";
+  if (rank === 3) return "oklch(0.65 0.12 50)";
   return null;
 }
 
 export function RankingTab({ charts, onSelectPlayer }: Props) {
   const { t } = useLang();
+  const { mode, format } = useScale();
   const [players, setPlayers] = useState<PlayersDict | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  // The fetch is triggered automatically when the tab mounts — the user
-  // doesn't need to click anything to see the leaderboard.
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -104,9 +78,6 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
     })();
   }, []);
 
-  // Build a set of chart IDs that count toward ranking eligibility.
-  // Matches the pipeline's skill-estimation eligibility filter: non-provisional,
-  // numeric U_E >= 20, or Ω. Excludes -_- , ?! , ◆ and all lower levels.
   const rankingChartIds = useMemo(() => {
     const s = new Set<number>();
     for (const c of charts) {
@@ -115,8 +86,6 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
     return s;
   }, [charts]);
 
-  // Pre-compute the full ranked list once. θ is sorted descending; ties are
-  // broken by total clears (more clears = more evidence = higher rank).
   const ranked = useMemo<RankRow[]>(() => {
     if (!players) return [];
     const rows: RankRow[] = Object.entries(players).map(([id, data]) => {
@@ -124,7 +93,6 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
       let nHard = 0;
       let nNormal = 0;
       let nFailed = 0;
-      // Eligibility counters: only counts plays on valid U_E 20+ / Ω charts.
       let eligPlays = 0;
       let eligHardOrBetter = 0;
       for (const [cidStr, s] of Object.entries(data.c)) {
@@ -132,28 +100,20 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
         else if (s === 2) nHard += 1;
         else if (s === 1) nNormal += 1;
         else if (s === 0) nFailed += 1;
-        // Only count this clear toward eligibility if it's on a ranking-eligible chart.
         if (rankingChartIds.has(Number(cidStr))) {
           eligPlays += 1;
           if (s >= 2) eligHardOrBetter += 1;
         }
       }
       const nClears = nVhard + nHard + nNormal + nFailed;
-      // Eligibility: at least MIN_PLAYS plays on valid U_E 20+ charts AND
-      // at least MIN_HARD_OR_BETTER HARD-or-better clears on those same
-      // charts. This filters out casual one-off accounts and ensures θ
-      // estimates are backed by meaningful evidence on calibrated charts.
       const eligible =
         eligPlays >= MIN_PLAYS && eligHardOrBetter >= MIN_HARD_OR_BETTER;
       return { id, data, nClears, nVhard, nHard, eligible };
     });
 
     rows.sort((a, b) => {
-      // Eligible players above ineligible.
       if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
-      // Within each group, sort by θ descending.
       if (a.data.t !== b.data.t) return b.data.t - a.data.t;
-      // Tie-break by total clears descending.
       return b.nClears - a.nClears;
     });
 
@@ -171,8 +131,6 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
     return ranked.filter((r) => r.id.toLowerCase().includes(q));
   }, [ranked, query]);
 
-  // When the user filters, the visible "#1" should still reflect global rank,
-  // not the filtered-list index. So we look up the global rank for each row.
   const globalRankById = useMemo(() => {
     const m = new Map<string, number>();
     ranked.forEach((r, i) => m.set(r.id, i + 1));
@@ -241,7 +199,7 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
                     <TableRow>
                       <TableHead className="w-[60px] text-right">{t.rankCol}</TableHead>
                       <TableHead>{t.playerCol}</TableHead>
-                      <TableHead className="text-right">{t.thetaCol}</TableHead>
+                      <TableHead className="text-right">{t.thetaCol(mode === "lerp")}</TableHead>
                       <TableHead className="text-right">{t.clearsCol}</TableHead>
                       <TableHead className="text-right">{t.vhardCol}</TableHead>
                       <TableHead className="text-right">{t.hardCol}</TableHead>
@@ -300,7 +258,7 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
                               className={r.eligible ? "font-semibold" : "font-semibold text-muted-foreground"}
                               style={r.eligible ? { color: "oklch(0.78 0.18 200)" } : undefined}
                             >
-                              {fmtTheta(r.data.t)}
+                              {format(r.data.t, mode === "lerp" ? 2 : 3)}
                             </span>
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm text-muted-foreground">

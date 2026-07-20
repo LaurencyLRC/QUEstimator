@@ -10,8 +10,11 @@ import { BoxPlot } from "@/components/questimator/BoxPlot";
 import { ChartTable, type SortKey, type SortDir } from "@/components/questimator/ChartTable";
 import { ChartDetailDialog } from "@/components/questimator/ChartDetailDialog";
 import { LangToggle } from "@/components/questimator/LangToggle";
+import { ScaleToggle } from "@/components/questimator/ScaleToggle";
 import { RankingTab } from "@/components/questimator/RankingTab";
+import { PlayerTab } from "@/components/questimator/PlayerTab";
 import { useLang } from "@/lib/i18n";
+import { ScaleProvider, useScale } from "@/lib/value-scale";
 import type {
   Chart,
   LevelSummary,
@@ -22,8 +25,7 @@ import type {
 import {
   levelSortKey,
   levelLabel,
-  isSpecialLevel,
-  pStar
+  isSpecialLevel
 } from "@/lib/questimator-types";
 import {
   BarChart3,
@@ -50,12 +52,6 @@ export default function Home() {
 
   const [playersData, setPlayersData] = useState<PlayersDict | null>(null);
   const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData } | null>(null);
-  const [playerQuery, setPlayerQuery] = useState("");
-  const [playerLoading, setPlayerLoading] = useState(false);
-  const [playerError, setPlayerError] = useState<string | null>(null);
-  
-  // Target gauge for player recommendations
-  const [targetGauge, setTargetGauge] = useState<"HARD" | "V-HARD">("V-HARD");
 
   useEffect(() => {
     (async () => {
@@ -119,69 +115,7 @@ export default function Home() {
 
   const handleSelectPlayerFromRanking = (id: string, data: PlayerData) => {
     setActivePlayer({ id, data });
-    setPlayerQuery(id);
-    setPlayerError(null);
     setTab("player");
-  };
-
-  const handleSearchPlayer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!playerQuery.trim()) return;
-    setPlayerLoading(true);
-    setPlayerError(null);
-    try {
-      let data = playersData;
-      if (!data) {
-        const res = await fetch("data/players.json");
-        if (!res.ok) throw new Error("Players data not available.");
-        data = await res.json() as PlayersDict;
-        setPlayersData(data);
-      }
-      const target = playerQuery.trim().toLowerCase();
-      const foundId = Object.keys(data!).find(k => k.toLowerCase() === target);
-      if (foundId) {
-        setActivePlayer({ id: foundId, data: data![foundId] });
-        setPlayerQuery("");
-      } else {
-        setPlayerError(t.playerNotFound);
-        setActivePlayer(null);
-      }
-    } catch (err) {
-      setPlayerError(String(err));
-    } finally {
-      setPlayerLoading(false);
-    }
-  };
-
-  const getRecommendations = () => {
-    if (!activePlayer) return [];
-    const EXCLUDED_LEVELS = new Set(["-_-", "?!", "◆"]);
-    const candidates = charts.filter(c => {
-      if (c.provisional || c.a == null) return false;
-      
-      const b_val = targetGauge === "V-HARD" ? c.b_vhard : c.b_hard;
-      if (b_val == null) return false;
-      
-      if (EXCLUDED_LEVELS.has(c.level)) return false;
-      
-      const status = activePlayer.data.c[c.id.toString()] ?? -1;
-      const cleared = targetGauge === "V-HARD" ? status >= 3 : status >= 2;
-      if (cleared) return false;
-      
-      const prob = pStar(activePlayer.data.t, c.a, b_val);
-      return prob >= 0.05 && prob <= 0.95;
-    });
-    
-    candidates.sort((a, b) => {
-      const b_val_a = targetGauge === "V-HARD" ? a.b_vhard! : a.b_hard!;
-      const b_val_b = targetGauge === "V-HARD" ? b.b_vhard! : b.b_hard!;
-      
-      const pA = pStar(activePlayer.data.t, a.a!, b_val_a);
-      const pB = pStar(activePlayer.data.t, b.a!, b_val_b);
-      return Math.abs(pA - 0.5) - Math.abs(pB - 0.5);
-    });
-    
-    return candidates.slice(0, 30);
   };
 
   if (loading) {
@@ -207,310 +141,190 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="border-b border-border/60 bg-card/40 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-500 via-purple-500 to-cyan-500 flex items-center justify-center">
-              <Sigma className="w-5 h-5 text-white" />
+    <ScaleProvider levels={levels}>
+      <div className="min-h-screen flex flex-col bg-background">
+        <header className="border-b border-border/60 bg-card/40 backdrop-blur-sm sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-500 via-purple-500 to-cyan-500 flex items-center justify-center">
+                <Sigma className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-base sm:text-lg font-bold tracking-tight">
+                  QUEstimator
+                </h1>
+                <p className="text-[11px] text-muted-foreground hidden sm:block">
+                  {t.subtitle}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold tracking-tight">
-                QUEstimator
-              </h1>
-              <p className="text-[11px] text-muted-foreground hidden sm:block">
-                {t.subtitle}
-              </p>
+            <div className="flex items-center gap-2 text-xs">
+              <ScaleToggle />
+              <LangToggle />
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <LangToggle />
-          </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
-        <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6 max-w-2xl">
-            <TabsTrigger value="overview" className="text-xs sm:text-sm">
-              <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.overview}
-            </TabsTrigger>
-            <TabsTrigger value="charts" className="text-xs sm:text-sm">
-              <ListTree className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.chartsTab}
-            </TabsTrigger>
-            <TabsTrigger value="player" className="text-xs sm:text-sm">
-              <User className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.player}
-            </TabsTrigger>
-            <TabsTrigger value="ranking" className="text-xs sm:text-sm">
-              <Trophy className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.ranking}
-            </TabsTrigger>
-            <TabsTrigger value="about" className="text-xs sm:text-sm">
-              <Sigma className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.about}
-            </TabsTrigger>
-          </TabsList>
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-6 max-w-2xl">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm">
+                <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.overview}
+              </TabsTrigger>
+              <TabsTrigger value="charts" className="text-xs sm:text-sm">
+                <ListTree className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.chartsTab}
+              </TabsTrigger>
+              <TabsTrigger value="player" className="text-xs sm:text-sm">
+                <User className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.player}
+              </TabsTrigger>
+              <TabsTrigger value="ranking" className="text-xs sm:text-sm">
+                <Trophy className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.ranking}
+              </TabsTrigger>
+              <TabsTrigger value="about" className="text-xs sm:text-sm">
+                <Sigma className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.about}
+              </TabsTrigger>
+            </TabsList>
 
-          {/* OVERVIEW TAB */}
-          <TabsContent value="overview" className="space-y-6 mt-0">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  {t.levelDistribution}
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {meta
-                    ? t.levelDistributionDesc(meta.n_charts_valid, meta.n_charts_provisional)
-                    : t.levelDistributionDesc(0, 0)}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <BoxPlot
-                  data={plotLevels}
-                  onSelectLevel={handleSelectLevelFromPlot}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  {t.perLevelAggregates}
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  {t.perLevelDesc}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="max-h-[420px] overflow-y-auto rounded-md border border-border/50">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-card z-10">
-                      <tr className="border-b border-border/60 text-left">
-                        <th className="px-3 py-2 font-medium text-muted-foreground">{t.level}</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.chartsCol}</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.hardMed}</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.hardIQR}</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.vhardMed}</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.vhardIQR}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plotLevels.map((l) => (
-                        <tr
-                          key={l.level}
-                          className="border-b border-border/30 hover:bg-muted/30 cursor-pointer"
-                          onClick={() => handleSelectLevelFromPlot(l.level)}
-                        >
-                          <td className="px-3 py-1.5 font-mono">
-                            <span className={isSpecialLevel(l.level) ? "text-amber-400" : ""}>
-                              {l.level}
-                            </span>
-                          </td>
-                          <td className="px-3 py-1.5 text-right font-mono text-muted-foreground">
-                            {l.n_charts_valid}/{l.n_charts_total}
-                          </td>
-                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: "oklch(0.78 0.18 25)" }}>
-                            {l.hard_median != null ? fmt(l.hard_median) : "–"}
-                          </td>
-                          <td className="px-3 py-1.5 text-right font-mono text-[11px] text-muted-foreground">
-                            {l.hard_q1 != null && l.hard_q3 != null
-                              ? `[${fmt(l.hard_q1)}, ${fmt(l.hard_q3)}]`
-                              : "–"}
-                          </td>
-                          <td className="px-3 py-1.5 text-right font-mono" style={{ color: "oklch(0.78 0.18 305)" }}>
-                            {l.vhard_median != null ? fmt(l.vhard_median) : "–"}
-                          </td>
-                          <td className="px-3 py-1.5 text-right font-mono text-[11px] text-muted-foreground">
-                            {l.vhard_q1 != null && l.vhard_q3 != null
-                              ? `[${fmt(l.vhard_q1)}, ${fmt(l.vhard_q3)}]`
-                              : "–"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* CHARTS TAB */}
-          <TabsContent value="charts" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
-              <Card className="h-fit md:sticky md:top-[88px]">
-                <CardHeader className="py-3">
-                  <CardTitle className="text-sm">{t.levels}</CardTitle>
+            <TabsContent value="overview" className="space-y-6 mt-0">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    {t.levelDistribution}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {meta
+                      ? t.levelDistributionDesc(meta.n_charts_valid, meta.n_charts_provisional)
+                      : t.levelDistributionDesc(0, 0)}
+                  </p>
                 </CardHeader>
-                <CardContent className="py-0 pb-3">
-                  <ScrollArea className="h-[60vh] pr-2">
-                    <div className="space-y-0.5">
-                      <button
-                        onClick={() => setSelectedLevel("all")}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
-                          selectedLevel === "all"
-                            ? "bg-primary text-primary-foreground"
-                            : "hover:bg-muted/60"
-                        }`}
-                      >
-                        {t.allCharts}
-                        <span className="float-right text-xs opacity-70">
-                          {charts.length}
-                        </span>
-                      </button>
-                      {sortedLevels.map((l) => (
+                <CardContent>
+                  <BoxPlot
+                    data={plotLevels}
+                    onSelectLevel={handleSelectLevelFromPlot}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {t.perLevelAggregates}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {t.perLevelDesc}
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <LevelAggregatesTable levels={plotLevels} onSelectLevel={handleSelectLevelFromPlot} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="charts" className="mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
+                <Card className="h-fit md:sticky md:top-[88px]">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm">{t.levels}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="py-0 pb-3">
+                    <ScrollArea className="h-[60vh] pr-2">
+                      <div className="space-y-0.5">
                         <button
-                          key={l.level}
-                          onClick={() => setSelectedLevel(l.level)}
+                          onClick={() => setSelectedLevel("all")}
                           className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
-                            selectedLevel === l.level
+                            selectedLevel === "all"
                               ? "bg-primary text-primary-foreground"
                               : "hover:bg-muted/60"
                           }`}
                         >
-                          <span className="font-mono">
-                            {isSpecialLevel(l.level) && (
-                              <span className="text-amber-400 mr-1">●</span>
-                            )}
-                            {l.level}
-                          </span>
+                          {t.allCharts}
                           <span className="float-right text-xs opacity-70">
-                            {levelCounts.get(l.level) ?? 0}
+                            {charts.length}
                           </span>
                         </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                        {sortedLevels.map((l) => (
+                          <button
+                            key={l.level}
+                            onClick={() => setSelectedLevel(l.level)}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
+                              selectedLevel === l.level
+                                ? "bg-primary text-primary-foreground"
+                                : "hover:bg-muted/60"
+                            }`}
+                          >
+                            <span className="font-mono">
+                              {isSpecialLevel(l.level) && (
+                                <span className="text-amber-400 mr-1">●</span>
+                              )}
+                              {l.level}
+                            </span>
+                            <span className="float-right text-xs opacity-70">
+                              {levelCounts.get(l.level) ?? 0}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
 
-              <div>
-                <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold">
-                      {selectedLevel === "all"
-                        ? t.allChartsTitle
-                        : `${levelLabel(selectedLevel)}`}
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {t.chartsCount(filteredCharts.length)} · {t.sortBy(t.sortKeys[sortKey], t.sortDirs[sortDir])}
-                    </p>
-                  </div>
-                </div>
-                <ChartTable
-                  charts={filteredCharts}
-                  onSelectChart={handleSelectChart}
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                  onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
-                  activePlayer={activePlayer}
-                />
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* PLAYER TAB */}
-          <TabsContent value="player" className="mt-0 space-y-6">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  {t.playerProfile}
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">{t.playerProfileDesc}</p>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSearchPlayer} className="flex gap-2 max-w-sm mb-4">
-                  <Input 
-                    placeholder={t.playerIdPlaceholder} 
-                    value={playerQuery} 
-                    onChange={e => setPlayerQuery(e.target.value)} 
-                  />
-                  <Button type="submit" disabled={playerLoading}>
-                    {playerLoading ? "..." : t.search}
-                  </Button>
-                </form>
-                {playerError && <p className="text-sm text-rose-400 mb-4">{playerError}</p>}
-                
-                {activePlayer && (
-                  <div className="mt-8 space-y-8 animate-in fade-in duration-300">
+                <div>
+                  <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <h3 className="text-2xl font-bold tracking-tight">{activePlayer.id}</h3>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        {t.estimatedSkill}: <span className="font-mono font-medium text-foreground">{activePlayer.data.t > 0 ? `+${activePlayer.data.t.toFixed(3)}` : activePlayer.data.t.toFixed(3)}</span>
-                        {" · "} {t.clearsCount(Object.keys(activePlayer.data.c).length)}
+                      <h2 className="text-lg font-semibold">
+                        {selectedLevel === "all"
+                          ? t.allChartsTitle
+                          : `${levelLabel(selectedLevel)}`}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {t.chartsCount(filteredCharts.length)} · {t.sortBy(t.sortKeys[sortKey], t.sortDirs[sortDir])}
                       </p>
                     </div>
-                    
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <h4 className="text-base font-semibold">{t.recommendedCharts}</h4>
-                        <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-md border border-border/50">
-                          <button 
-                            onClick={() => setTargetGauge("HARD")}
-                            className={`px-3 py-1 text-xs font-medium rounded-sm transition-colors ${targetGauge === "HARD" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                          >
-                            HARD
-                          </button>
-                          <button 
-                            onClick={() => setTargetGauge("V-HARD")}
-                            className={`px-3 py-1 text-xs font-medium rounded-sm transition-colors ${targetGauge === "V-HARD" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                          >
-                            V-HARD
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {getRecommendations().map(c => {
-                          const b_val = (targetGauge === "V-HARD" ? c.b_vhard : c.b_hard) ?? 0;
-                          const prob = pStar(activePlayer.data.t, c.a ?? 1.5, b_val);
-                          const color = targetGauge === "V-HARD" ? "oklch(0.70 0.22 305)" : "oklch(0.70 0.22 25)";
-
-                          return (
-                            <div 
-                              key={c.md5} 
-                              className="p-3 border border-border/50 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors flex flex-col justify-between h-full bg-card shadow-sm" 
-                              onClick={() => handleSelectChart(c)}
-                            >
-                              <div>
-                                <div className="text-sm font-semibold line-clamp-1 mb-0.5 font-jp">{c.title}</div>
-                                <div className="text-[11px] text-muted-foreground line-clamp-1 font-jp">{c.artist || "unknown"}</div>
-                              </div>
-                              <div className="text-xs flex items-center justify-between mt-3 pt-2 border-t border-border/40">
-                                <span className="font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-[10px]">{levelLabel(c.level)}</span>
-                                <span className="text-muted-foreground">P({targetGauge}): <span className="text-foreground font-mono font-medium ml-0.5" style={{ color }}>{(prob * 100).toFixed(0)}%</span></span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {getRecommendations().length === 0 && (
-                          <div className="col-span-full py-8 text-center text-muted-foreground text-sm border border-dashed rounded-lg">
-                            {t.noRecommendations}
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  <ChartTable
+                    charts={filteredCharts}
+                    onSelectChart={handleSelectChart}
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
+                    activePlayer={activePlayer}
+                  />
+                </div>
+              </div>
+            </TabsContent>
 
-          {/* RANKING TAB */}
-          <TabsContent value="ranking" className="mt-0">
-            <RankingTab
-              charts={charts}
-              onSelectPlayer={handleSelectPlayerFromRanking}
-            />
-          </TabsContent>
+            <TabsContent value="player" className="mt-0 space-y-6">
+              <PlayerTab
+                charts={charts}
+                samplePlayers={null} 
+                playerThetaMean={meta?.player_theta_mean ?? 0}
+                playerThetaStd={meta?.player_theta_std ?? 1}
+                onSelectChart={handleSelectChart}
+                activePlayerExternal={activePlayer}
+                onPlayerChange={(id, player) => {
+                  if (player) {
+                    setActivePlayer({ id: id!, data: player });
+                  } else {
+                    setActivePlayer(null);
+                  }
+                }}
+              />
+            </TabsContent>
 
-          {/* ABOUT TAB */}
-          <TabsContent value="about" className="mt-0">
-            <AboutTab meta={meta} />
-          </TabsContent>
-        </Tabs>
-      </main>
+            <TabsContent value="ranking" className="mt-0">
+              <RankingTab
+                charts={charts}
+                onSelectPlayer={handleSelectPlayerFromRanking}
+              />
+            </TabsContent>
+
+            <TabsContent value="about" className="mt-0">
+              <AboutTab meta={meta} />
+            </TabsContent>
+          </Tabs>
+        </main>
+      </div>
 
       <ChartDetailDialog
         chart={selectedChart}
@@ -518,13 +332,64 @@ export default function Home() {
         onOpenChange={setDetailOpen}
         activePlayer={activePlayer}
       />
-    </div>
+    </ScaleProvider>
   );
 }
 
-function fmt(v: number): string {
-  const sign = v >= 0 ? "+" : "";
-  return `${sign}${v.toFixed(2)}`;
+function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[], onSelectLevel: (l: string) => void }) {
+  const { t } = useLang();
+  const { format } = useScale();
+
+  return (
+    <div className="max-h-[420px] overflow-y-auto rounded-md border border-border/50">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-card z-10">
+          <tr className="border-b border-border/60 text-left">
+            <th className="px-3 py-2 font-medium text-muted-foreground">{t.level}</th>
+            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.chartsCol}</th>
+            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.hardMed}</th>
+            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.hardIQR}</th>
+            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.vhardMed}</th>
+            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.vhardIQR}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {levels.map((l) => (
+            <tr
+              key={l.level}
+              className="border-b border-border/30 hover:bg-muted/30 cursor-pointer"
+              onClick={() => onSelectLevel(l.level)}
+            >
+              <td className="px-3 py-1.5 font-mono">
+                <span className={isSpecialLevel(l.level) ? "text-amber-400" : ""}>
+                  {l.level}
+                </span>
+              </td>
+              <td className="px-3 py-1.5 text-right font-mono text-muted-foreground">
+                {l.n_charts_valid}/{l.n_charts_total}
+              </td>
+              <td className="px-3 py-1.5 text-right font-mono" style={{ color: "oklch(0.78 0.18 25)" }}>
+                {format(l.hard_median)}
+              </td>
+              <td className="px-3 py-1.5 text-right font-mono text-[11px] text-muted-foreground">
+                {l.hard_q1 != null && l.hard_q3 != null
+                  ? `[${format(l.hard_q1)}, ${format(l.hard_q3)}]`
+                  : "–"}
+              </td>
+              <td className="px-3 py-1.5 text-right font-mono" style={{ color: "oklch(0.78 0.18 305)" }}>
+                {format(l.vhard_median)}
+              </td>
+              <td className="px-3 py-1.5 text-right font-mono text-[11px] text-muted-foreground">
+                {l.vhard_q1 != null && l.vhard_q3 != null
+                  ? `[${format(l.vhard_q1)}, ${format(l.vhard_q3)}]`
+                  : "–"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function AboutTab({ meta }: { meta: Meta | null }) {
@@ -648,20 +513,6 @@ function AboutTab({ meta }: { meta: Meta | null }) {
                 difficulty values will be displayed once the gauge mechanics are
                 finalized.
               </div>
-              <div className="rounded-md border border-border/40 bg-muted/20 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground/80">Floor effect (U_E 1–19):</strong>{" "}
-                For charts below U_E 20, approximately 70–96% of active Qwilight
-                players achieve a V-HARD-or-better clear. This heavy skew means
-                the GRM has very little information to differentiate difficulty
-                among these charts – almost everyone clears them, so the
-                difficulty estimates cluster together in a narrow band (the
-                &quot;floor&quot;). The box plot and per-level table therefore
-                only display U_E 20 and above, where the player base actually
-                splits across clear tiers and the model has meaningful
-                discriminative power. Individual chart difficulty values for
-                lower levels are still available in the Charts tab, but should
-                be interpreted with caution due to high uncertainty.
-              </div>
             </>
           ) : (
             <>
@@ -700,18 +551,6 @@ function AboutTab({ meta }: { meta: Meta | null }) {
                 대시보드에는 표시하지 않습니다. NORMAL 게이지는 현재 Qwilight
                 개발자에 의해 재작업 중이며, 게이지 메커니즘이 확정되면 난이도
                 값이 표시될 예정입니다.
-              </div>
-              <div className="rounded-md border border-border/40 bg-muted/20 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground/80">바닥 효과 (U_E 1–19):</strong>{" "}
-                U_E 20 미만의 채보에서는 활동적인 Qwilight 플레이어의 약 70–96%가
-                V-HARD 이상의 클리어를 달성합니다. 이러한 심한 편향은 GRM이
-                이 채보들 사이의 난이도를 분별할 정보가 거의 없음을 의미합니다 –
-                거의 모든 플레이어가 클리어하므로 난이도 추정치가 좁은
-                대역(&quot;바닥&quot;)에 모이게 됩니다. 따라서 박스 플롯과
-                레벨별 테이블은 플레이어 기반이 실제로 클리어 tier에 걸쳐
-                분할되고 모델이 의미 있는 변별력을 갖는 U_E 20 이상만 표시합니다.
-                하위 레벨의 개별 채보 난이도 값은 채보 탭에서 여전히 확인할 수
-                있지만, 높은 불확실성으로 인해 주의해서 해석해야 합니다.
               </div>
             </>
           )}
@@ -752,17 +591,19 @@ function AboutTab({ meta }: { meta: Meta | null }) {
           {t.lang === "en" ? (
             <>
               <div><strong className="text-foreground">Data pipeline:</strong> Python 3 · NumPy · SciPy · pandas</div>
-              <div><strong className="text-foreground">Statistical model:</strong> Custom GRM marginal MLE (21-node Gauss-Hermite quadrature)</div>
+              <div><strong className="text-foreground">Statistical model:</strong> Bayesian Graded Response Model (MCMC NUTS via Numpyro)</div>
               <div><strong className="text-foreground">Frontend:</strong> Next.js 16 · TypeScript · Tailwind CSS · shadcn/ui</div>
               <div><strong className="text-foreground">Visualization:</strong> Custom SVG (box plots, GRM curves)</div>
+              <div><strong className="text-foreground">Scale mapping:</strong> Piecewise linear interpolation (LERP) over posterior medians</div>
               <div><strong className="text-foreground">Automation target:</strong> GitHub Actions cron → static JSON</div>
             </>
           ) : (
             <>
               <div><strong className="text-foreground">데이터 파이프라인:</strong> Python 3 · NumPy · SciPy · pandas</div>
-              <div><strong className="text-foreground">통계 모델:</strong> 커스텀 GRM 주변부 MLE (21-노드 Gauss-Hermite 적분)</div>
+              <div><strong className="text-foreground">통계 모델:</strong> 베이지안 등급 반응 모델 (Numpyro 기반 MCMC NUTS)</div>
               <div><strong className="text-foreground">프론트엔드:</strong> Next.js 16 · TypeScript · Tailwind CSS · shadcn/ui</div>
               <div><strong className="text-foreground">시각화:</strong> 커스텀 SVG (박스 플롯, GRM 곡선)</div>
+              <div><strong className="text-foreground">스케일 변환:</strong> 사후 중앙값 기반 구간 선형 보간 (LERP)</div>
               <div><strong className="text-foreground">자동화 목표:</strong> GitHub Actions cron → 정적 JSON</div>
             </>
           )}

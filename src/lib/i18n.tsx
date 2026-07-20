@@ -8,6 +8,8 @@ export const STRINGS = {
   en: {
     // Header
     subtitle: "a Qwilight-oriented U_E Scale Difficulty Estimator",
+    scaleLerp: "U_E Scale",
+    scaleRaw: "Raw θ",
     charts: "charts",
     players: "players",
     clears: "clears",
@@ -23,7 +25,7 @@ export const STRINGS = {
     levelDistribution: "U_E Level Difficulty Distribution",
     levelDistributionDesc: (valid: number, provisional: number) =>
       `Median & IQR of raw GRM difficulty estimates, grouped by official U_E level. Red = HARD clear, purple = V-HARD clear. ${valid} valid · ${provisional} provisional charts. Click any column to drill into that level's charts.`,
-    yAxisLabel: "Raw difficulty (logits, θ-scale)",
+    yAxisLabel: (isLerp: boolean) => isLerp ? "Interpolated U_E Level" : "Raw difficulty (logits, θ-scale)",
     xAxisLabel: "Nominal U_E level (click a column to drill into charts)",
     legendHard: "HARD clear",
     legendVhard: "V-HARD clear",
@@ -31,7 +33,7 @@ export const STRINGS = {
       `U_E ${level} – ${valid}/${total} valid charts (click to drill in)`,
     perLevelAggregates: "Per-Level Aggregates",
     perLevelDesc:
-      "Median b values per level. Charts with insufficient data (n < 25, zero FAILED/NORMAL or zero HARD/V-HARD clears, or SE > 0.5) are tagged provisional and excluded from medians.",
+      "Median b values per level. Charts with insufficient data (n < 10 or huge posterior variance SE > 1.0) are tagged provisional and excluded from medians.",
     level: "Level",
     chartsCol: "Charts",
     hardMed: "HARD med",
@@ -65,8 +67,8 @@ export const STRINGS = {
 
     // Chart table headers
     chart: "Chart",
-    bHard: "b_HARD",
-    bVhard: "b_V-HARD",
+    bHard: (isLerp: boolean) => isLerp ? "HARD" : "b_HARD",
+    bVhard: (isLerp: boolean) => isLerp ? "V-HARD" : "b_V-HARD",
     disc: "a",
 
     // Chart detail dialog
@@ -87,11 +89,12 @@ export const STRINGS = {
     playerIdPlaceholder: "Enter Avatar ID (e.g. Laurency)",
     search: "Search",
     playerNotFound: "Player not found. Make sure you typed the exact Avatar ID.",
-    estimatedSkill: "Estimated Skill (θ)",
+    estimatedSkill: "Estimated Skill",
     clearsCount: (n: number) => `${n} clears logged`,
     recommendedCharts: "Recommended Targets",
     yourProbabilities: "Your Clear Probabilities",
     noRecommendations: "No suitable recommendations found. You might be too good!",
+    histogramXAxis: "Player skill θ (Raw logits)",
 
     // Ranking tab
     rankingTitle: "Player Ranking",
@@ -99,7 +102,7 @@ export const STRINGS = {
     rankingSearchPlaceholder: "Filter by Avatar ID...",
     rankCol: "#",
     playerCol: "Player",
-    thetaCol: "θ (skill)",
+    thetaCol: (isLerp: boolean) => isLerp ? "U_E (skill)" : "θ (skill)",
     clearsCol: "Clears",
     vhardCol: "V-HARD",
     hardCol: "HARD",
@@ -122,13 +125,15 @@ export const STRINGS = {
     runtimeLabel: "Runtime",
 
     // Loading / error
-    computing: "Computing GRM parameters…",
+    computing: "Computing GRM parameters via MCMC…",
     loadFailed: "Failed to load data",
   },
 
   ko: {
     // Header
     subtitle: "Qwilight 기반 U_E 스케일 난이도 추정기",
+    scaleLerp: "U_E 환산",
+    scaleRaw: "원시 θ",
     charts: "채보",
     players: "플레이어",
     clears: "클리어",
@@ -144,7 +149,7 @@ export const STRINGS = {
     levelDistribution: "U_E 레벨별 난이도 분포",
     levelDistributionDesc: (valid: number, provisional: number) =>
       `GRM 난이도 추정치의 중앙값과 IQR을 공식 U_E 레벨별로 그룹화. 빨강 = HARD 클리어, 보라 = V-HARD 클리어. 유효 ${valid}개 · 임시 ${provisional}개 채보. 각 열을 클릭하면 해당 레벨의 채보로 이동합니다.`,
-    yAxisLabel: "원시 난이도 (로짓, θ 스케일)",
+    yAxisLabel: (isLerp: boolean) => isLerp ? "환산 U_E 레벨" : "원시 난이도 (로짓, θ 스케일)",
     xAxisLabel: "공식 U_E 레벨 (열을 클릭하면 채보로 이동)",
     legendHard: "HARD 클리어",
     legendVhard: "V-HARD 클리어",
@@ -152,7 +157,7 @@ export const STRINGS = {
       `U_E ${level} – 유효 ${valid}/${total}개 채보 (클릭하면 이동)`,
     perLevelAggregates: "레벨별 집계",
     perLevelDesc:
-      "레벨별 b 값 중앙값. 데이터가 부족한 채보 (n < 25, FAILED/NORMAL 또는 HARD/V-HARD 클리어가 0건, 또는 SE > 0.5)는 임시로 표기되며 중앙값 계산에서 제외됩니다.",
+      "레벨별 b 값 중앙값. 데이터가 부족하거나 사후 분산이 너무 큰 채보 (n < 10 또는 SE > 1.0)는 임시로 표기되며 중앙값 계산에서 제외됩니다.",
     level: "레벨",
     chartsCol: "채보",
     hardMed: "HARD 중앙값",
@@ -186,8 +191,8 @@ export const STRINGS = {
 
     // Chart table headers
     chart: "채보",
-    bHard: "b_HARD",
-    bVhard: "b_V-HARD",
+    bHard: (isLerp: boolean) => isLerp ? "HARD" : "b_HARD",
+    bVhard: (isLerp: boolean) => isLerp ? "V-HARD" : "b_V-HARD",
     disc: "a",
 
     // Chart detail dialog
@@ -208,11 +213,12 @@ export const STRINGS = {
     playerIdPlaceholder: "Avatar ID 입력 (예: Laurency)",
     search: "검색",
     playerNotFound: "플레이어를 찾을 수 없습니다. 정확한 Avatar ID를 입력했는지 확인하세요.",
-    estimatedSkill: "추정 실력 (θ)",
+    estimatedSkill: "추정 실력",
     clearsCount: (n: number) => `클리어 기록 ${n}개`,
     recommendedCharts: "추천 목표",
     yourProbabilities: "예상 클리어 확률",
     noRecommendations: "적합한 추천을 찾을 수 없습니다. 이미 모든 채보를 클리어하셨을 수도 있습니다!",
+    histogramXAxis: "플레이어 실력 θ (원시 로짓)",
 
     // Ranking tab
     rankingTitle: "플레이어 랭킹",
@@ -220,7 +226,7 @@ export const STRINGS = {
     rankingSearchPlaceholder: "Avatar ID로 필터링...",
     rankCol: "#",
     playerCol: "플레이어",
-    thetaCol: "θ (실력)",
+    thetaCol: (isLerp: boolean) => isLerp ? "U_E (실력)" : "θ (실력)",
     clearsCol: "클리어",
     vhardCol: "V-HARD",
     hardCol: "HARD",
@@ -243,7 +249,7 @@ export const STRINGS = {
     runtimeLabel: "실행시간",
 
     // Loading / error
-    computing: "GRM 파라미터 계산 중…",
+    computing: "MCMC 기반 GRM 파라미터 계산 중…",
     loadFailed: "데이터 로드 실패",
   },
 } as const;

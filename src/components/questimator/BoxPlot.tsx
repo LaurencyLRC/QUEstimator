@@ -4,31 +4,16 @@ import { useMemo, useState, useCallback } from "react";
 import type { LevelSummary } from "@/lib/questimator-types";
 import { levelSortKey } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
+import { useScale } from "@/lib/value-scale";
 
 interface Props {
   data: LevelSummary[];
   onSelectLevel?: (level: string) => void;
 }
 
-function fmt(v: number | null): string {
-  if (v == null) return "–";
-  const sign = v >= 0 ? "+" : "";
-  return `${sign}${v.toFixed(2)}`;
-}
-
-/**
- * Dual-overlay Box Plot:
- *   X-axis: nominal U_E level (1..30 + specials)
- *   Y-axis: raw difficulty (logits)
- *   Red boxes = HARD clear difficulty (Q1, median, Q3)
- *   Purple boxes = V-HARD clear difficulty (Q1, median, Q3)
- *
- * Interactive enhancements:
- *   – Hovering a column dims all other columns.
- *   – A fixed-position tooltip follows the cursor with exact median + IQR.
- */
 export function BoxPlot({ data, onSelectLevel }: Props) {
   const { t } = useLang();
+  const { mode, toScale, format } = useScale();
   const [hovered, setHovered] = useState<string | null>(null);
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null);
 
@@ -41,6 +26,16 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
     [data]
   );
 
+  const mapped = useMemo(() => sorted.map(d => ({
+    ...d,
+    hard_median: toScale(d.hard_median),
+    hard_q1: toScale(d.hard_q1),
+    hard_q3: toScale(d.hard_q3),
+    vhard_median: toScale(d.vhard_median),
+    vhard_q1: toScale(d.vhard_q1),
+    vhard_q3: toScale(d.vhard_q3),
+  })), [sorted, toScale]);
+
   const W = 1100;
   const H = 520;
   const PAD = { top: 40, right: 40, bottom: 80, left: 70 };
@@ -48,11 +43,11 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
   const innerH = H - PAD.top - PAD.bottom;
 
   const allVals: number[] = [];
-  for (const d of sorted) {
+  for (const d of mapped) {
     if (d.hard_q1 != null) allVals.push(d.hard_q1, d.hard_q3 ?? d.hard_q1);
     if (d.vhard_q1 != null) allVals.push(d.vhard_q1, d.vhard_q3 ?? d.vhard_q1);
   }
-  if (allVals.length === 0) allVals.push(-3, 3);
+  if (allVals.length === 0) allVals.push(mode === "lerp" ? 20 : -3, mode === "lerp" ? 31 : 3);
   let yMin = Math.min(...allVals);
   let yMax = Math.max(...allVals);
   const yPad = (yMax - yMin) * 0.1;
@@ -62,18 +57,18 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
   const yScale = (v: number) =>
     PAD.top + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
 
-  const slotW = innerW / sorted.length;
+  const slotW = innerW / mapped.length;
   const xCenter = (i: number) => PAD.left + slotW * (i + 0.5);
   
   const boxW = Math.min(slotW * 0.64, 32);
 
   const yTicks = useMemo(() => {
     const ticks: number[] = [];
-    const step = yMax - yMin <= 6 ? 1 : 2;
+    const step = mode === "lerp" ? (yMax - yMin <= 15 ? 1 : 2) : (yMax - yMin <= 6 ? 1 : 2);
     const start = Math.ceil(yMin / step) * step;
     for (let v = start; v <= yMax; v += step) ticks.push(v);
     return ticks;
-  }, [yMin, yMax]);
+  }, [yMin, yMax, mode]);
 
   const handleEnter = useCallback((level: string) => {
     setHovered(level);
@@ -88,7 +83,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
     setTipPos(null);
   }, []);
 
-  const hoveredData = useMemo(
+  const hoveredRawData = useMemo(
     () => sorted.find((d) => d.level === hovered) ?? null,
     [sorted, hovered]
   );
@@ -103,10 +98,10 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
         onMouseLeave={handleLeave}
       >
         {/* Background grid */}
-        {yTicks.map((t) => {
-          const y = yScale(t);
+        {yTicks.map((t_val) => {
+          const y = yScale(t_val);
           return (
-            <g key={`grid-${t}`}>
+            <g key={`grid-${t_val}`}>
               <line
                 x1={PAD.left}
                 y1={y}
@@ -124,7 +119,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                 fontSize={11}
                 fontFamily="var(--font-geist-mono)"
               >
-                {t >= 0 ? `+${t.toFixed(0)}` : t.toFixed(0)}
+                {mode === "raw" ? (t_val >= 0 ? `+${t_val.toFixed(0)}` : t_val.toFixed(0)) : t_val.toFixed(0)}
               </text>
             </g>
           );
@@ -139,11 +134,11 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
           fontSize={12}
           transform={`rotate(-90 20 ${H / 2})`}
         >
-          {t.yAxisLabel}
+          {t.yAxisLabel(mode === "lerp")}
         </text>
 
         {/* Boxes */}
-        {sorted.map((d, i) => {
+        {mapped.map((d, i) => {
           const cx = xCenter(i);
           
           const hardX = cx - boxW / 2;
@@ -297,34 +292,34 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
         />
       </svg>
 
-      {/* Floating tooltip */}
-      {hovered && hoveredData && tipPos && (
+      {/* Floating tooltip using the original Raw data, mapped via format() */}
+      {hovered && hoveredRawData && tipPos && (
         <div
           className="fixed z-50 pointer-events-none rounded-lg border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl px-3 py-2.5 text-xs"
           style={{ left: tipPos.x, top: tipPos.y }}
         >
           <div className="font-semibold text-foreground mb-1.5 font-mono">
-            {hoveredData.level}
+            {hoveredRawData.level}
           </div>
           
-          {hoveredData.vhard_median != null && (
+          {hoveredRawData.vhard_median != null && (
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "oklch(0.62 0.22 305)" }} />
               <span className="text-muted-foreground w-12">V-HARD</span>
-              <span className="font-mono text-foreground">{fmt(hoveredData.vhard_median)}</span>
+              <span className="font-mono text-foreground">{format(hoveredRawData.vhard_median)}</span>
               <span className="font-mono text-muted-foreground text-[10px]">
-                [{fmt(hoveredData.vhard_q1)}, {fmt(hoveredData.vhard_q3)}]
+                [{format(hoveredRawData.vhard_q1)}, {format(hoveredRawData.vhard_q3)}]
               </span>
             </div>
           )}
           
-          {hoveredData.hard_median != null && (
+          {hoveredRawData.hard_median != null && (
             <div className="flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "oklch(0.62 0.22 25)" }} />
               <span className="text-muted-foreground w-12">HARD</span>
-              <span className="font-mono text-foreground">{fmt(hoveredData.hard_median)}</span>
+              <span className="font-mono text-foreground">{format(hoveredRawData.hard_median)}</span>
               <span className="font-mono text-muted-foreground text-[10px]">
-                [{fmt(hoveredData.hard_q1)}, {fmt(hoveredData.hard_q3)}]
+                [{format(hoveredRawData.hard_q1)}, {format(hoveredRawData.hard_q3)}]
               </span>
             </div>
           )}

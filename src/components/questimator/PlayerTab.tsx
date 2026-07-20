@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Search, User, Target, Sparkles, TrendingUp } from "lucide-react";
 import { useLang } from "@/lib/i18n";
+import { useScale } from "@/lib/value-scale";
 import {
   type Chart,
   type PlayerData,
@@ -33,47 +34,29 @@ interface Props {
   samplePlayers: SamplePlayers | null;
   playerThetaMean: number;
   playerThetaStd: number;
-  /** Called when the user clicks a chart row (opens the shared detail dialog). */
   onSelectChart: (c: Chart) => void;
-  /**
-   * Called whenever the loaded player changes (including null when no player
-   * is loaded). The parent uses this to annotate the main Chart Tables.
-   */
+  activePlayerExternal?: { id: string; data: PlayerData } | null;
   onPlayerChange: (avatarID: string | null, player: PlayerData | null) => void;
 }
 
-// Status integer → label, matching the pipeline convention.
 const STATUS_LABELS: Record<number, { short: string; color: string }> = {
-  0: { short: "F",  color: "oklch(0.55 0 0)"        }, // FAILED
-  1: { short: "N",  color: "oklch(0.72 0.16 95)"    }, // NORMAL
-  2: { short: "H",  color: "oklch(0.70 0.22 25)"    }, // HARD
-  3: { short: "VH", color: "oklch(0.70 0.22 305)"   }, // V-HARD
+  0: { short: "F",  color: "oklch(0.55 0 0)"        },
+  1: { short: "N",  color: "oklch(0.72 0.16 95)"    },
+  2: { short: "H",  color: "oklch(0.70 0.22 25)"    },
+  3: { short: "VH", color: "oklch(0.70 0.22 305)"   },
 };
 
-// Recommendation sweet spot: P(V-HARD) between these thresholds.
-// Charts in this range are challenging but achievable — the ideal "next target".
 const REC_MIN_PROB = 0.30;
 const REC_MAX_PROB = 0.70;
 const REC_LIMIT = 24;
 
-// For the "Your Clear Probabilities" section, show all uncompleted charts
-// with at least this much V-HARD probability, sorted descending.
 const PROB_MIN_THRESHOLD = 0.05;
 const PROB_LIMIT = 60;
-
-function fmtTheta(v: number): string {
-  const sign = v >= 0 ? "+" : "";
-  return `${sign}${v.toFixed(3)}`;
-}
 
 function fmtPct(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
 }
 
-/**
- * Compute P(V-HARD clear | θ, chart) = P*(θ, a, b_vhard).
- * Returns null if the chart lacks valid GRM parameters.
- */
 function pVhard(theta: number, c: Chart): number | null {
   if (c.a == null || c.b_vhard == null) return null;
   return pStar(theta, c.a, c.b_vhard);
@@ -85,9 +68,11 @@ export function PlayerTab({
   playerThetaMean,
   playerThetaStd,
   onSelectChart,
+  activePlayerExternal,
   onPlayerChange,
 }: Props) {
   const { t } = useLang();
+  const { mode, format } = useScale();
   const [query, setQuery] = useState("");
   const [submittedID, setSubmittedID] = useState("");
   const [players, setPlayers] = useState<PlayersDict | null>(null);
@@ -95,9 +80,6 @@ export function PlayerTab({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
-  // Cache the on-demand fetch of players.json. This file is ~1.8 MB so we
-  // don't want to fetch it on initial page load — only when the user first
-  // submits a search. Once loaded, it stays cached for the session.
   const fetchPlayers = useRef<( () => Promise<PlayersDict | null> ) | null>(null);
 
   useEffect(() => {
@@ -121,15 +103,14 @@ export function PlayerTab({
   }, [players]);
 
   const currentPlayer = useMemo<PlayerData | null>(() => {
+    if (activePlayerExternal) return activePlayerExternal.data;
     if (!players || !submittedID) return null;
     return players[submittedID] ?? null;
-  }, [players, submittedID]);
+  }, [players, submittedID, activePlayerExternal]);
 
-  // Notify parent whenever the loaded player changes so it can annotate the
-  // main Chart Tables with the player's clear history.
   useEffect(() => {
-    onPlayerChange(currentPlayer ? submittedID : null, currentPlayer);
-  }, [currentPlayer, submittedID, onPlayerChange]);
+    onPlayerChange(currentPlayer ? (activePlayerExternal?.id ?? submittedID) : null, currentPlayer);
+  }, [currentPlayer, submittedID, activePlayerExternal, onPlayerChange]);
 
   const handleSearch = async () => {
     const id = query.trim();
@@ -140,9 +121,9 @@ export function PlayerTab({
       setNotFound(false);
       return;
     }
-    // Player IDs in the source data are case-sensitive — preserve user input.
-    if (data[id]) {
-      setSubmittedID(id);
+    const foundId = Object.keys(data).find(k => k.toLowerCase() === id.toLowerCase());
+    if (foundId) {
+      setSubmittedID(foundId);
       setNotFound(false);
     } else {
       setSubmittedID("");
@@ -157,35 +138,27 @@ export function PlayerTab({
     }
   };
 
-  // ----- Derived analytics for the loaded player -----
   const analytics = useMemo(() => {
     if (!currentPlayer) return null;
 
-    // Build a chart_id → Chart lookup so we can resolve clears quickly.
     const chartById = new Map<number, Chart>();
     for (const c of charts) chartById.set(c.id, c);
 
-    // Tally clears by status.
     const statusCounts = { 0: 0, 1: 0, 2: 0, 3: 0 };
     for (const s of Object.values(currentPlayer.c)) {
       if (s >= 0 && s <= 3) statusCounts[s as 0 | 1 | 2 | 3] += 1;
     }
     const totalClears = statusCounts[0] + statusCounts[1] + statusCounts[2] + statusCounts[3];
 
-    // Compute P(V-HARD) for every chart the player has NOT V-HARD cleared.
-    // We sort by descending probability and bucket into:
-    //   - recommendations: P in [REC_MIN_PROB, REC_MAX_PROB]
-    //   - allProbabilities: P >= PROB_MIN_THRESHOLD
     const theta = currentPlayer.t;
     type Rec = { chart: Chart; p: number };
     const recommendations: Rec[] = [];
     const allProbabilities: Rec[] = [];
 
     for (const c of charts) {
-      if (c.provisional) continue; // skip unreliable charts for recommendations
+      if (c.provisional) continue;
       const p = pVhard(theta, c);
       if (p == null) continue;
-      // Skip charts the player has already V-HARD cleared.
       const status = currentPlayer.c[String(c.id)];
       if (status === 3) continue;
 
@@ -197,8 +170,6 @@ export function PlayerTab({
       }
     }
 
-    // Recommendations: sort by closeness to 50% (the "ideal challenge" point),
-    // then by descending difficulty to favour harder charts at the same distance.
     recommendations.sort((a, b) => {
       const da = Math.abs(a.p - 0.5);
       const db = Math.abs(b.p - 0.5);
@@ -207,12 +178,9 @@ export function PlayerTab({
     });
     const recommendationsLimited = recommendations.slice(0, REC_LIMIT);
 
-    // All probabilities: sort by descending P(V-HARD).
     allProbabilities.sort((a, b) => b.p - a.p);
     const allProbabilitiesLimited = allProbabilities.slice(0, PROB_LIMIT);
 
-    // Player's already-V-HARD-cleared charts (for the "Your Clears" summary).
-    // Just used for a count breakdown by level.
     const clearedByLevel = new Map<string, number>();
     for (const [idStr, status] of Object.entries(currentPlayer.c)) {
       if (status !== 3) continue;
@@ -235,8 +203,6 @@ export function PlayerTab({
     };
   }, [currentPlayer, charts]);
 
-  // Population percentile: where does this player sit relative to others?
-  // Computed from sample-players histogram by integrating bins up to θ.
   const percentile = useMemo(() => {
     if (!currentPlayer || !samplePlayers) return null;
     const edges = samplePlayers.theta_edges;
@@ -252,7 +218,6 @@ export function PlayerTab({
       if (theta >= hi) {
         below += hist[i];
       } else {
-        // Partial bin — linear interpolation.
         const frac = (theta - lo) / (hi - lo);
         below += hist[i] * frac;
       }
@@ -262,7 +227,6 @@ export function PlayerTab({
 
   return (
     <div className="space-y-6">
-      {/* Search bar */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
@@ -305,7 +269,7 @@ export function PlayerTab({
           )}
           {currentPlayer && (
             <div className="mt-2 text-xs text-muted-foreground">
-              <span className="font-mono text-foreground">{submittedID}</span>
+              <span className="font-mono text-foreground">{activePlayerExternal?.id ?? submittedID}</span>
               <span className="mx-1.5">·</span>
               {t.clearsCount(analytics?.totalClears ?? 0)}
             </div>
@@ -315,7 +279,6 @@ export function PlayerTab({
 
       {currentPlayer && analytics && (
         <>
-          {/* Skill panel */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-2">
@@ -327,7 +290,7 @@ export function PlayerTab({
               <CardContent className="space-y-3">
                 <div>
                   <div className="font-mono text-3xl font-bold">
-                    θ = <span className="text-cyan-400">{fmtTheta(currentPlayer.t)}</span>
+                    <span className="text-cyan-400">{format(currentPlayer.t, mode === "lerp" ? 2 : 3)}</span>
                   </div>
                   {percentile != null && (
                     <div className="text-xs text-muted-foreground mt-1">
@@ -338,16 +301,18 @@ export function PlayerTab({
                   )}
                 </div>
                 {samplePlayers && (
+                  <div>
                   <PlayerSkillHistogram
                     data={{
                       ...samplePlayers,
-                      // Override mean marker with the loaded player's θ so the
-                      // dashed line points at where they sit on the curve.
                       theta_mean: currentPlayer.t,
                     }}
                   />
+                  <div className="text-[10px] text-muted-foreground text-center mt-1">
+                    {t.histogramXAxis}
+                  </div>
+                  </div>
                 )}
-                {/* Clear-tier breakdown */}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   {([3, 2, 1, 0] as const).map((s) => {
                     const meta = STATUS_LABELS[s];
@@ -371,7 +336,6 @@ export function PlayerTab({
               </CardContent>
             </Card>
 
-            {/* Cleared-by-level summary */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">
@@ -405,14 +369,13 @@ export function PlayerTab({
                 )}
                 <p className="text-[11px] text-muted-foreground mt-3">
                   {t.lang === "en"
-                    ? `Population: μ=${fmtTheta(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`
-                    : `모집단: μ=${fmtTheta(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`}
+                    ? `Population: μ=${format(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`
+                    : `모집단: μ=${format(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`}
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Recommended targets */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -438,6 +401,9 @@ export function PlayerTab({
                       chart={chart}
                       p={p}
                       onClick={() => onSelectChart(chart)}
+                      formatFn={format}
+                      t={t}
+                      mode={mode}
                     />
                   ))}
                 </div>
@@ -445,7 +411,6 @@ export function PlayerTab({
             </CardContent>
           </Card>
 
-          {/* All clear probabilities */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -467,7 +432,7 @@ export function PlayerTab({
                         <th className="px-3 py-2 font-medium text-muted-foreground text-xs">{t.chart}</th>
                         <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-center w-[60px]">{t.level}</th>
                         <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">P(V-HARD)</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">{t.bVhard}</th>
+                        <th className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">{t.bVhard(mode === "lerp")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -496,7 +461,7 @@ export function PlayerTab({
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
                             <span style={{ color: "oklch(0.78 0.18 305)" }}>
-                              {fmtTheta(chart.b_vhard_display ?? 0)}
+                              {format(chart.b_vhard_display)}
                             </span>
                           </TableCell>
                         </tr>
@@ -513,20 +478,21 @@ export function PlayerTab({
   );
 }
 
-// Re-export TableCell from the table primitives so we can use it inline above
-// without an extra import dance.
-// (Table primitives are imported at the top of the file.)
-
 function RecommendationCard({
   chart,
   p,
   onClick,
+  formatFn,
+  t,
+  mode
 }: {
   chart: Chart;
   p: number;
   onClick: () => void;
+  formatFn: (val: number | null | undefined) => string;
+  t: any;
+  mode: string;
 }) {
-  const { t } = useLang();
   return (
     <button
       onClick={onClick}
@@ -549,7 +515,6 @@ function RecommendationCard({
           {fmtPct(p)}
         </span>
       </div>
-      {/* Probability bar */}
       <div className="h-1 rounded-full bg-muted overflow-hidden">
         <div
           className="h-full"
@@ -561,7 +526,7 @@ function RecommendationCard({
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          {t.bVhard}: <span style={{ color: "oklch(0.78 0.18 305)" }}>{fmtTheta(chart.b_vhard_display ?? 0)}</span>
+          {t.bVhard(mode === "lerp")}: <span style={{ color: "oklch(0.78 0.18 305)" }}>{formatFn(chart.b_vhard_display)}</span>
         </span>
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>
@@ -570,11 +535,6 @@ function RecommendationCard({
 }
 
 function ProbabilityBadge({ p }: { p: number }) {
-  // Color by probability band.
-  //   < 0.20 → muted   (long shot)
-  //  < 0.50 → amber    (tough)
-  //  < 0.80 → cyan     (achievable)
-  //  ≥ 0.80 → emerald  (likely)
   let color = "oklch(0.55 0 0)";
   if (p >= 0.80) color = "oklch(0.70 0.18 145)";
   else if (p >= 0.50) color = "oklch(0.70 0.18 200)";

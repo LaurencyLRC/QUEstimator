@@ -16,6 +16,7 @@ import { ArrowUpDown, Search } from "lucide-react";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
 import { levelLabel, levelSortKey, isSpecialLevel, pStar } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
+import { useScale } from "@/lib/value-scale";
 
 export type SortKey = "title" | "level" | "b_vhard" | "b_hard" | "a" | "n";
 export type SortDir = "asc" | "desc";
@@ -27,12 +28,6 @@ interface Props {
   sortDir: SortDir;
   onSortChange: (key: SortKey, dir: SortDir) => void;
   activePlayer?: { id: string; data: PlayerData } | null;
-}
-
-function fmt(v: number | null, digits = 2): string {
-  if (v == null || Number.isNaN(v)) return "–";
-  const sign = v >= 0 ? "+" : "";
-  return `${sign}${v.toFixed(digits)}`;
 }
 
 function ClearDistBar({
@@ -53,13 +48,8 @@ function ClearDistBar({
   const nLower = nNormal + nFailed;
   const pct = (v: number) => (v / n) * 100;
 
-  // Three-layer stack (right-aligned):
-  //   top    — percentages "XX.X%/XX.X%/XX.X%" summing to 100%
-  //   middle — 3-segment mini bar (V-HARD / HARD / NORMAL+FAILED)
-  //   bottom — raw counts "V / H / lower"
   return (
     <div className="flex flex-col items-end gap-1" title={`V-HARD ${nVhard} | HARD ${nHard} | NORMAL+FAILED ${nLower} (n=${n})`}>
-      {/* Percentages on top */}
       <span className="text-[10px] font-mono leading-none tabular-nums">
         <span style={{ color: "oklch(0.70 0.22 305)" }}>{pct(nVhard).toFixed(1)}%</span>
         <span className="text-border mx-0.5">/</span>
@@ -67,7 +57,6 @@ function ClearDistBar({
         <span className="text-border mx-0.5">/</span>
         <span className="text-muted-foreground">{pct(nLower).toFixed(1)}%</span>
       </span>
-      {/* Mini bar in the middle */}
       <div className="w-20 h-2 rounded-sm overflow-hidden flex bg-muted">
         <div
           style={{ width: `${pct(nVhard)}%`, background: "oklch(0.62 0.22 305)" }}
@@ -82,7 +71,6 @@ function ClearDistBar({
           className="h-full"
         />
       </div>
-      {/* Raw counts on bottom */}
       <span className="text-[10px] font-mono text-muted-foreground leading-none tabular-nums">
         <span style={{ color: "oklch(0.70 0.22 305)" }}>{nVhard}</span>
         <span className="text-border mx-0.5">/</span>
@@ -96,18 +84,15 @@ function ClearDistBar({
 
 export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChange, activePlayer }: Props) {
   const { t } = useLang();
+  const { mode, format } = useScale();
   const [query, setQuery] = useState("");
   const [showProvisional, setShowProvisional] = useState(false);
 
-  // Dark, low-opacity row tints for the active player's best clear status.
-  // Applied as the TableRow background — the existing hover:bg-muted/40 still
-  // works on top. Colors are deliberately dark so the tint is subtle but
-  // scannable at a glance.
   const STATUS_ROW_TINT: Record<number, string> = {
-    3: "oklch(0.28 0.10 305 / 0.18)",  // V-HARD — deep purple
-    2: "oklch(0.28 0.12 25 / 0.18)",   // HARD — deep red
-    1: "oklch(0.28 0.10 95 / 0.15)",   // NORMAL — deep yellow/brown
-    0: "oklch(0.25 0 0 / 0.18)",        // FAILED — dark gray
+    3: "oklch(0.28 0.10 305 / 0.18)",
+    2: "oklch(0.28 0.12 25 / 0.18)",
+    1: "oklch(0.28 0.10 95 / 0.15)",
+    0: "oklch(0.25 0 0 / 0.18)",
   };
 
   const filtered = useMemo(() => {
@@ -225,7 +210,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     onClick={() => toggleSort("b_hard")}
                     className="inline-flex items-center gap-1 hover:text-foreground"
                   >
-                    {t.bHard} <ArrowUpDown className="w-3 h-3" />
+                    {t.bHard(mode === "lerp")} <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </TableHead>
                 <TableHead className="text-right">
@@ -233,7 +218,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     onClick={() => toggleSort("b_vhard")}
                     className="inline-flex items-center gap-1 hover:text-foreground"
                   >
-                    {t.bVhard} <ArrowUpDown className="w-3 h-3" />
+                    {t.bVhard(mode === "lerp")} <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </TableHead>
                 <TableHead className="text-right">
@@ -300,7 +285,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                   <TableCell className="text-right font-mono text-sm">
                     <div className="flex flex-col items-end leading-tight">
                       <span style={{ color: "oklch(0.78 0.18 25)" }}>
-                        {fmt(c.b_hard_display)}
+                        {format(c.b_hard_display)}
                       </span>
                       {activePlayer && c.a != null && c.b_hard != null && (
                         <span
@@ -316,7 +301,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                   <TableCell className="text-right font-mono text-sm">
                     <div className="flex flex-col items-end leading-tight">
                       <span style={{ color: "oklch(0.78 0.18 305)" }}>
-                        {fmt(c.b_vhard_display)}
+                        {format(c.b_vhard_display)}
                       </span>
                       {activePlayer && c.a != null && c.b_vhard != null && (
                         <span

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
 import { levelLabel } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
+import { useScale } from "@/lib/value-scale";
 
 interface Props {
   chart: Chart | null;
@@ -19,18 +20,10 @@ interface Props {
   activePlayer?: { id: string; data: PlayerData } | null;
 }
 
-function fmt(v: number | null, digits = 3): string {
+function fmtRaw(v: number | null, digits = 3): string {
   if (v == null || Number.isNaN(v)) return "–";
   const sign = v >= 0 ? "+" : "";
   return `${sign}${v.toFixed(digits)}`;
-}
-
-// 95% confidence interval helper: center ± 1.96 · SE.
-function fmtCI(center: number, se: number, digits = 2): string {
-  const lo = center - 1.96 * se;
-  const hi = center + 1.96 * se;
-  const s = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(digits)}`;
-  return `[${s(lo)}, ${s(hi)}]`;
 }
 
 function seColorClass(se: number | null): string {
@@ -50,7 +43,14 @@ function getClearBadge(status?: number) {
 
 export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer }: Props) {
   const { t } = useLang();
+  const { format, mode } = useScale();
   if (!chart) return null;
+
+  const fmtCI = (center: number, se: number, digits = 2) => {
+    const lo = center - 1.96 * se;
+    const hi = center + 1.96 * se;
+    return `[${format(lo, digits)}, ${format(hi, digits)}]`;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -98,23 +98,26 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer }: P
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
             <ParamCard
               label={t.hardClear}
-              value={fmt(chart.b_hard_display)}
+              value={format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}
               ciCenter={chart.b_hard}
               seValue={chart.se_b_hard}
+              fmtCIFn={fmtCI}
               color="oklch(0.70 0.22 25)"
             />
             <ParamCard
               label={t.vhardClear}
-              value={fmt(chart.b_vhard_display)}
+              value={format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}
               ciCenter={chart.b_vhard}
               seValue={chart.se_b_vhard}
+              fmtCIFn={fmtCI}
               color="oklch(0.70 0.22 305)"
             />
             <ParamCard
               label={t.discrimination}
-              value={fmt(chart.a, 3)}
+              value={fmtRaw(chart.a, 3)}
               ciCenter={chart.a}
               seValue={chart.se_a}
+              fmtCIFn={(c, se) => `[${fmtRaw(c - 1.96 * se, 2)}, ${fmtRaw(c + 1.96 * se, 2)}]`}
             />
             <ParamCard
               label={t.sampleSize}
@@ -139,13 +142,14 @@ function ParamCard({
   value,
   ciCenter,
   seValue,
+  fmtCIFn,
   color,
 }: {
   label: string;
   value: string;
-  /** Numeric center used to compute the 95% CI (= center ± 1.96 · SE). */
   ciCenter?: number | null;
   seValue?: number | null;
+  fmtCIFn?: (center: number, se: number) => string;
   color?: string;
 }) {
   return (
@@ -162,9 +166,9 @@ function ParamCard({
         </span>
       </div>
       <div className="font-mono text-base font-semibold mt-0.5">{value}</div>
-      {seValue != null && ciCenter != null && !Number.isNaN(ciCenter) && !Number.isNaN(seValue) && (
+      {seValue != null && ciCenter != null && fmtCIFn && !Number.isNaN(ciCenter) && !Number.isNaN(seValue) && (
         <div className={`text-[9px] font-mono ${seColorClass(seValue)}`}>
-          95% CI {fmtCI(ciCenter, seValue)}
+          95% CI {fmtCIFn(ciCenter, seValue)}
         </div>
       )}
     </div>
