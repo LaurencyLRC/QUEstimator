@@ -429,7 +429,7 @@ export function PlayerTab({
                         const reader = new FileReader();
                         reader.onload = (e) => {
                           try {
-                            const data = JSON.parse(e.target?.result);
+                            const data = JSON.parse(e.target?.result as string);
                             if (data && typeof data.t === 'number' && typeof data.c === 'object') {
                               const name = file.name.replace('.json', '');
                               if (onSaveCustomProfile) onSaveCustomProfile(name, data);
@@ -670,7 +670,8 @@ function RecommendationCard({
   onClick,
   formatFn,
   t,
-  mode
+  mode,
+  targetStatus
 }: {
   chart: Chart;
   p: number;

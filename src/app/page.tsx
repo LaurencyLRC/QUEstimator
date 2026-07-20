@@ -308,11 +308,11 @@ export default function Home() {
                 customProfiles={customProfiles}
                 onSaveCustomProfile={saveProfile}
                 onDeleteCustomProfile={deleteProfile}
-                onPlayerChange={(id, player) => {
+                onPlayerChange={(id, player, isCustom) => {
                   setActivePlayer((prev) => {
                     if (!player) return prev === null ? prev : null;
                     if (prev?.id === id) return prev;
-                    return { id: id!, data: player, isCustom: arguments[2] };
+                    return { id: id!, data: player, isCustom };
                   });
                 }}
               />
