@@ -8,6 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
 import { levelLabel } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
@@ -69,8 +70,29 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
                 {t.provisional}
               </Badge>
             )}
-            {activePlayer && activePlayer.data.c?.[chart.id.toString()] !== undefined && (
-              getClearBadge(activePlayer.data.c?.[chart.id.toString()])
+            {onClearStatusChange && activePlayer ? (
+              <div className="flex items-center gap-1 ml-2">
+                <span className="text-[10px] text-muted-foreground mr-1 uppercase">Status:</span>
+                <ToggleGroup
+                  type="single"
+                  value={String(activePlayer.data.c?.[chart.id.toString()] ?? -1)}
+                  onValueChange={(v) => {
+                    if (v) onClearStatusChange(chart.id, parseInt(v, 10));
+                  }}
+                  size="sm"
+                  className="gap-0.5 h-6"
+                >
+                  <ToggleGroupItem value="-1" className="text-[10px] h-6 px-2 rounded-full border border-transparent data-[state=on]:border-muted-foreground/30 data-[state=on]:bg-muted">NONE</ToggleGroupItem>
+                  <ToggleGroupItem value="0" className="text-[10px] h-6 px-2 rounded-full border border-transparent text-gray-400 data-[state=on]:border-gray-500/40 data-[state=on]:bg-gray-500/20 data-[state=on]:text-gray-300">FAILED</ToggleGroupItem>
+                  <ToggleGroupItem value="1" className="text-[10px] h-6 px-2 rounded-full border border-transparent text-yellow-400 data-[state=on]:border-yellow-500/40 data-[state=on]:bg-yellow-500/20 data-[state=on]:text-yellow-300">NORMAL</ToggleGroupItem>
+                  <ToggleGroupItem value="2" className="text-[10px] h-6 px-2 rounded-full border border-transparent text-red-400 data-[state=on]:border-red-500/40 data-[state=on]:bg-red-500/20 data-[state=on]:text-red-300">HARD</ToggleGroupItem>
+                  <ToggleGroupItem value="3" className="text-[10px] h-6 px-2 rounded-full border border-transparent text-purple-400 data-[state=on]:border-purple-500/40 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-300">V-HARD</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            ) : (
+              activePlayer && activePlayer.data.c?.[chart.id.toString()] !== undefined && (
+                getClearBadge(activePlayer.data.c?.[chart.id.toString()])
+              )
             )}
             <a
               href={`https://ez2pattern.kr/bms/chart?md5=${chart.md5}`}

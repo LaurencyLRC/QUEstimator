@@ -308,8 +308,6 @@ export function PlayerTab({
               <span className="font-mono text-foreground">{activePlayerExternal?.id ?? submittedID}</span>
               <span className="mx-1.5">·</span>
               {t.clearsCount(analytics?.totalClears ?? 0)}
-              <span className="mx-1.5">·</span>
-              <span className="font-mono">θ = {currentPlayer.t.toFixed(3)}</span>
               {percentile != null && (
                 <>
                   <span className="mx-1.5">·</span>
@@ -317,7 +315,7 @@ export function PlayerTab({
                 </>
               )}
               {isCustomProfile && <Badge variant="outline" className="ml-2 text-[9px] py-0 border-blue-500/40 text-blue-400">OFFLINE PROFILE</Badge>}
-              {isCustomProfile && <span className="ml-2">Click any chart in the table to edit clear status.</span>}
+              {isCustomProfile && <span className="ml-2">Click any chart to edit its clear status (use the Charts tab to search all charts).</span>}
             </div>
           )}
 
@@ -607,7 +605,7 @@ export function PlayerTab({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <Target className="w-4 h-4 text-rose-400" />
+                <Target className={`w-4 h-4 ${targetStatus === "HARD" ? "text-rose-400" : "text-purple-400"}`} />
                 {t.yourProbabilities}
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
@@ -653,7 +651,7 @@ export function PlayerTab({
                             <ProbabilityBadge p={p} />
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            <span style={{ color: "oklch(0.78 0.18 25)" }}>
+                            <span style={{ color: targetStatus === "HARD" ? "oklch(0.78 0.18 25)" : "oklch(0.78 0.18 305)" }}>
                               {format(targetStatus === "HARD" ? chart.b_hard_display : chart.b_vhard_display)}
                             </span>
                           </TableCell>
@@ -707,7 +705,7 @@ function RecommendationCard({
           {chart.artist || "unknown"}
           {chart.name_diff && ` · ${chart.name_diff}`}
         </span>
-        <span className="font-mono font-semibold" style={{ color: "oklch(0.78 0.18 25)" }}>
+        <span className="font-mono font-semibold" style={{ color: targetStatus === "HARD" ? "oklch(0.78 0.18 25)" : "oklch(0.78 0.18 305)" }}>
           {fmtPct(p)}
         </span>
       </div>
@@ -716,13 +714,13 @@ function RecommendationCard({
           className="h-full"
           style={{
             width: `${Math.min(100, p * 100)}%`,
-            background: "oklch(0.70 0.22 25)",
+            background: targetStatus === "HARD" ? "oklch(0.70 0.22 25)" : "oklch(0.70 0.22 305)",
           }}
         />
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span style={{ color: "oklch(0.78 0.18 25)" }}>{formatFn(bVal)}</span>
+          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span style={{ color: targetStatus === "HARD" ? "oklch(0.78 0.18 25)" : "oklch(0.78 0.18 305)" }}>{formatFn(bVal)}</span>
         </span>
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>
