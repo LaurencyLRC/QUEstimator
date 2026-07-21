@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { ArrowUpDown, Search } from "lucide-react";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
 import { levelLabel, levelSortKey, isSpecialLevel, pStar } from "@/lib/questimator-types";
@@ -88,7 +88,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
   const { mode, format } = useScale();
   const [query, setQuery] = useState("");
   const [showProvisional, setShowProvisional] = useState(false);
-  const [levelFilter, setLevelFilter] = useState("ALL");
+  
 
   const STATUS_ROW_TINT: Record<number, string> = {
     3: "oklch(0.28 0.10 305 / 0.18)",
@@ -112,9 +112,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
     if (!showProvisional) {
       out = out.filter((c) => !c.provisional);
     }
-    if (levelFilter !== "ALL") {
-      out = out.filter(c => c.level === levelFilter);
-    }
+
     const sorted = [...out].sort((a, b) => {
       if (sortKey === "level") {
         const [ax, ay] = levelSortKey(a.level);
@@ -154,17 +152,8 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
         : (bv as number) - (av as number);
     });
     return sorted;
-  }, [charts, query, sortKey, sortDir, showProvisional, levelFilter]);
+  }, [charts, query, sortKey, sortDir, showProvisional]);
 
-  const allLevels = useMemo(() => {
-    const set = new Set<string>();
-    charts.forEach(c => set.add(c.level));
-    return Array.from(set).sort((a, b) => {
-      const [ax, ay] = levelSortKey(a);
-      const [bx, by] = levelSortKey(b);
-      return ax - bx || ay - by;
-    });
-  }, [charts]);
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       onSortChange(key, sortDir === "asc" ? "desc" : "asc");
@@ -185,17 +174,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
             className="pl-9"
           />
         </div>
-        <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger className="w-[120px] h-9 text-xs">
-            <SelectValue placeholder="All Levels" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Levels</SelectItem>
-            {allLevels.map(lvl => (
-              <SelectItem key={lvl} value={lvl}>{lvl}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        
         <Button
           variant={showProvisional ? "default" : "outline"}
           size="sm"

@@ -138,8 +138,8 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
   }, [ranked]);
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="gap-3 py-4">
+      <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <Trophy className="w-4 h-4 text-amber-400" />
           {t.rankingTitle}

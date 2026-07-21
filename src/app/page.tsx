@@ -189,8 +189,8 @@ export default function Home() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6 mt-0">
-              <Card>
-                <CardHeader className="pb-2">
+              <Card className="gap-3 py-4">
+                <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <BarChart3 className="w-4 h-4" />
                     {t.levelDistribution}
@@ -209,8 +209,8 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
+              <Card className="gap-3 py-4">
+                <CardHeader>
                   <CardTitle className="text-base">
                     {t.perLevelAggregates}
                   </CardTitle>
@@ -226,7 +226,7 @@ export default function Home() {
 
             <TabsContent value="charts" className="mt-0">
               <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
-                <Card className="h-fit md:sticky md:top-[88px]">
+                <Card className="h-fit md:sticky md:top-[88px] gap-2">
                   <CardHeader className="py-3">
                     <CardTitle className="text-sm">{t.levels}</CardTitle>
                   </CardHeader>
@@ -410,7 +410,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
   const { t } = useLang();
   return (
     <div className="max-w-3xl space-y-6">
-      <Card>
+      <Card className="gap-3 py-4">
         <CardHeader>
           <CardTitle>{t.projectOverview}</CardTitle>
         </CardHeader>
@@ -482,7 +482,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="gap-3 py-4">
         <CardHeader>
           <CardTitle>{t.methodology}</CardTitle>
         </CardHeader>
@@ -571,7 +571,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="gap-3 py-4">
         <CardHeader>
           <CardTitle>{t.pipelineState}</CardTitle>
         </CardHeader>
@@ -597,7 +597,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className="gap-3 py-4">
         <CardHeader>
           <CardTitle>{t.techStack}</CardTitle>
         </CardHeader>
