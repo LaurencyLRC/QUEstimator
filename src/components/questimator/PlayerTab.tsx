@@ -42,7 +42,7 @@ interface Props {
   playerThetaMean: number;
   playerThetaStd: number;
   onSelectChart: (c: Chart) => void;
-  activePlayerExternal?: { id: string; data: PlayerData } | null;
+  activePlayerExternal?: { id: string; data: PlayerData; isCustom?: boolean } | null;
   onPlayerChange: (avatarID: string | null, player: PlayerData | null, isCustom?: boolean) => void;
   customProfiles?: Record<string, PlayerData>;
   onSaveCustomProfile?: (id: string, data: PlayerData) => void;
@@ -124,18 +124,25 @@ export function PlayerTab({
     };
   }, [players]);
 
+  // Sync external active player to local state when it changes from outside (e.g. Ranking tab)
+  useEffect(() => {
+    if (activePlayerExternal) {
+      setSubmittedID(activePlayerExternal.id);
+      setIsCustomProfile(!!activePlayerExternal.isCustom);
+      setQuery(activePlayerExternal.id);
+    }
+  }, [activePlayerExternal]); // Sync when the external object changes (e.g., clicking on ranking tab)
+
   const currentPlayer = useMemo<PlayerData | null>(() => {
-    if (activePlayerExternal) return activePlayerExternal.data;
-    if (isCustomProfile) return customProfiles[submittedID] ?? null;
+    if (isCustomProfile) return customProfiles?.[submittedID] ?? null;
+    if (activePlayerExternal && activePlayerExternal.id === submittedID) return activePlayerExternal.data;
     if (!players || !submittedID) return null;
     return players[submittedID] ?? null;
   }, [players, submittedID, activePlayerExternal, customProfiles, isCustomProfile]);
 
   useEffect(() => {
-    if (!activePlayerExternal) {
-      onPlayerChange(currentPlayer ? submittedID : null, currentPlayer, isCustomProfile);
-    }
-  }, [currentPlayer, submittedID, isCustomProfile, onPlayerChange, activePlayerExternal]);
+    onPlayerChange(currentPlayer ? submittedID : null, currentPlayer, isCustomProfile);
+  }, [currentPlayer, submittedID, isCustomProfile, onPlayerChange]);
 
   const handleSearch = async () => {
     const id = query.trim();
@@ -171,7 +178,7 @@ export function PlayerTab({
     for (const c of charts) chartById.set(c.id, c);
 
     const statusCounts = { 0: 0, 1: 0, 2: 0, 3: 0 };
-    for (const s of Object.values(currentPlayer.c)) {
+    for (const s of Object.values(currentPlayer.c || {})) {
       if (s >= 0 && s <= 3) statusCounts[s as 0 | 1 | 2 | 3] += 1;
     }
     const totalClears = statusCounts[0] + statusCounts[1] + statusCounts[2] + statusCounts[3];
@@ -185,7 +192,7 @@ export function PlayerTab({
       if (c.provisional) continue;
       const p = targetStatus === "HARD" ? pHard(theta, c) : pVHard(theta, c);
       if (p == null) continue;
-      const status = currentPlayer.c[String(c.id)];
+      const status = currentPlayer.c?.[String(c.id)] ?? 0;
       if (status >= (targetStatus === "HARD" ? 2 : 3)) continue; // Skip if target status or higher is cleared
 
       if (p >= PROB_MIN_THRESHOLD) {
@@ -210,7 +217,7 @@ export function PlayerTab({
     const allProbabilitiesLimited = allProbabilities.slice(0, PROB_LIMIT);
 
     const clearedByLevel = new Map<string, number>();
-    for (const [idStr, status] of Object.entries(currentPlayer.c)) {
+    for (const [idStr, status] of Object.entries(currentPlayer.c || {})) {
       if (status < 2) continue; // 2 is HARD, 3 is V-HARD
       const c = chartById.get(Number(idStr));
       if (!c) continue;
@@ -453,7 +460,7 @@ export function PlayerTab({
 
       {currentPlayer && analytics && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -524,7 +531,7 @@ export function PlayerTab({
                       : "HARD 이상 클리어 기록이 없습니다."}
                   </p>
                 ) : (
-                  <ScrollArea className="h-[220px] pr-2">
+                  <ScrollArea className="max-h-[220px] pr-2">
                     <div className="flex flex-wrap gap-1.5">
                       {analytics.clearedLevels.map(([lvl, n]) => (
                         <Badge
@@ -611,7 +618,7 @@ export function PlayerTab({
             </CardHeader>
             <CardContent>
               <div className="rounded-md border border-border/60 overflow-hidden">
-                <ScrollArea className="h-[480px]">
+                <ScrollArea className="max-h-[480px]">
                   <Table className="w-full text-sm">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow className="border-b border-border/60 text-left">

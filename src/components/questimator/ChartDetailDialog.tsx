@@ -69,8 +69,8 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
                 {t.provisional}
               </Badge>
             )}
-            {activePlayer && activePlayer.data.c[chart.id.toString()] !== undefined && (
-              getClearBadge(activePlayer.data.c[chart.id.toString()])
+            {activePlayer && activePlayer.data.c?.[chart.id.toString()] !== undefined && (
+              getClearBadge(activePlayer.data.c?.[chart.id.toString()])
             )}
             <a
               href={`https://ez2pattern.kr/bms/chart?md5=${chart.md5}`}

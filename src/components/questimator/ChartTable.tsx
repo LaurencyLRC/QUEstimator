@@ -273,7 +273,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                 </TableRow>
               )}
               {filtered.map((c) => {
-                const status = activePlayer?.data.c[c.id.toString()];
+                const status = activePlayer?.data.c?.[c.id.toString()];
                 const hasStatus = status != null && status >= 0 && status <= 3;
                 const rowTint = hasStatus ? STATUS_ROW_TINT[status] : undefined;
                 return (

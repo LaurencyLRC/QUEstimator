@@ -338,7 +338,7 @@ export default function Home() {
         onOpenChange={setDetailOpen}
         activePlayer={activePlayer}
         onClearStatusChange={activePlayer?.isCustom ? (chartId, status) => {
-          const newData = { ...activePlayer.data, c: { ...activePlayer.data.c } };
+          const newData = { ...activePlayer.data, c: { ...(activePlayer.data.c || {}) } };
           if (status < 0) delete newData.c[String(chartId)];
           else newData.c[String(chartId)] = status;
           newData.t = estimateTheta(charts, newData.c);
