@@ -224,8 +224,12 @@ export function PlayerTab({
       const da = Math.abs(a.p - 0.5);
       const db = Math.abs(b.p - 0.5);
       if (Math.abs(da - db) > 1e-6) return da - db;
-      const aVal = targetStatus === "HARD" ? a.chart.b_hard_display : a.chart.b_vhard_display;
-      const bVal = targetStatus === "HARD" ? b.chart.b_hard_display : b.chart.b_vhard_display;
+      const aVal = targetStatus === "HARD" 
+        ? ((a.chart.n_hard + a.chart.n_vhard === 0) ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_hard_display ?? -99) : a.chart.b_hard_display) 
+        : (a.chart.n_vhard === 0 ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_vhard_display ?? -99) : a.chart.b_vhard_display);
+      const bVal = targetStatus === "HARD" 
+        ? ((b.chart.n_hard + b.chart.n_vhard === 0) ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_hard_display ?? -99) : b.chart.b_hard_display) 
+        : (b.chart.n_vhard === 0 ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_vhard_display ?? -99) : b.chart.b_vhard_display);
       return (bVal ?? -99) - (aVal ?? -99);
     });
     const recommendationsLimited = recommendations.slice(0, REC_LIMIT);
@@ -338,7 +342,7 @@ export function PlayerTab({
 
           <div className="flex gap-6 mt-6 border-t border-border/40 pt-5 flex-col sm:flex-row">
             <div className="flex-1 space-y-3">
-              <div className="text-sm font-medium">Offline Profiles</div>
+              <div className="text-sm font-medium">{t.offlineProfiles}</div>
               <Select
                 value={isCustomProfile ? submittedID : ""}
                 onValueChange={(v) => {
@@ -349,7 +353,7 @@ export function PlayerTab({
                 }}
               >
                 <SelectTrigger className="w-full text-xs">
-                  <SelectValue placeholder="Select an offline profile..." />
+                  <SelectValue placeholder={t.selectOfflineProfile} />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.keys(customProfiles).map((id) => (
@@ -360,12 +364,12 @@ export function PlayerTab({
             </div>
             
             <div className="flex-1 space-y-3">
-              <div className="text-sm font-medium">Manage</div>
+              <div className="text-sm font-medium">{t.manage}</div>
               
               {isCreating ? (
                 <div className="flex items-center gap-2">
                   <Input 
-                    placeholder="Profile name..." 
+                    placeholder={t.profileName} 
                     value={newProfileName}
                     onChange={e => setNewProfileName(e.target.value)}
                     className="h-8 text-xs"
@@ -392,8 +396,12 @@ export function PlayerTab({
                         setIsCreating(false);
                         setNewProfileName("");
                     }
-                  }}>Save</Button>
-                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setIsCreating(false)}>Cancel</Button>
+                  }}>
+                    {t.save}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setIsCreating(false)}>
+                    {t.cancel}
+                  </Button>
                 </div>
               ) : (
                 <div className="flex gap-2 flex-wrap">
@@ -403,7 +411,7 @@ export function PlayerTab({
                       setIsCreating(true);
                     }}
                   >
-                    <Save className="w-3 h-3 mr-1" /> {currentPlayer ? "Clone" : "New"}
+                    <Save className="w-3 h-3 mr-1" /> {currentPlayer ? t.cloneProfile : t.newProfile}
                   </Button>
                   
                   {isCustomProfile && currentPlayer && (
@@ -418,7 +426,7 @@ export function PlayerTab({
                           }
                         }}
                       >
-                        <Trash2 className="w-3 h-3 mr-1" /> Delete
+                        <Trash2 className="w-3 h-3 mr-1" /> {t.deleteProfile}
                       </Button>
                       <Button 
                         size="sm" variant="outline" className="text-xs"
@@ -432,7 +440,7 @@ export function PlayerTab({
                           URL.revokeObjectURL(url);
                         }}
                       >
-                        <Download className="w-3 h-3 mr-1" /> Export
+                        <Download className="w-3 h-3 mr-1" /> {t.exportProfile}
                       </Button>
                     </>
                   )}
@@ -440,7 +448,7 @@ export function PlayerTab({
                   <Button 
                     size="sm" variant="outline" className="text-xs relative overflow-hidden"
                   >
-                    <Upload className="w-3 h-3 mr-1" /> Import
+                    <Upload className="w-3 h-3 mr-1" /> {t.importProfile}
                     <input 
                       type="file" 
                       accept=".json"

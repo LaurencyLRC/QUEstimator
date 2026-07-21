@@ -123,16 +123,16 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
             <ParamCard
               label={t.hardClear}
               value={chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}
-              ciCenter={chart.b_hard}
-              seValue={chart.se_b_hard}
+              ciCenter={chart.n_hard + chart.n_vhard === 0 ? null : chart.b_hard}
+              seValue={chart.n_hard + chart.n_vhard === 0 ? null : chart.se_b_hard}
               fmtCIFn={fmtCI}
               color={chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.70 0.22 25)"}
             />
             <ParamCard
               label={t.vhardClear}
               value={chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}
-              ciCenter={chart.b_vhard}
-              seValue={chart.se_b_vhard}
+              ciCenter={chart.n_vhard === 0 ? null : chart.b_vhard}
+              seValue={chart.n_vhard === 0 ? null : chart.se_b_vhard}
               fmtCIFn={fmtCI}
               color={chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.70 0.22 305)"}
             />

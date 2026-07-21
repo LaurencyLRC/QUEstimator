@@ -129,12 +129,12 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
           bv = b.title.toLowerCase();
           break;
         case "b_vhard":
-          av = a.b_vhard_display ?? -99;
-          bv = b.b_vhard_display ?? -99;
+          av = a.n_vhard === 0 ? (chartMaxTheta?.get(a.id) ?? a.b_vhard_display ?? -99) : (a.b_vhard_display ?? -99);
+          bv = b.n_vhard === 0 ? (chartMaxTheta?.get(b.id) ?? b.b_vhard_display ?? -99) : (b.b_vhard_display ?? -99);
           break;
         case "b_hard":
-          av = a.b_hard_display ?? -99;
-          bv = b.b_hard_display ?? -99;
+          av = (a.n_hard + a.n_vhard === 0) ? (chartMaxTheta?.get(a.id) ?? a.b_hard_display ?? -99) : (a.b_hard_display ?? -99);
+          bv = (b.n_hard + b.n_vhard === 0) ? (chartMaxTheta?.get(b.id) ?? b.b_hard_display ?? -99) : (b.b_hard_display ?? -99);
           break;
         case "a":
           av = a.a ?? -99;
