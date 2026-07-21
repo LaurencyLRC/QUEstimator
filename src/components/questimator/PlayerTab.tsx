@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -36,7 +35,6 @@ import {
   isSpecialLevel,
 } from "@/lib/questimator-types";
 import { PlayerSkillHistogram } from "@/components/questimator/PlayerSkillHistogram";
-import { PlayerComparison } from "./PlayerComparison";
 
 interface Props {
   charts: Chart[];
@@ -103,33 +101,6 @@ export function PlayerTab({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
-
-  const [rivalID, setRivalID] = useState("");
-  const [rivalPlayer, setRivalPlayer] = useState<PlayerData | null>(null);
-  const [rivalNotFound, setRivalNotFound] = useState(false);
-
-  const handleSearchRival = async (id: string) => {
-    if (!id) {
-      setRivalPlayer(null);
-      setRivalID("");
-      return;
-    }
-    if (customProfiles[id]) {
-      setRivalID(id);
-      setRivalPlayer(customProfiles[id]);
-      setRivalNotFound(false);
-      return;
-    }
-    const dict = await fetchPlayers.current?.();
-    if (dict && dict[id]) {
-      setRivalID(id);
-      setRivalPlayer(dict[id]);
-      setRivalNotFound(false);
-    } else {
-      setRivalNotFound(true);
-      setRivalPlayer(null);
-    }
-  };
 
   const fetchPlayers = useRef<( () => Promise<PlayersDict | null> ) | null>(null);
 
@@ -246,12 +217,6 @@ export function PlayerTab({
     const allProbabilitiesLimited = allProbabilities.slice(0, PROB_LIMIT);
 
     const clearedByLevel = new Map<string, number>();
-    const levelTotals = new Map<string, number>();
-    charts.forEach(c => {
-      if (!c.provisional) {
-        levelTotals.set(c.level, (levelTotals.get(c.level) ?? 0) + 1);
-      }
-    });
     for (const [idStr, status] of Object.entries(currentPlayer.c || {})) {
       if (status < 2) continue; // 2 is HARD, 3 is V-HARD
       const c = chartById.get(Number(idStr));
@@ -271,7 +236,6 @@ export function PlayerTab({
       allProbabilities: allProbabilitiesLimited,
       clearedLevels,
       targetStatus,
-      levelTotals,
     };
   }, [currentPlayer, charts, targetStatus]);
 
@@ -348,19 +312,7 @@ export function PlayerTab({
                 <>
                   <span className="mx-1.5">·</span>
                   <span className="font-mono">Top {((1 - percentile) * 100).toFixed(1)}%</span>
-                  <PlayerComparison
-            activePlayer={currentPlayer}
-            activePlayerId={submittedID}
-            rivalPlayer={rivalPlayer}
-            rivalId={rivalID}
-            onSearchRival={handleSearchRival}
-            chartById={chartById}
-            targetStatus={targetStatus === "HARD" ? 2 : 3}
-            t={t}
-            format={format}
-            rivalNotFound={rivalNotFound}
-          />
-        </>
+                </>
               )}
               {isCustomProfile && <Badge variant="outline" className="ml-2 text-[9px] py-0 border-blue-500/40 text-blue-400">OFFLINE PROFILE</Badge>}
               {isCustomProfile && <span className="ml-2">Click any chart to edit its clear status (use the Charts tab to search all charts).</span>}
@@ -566,7 +518,7 @@ export function PlayerTab({
             <Card className="gap-3 py-4">
               <CardHeader>
                 <CardTitle className="text-sm">
-                  {t.lang === "en" ? "Level Completion (HARD+)" : "레벨 클리어 진행도 (HARD+)"}
+                  {t.lang === "en" ? "HARD+ Clears by Level" : "레벨별 HARD+ 클리어"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -577,25 +529,20 @@ export function PlayerTab({
                       : "HARD 이상 클리어 기록이 없습니다."}
                   </p>
                 ) : (
-                  <ScrollArea className="max-h-[220px] pr-4">
-                    <div className="space-y-3">
-                      {analytics.clearedLevels.map(([lvl, n]) => {
-                        const total = analytics.levelTotals.get(lvl) ?? 1;
-                        const pct = Math.min(100, Math.max(0, (n / total) * 100));
-                        return (
-                          <div key={lvl} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className={`font-mono ${isSpecialLevel(lvl) ? "text-amber-400" : "text-foreground"}`}>
-                                Level {lvl}
-                              </span>
-                              <span className="text-muted-foreground tabular-nums font-mono text-[10px]">
-                                {n} / {total} ({pct.toFixed(1)}%)
-                              </span>
-                            </div>
-                            <Progress value={pct} className="h-1.5" />
-                          </div>
-                        );
-                      })}
+                  <ScrollArea className="max-h-[220px] pr-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {analytics.clearedLevels.map(([lvl, n]) => (
+                        <Badge
+                          key={lvl}
+                          variant="outline"
+                          className="font-mono text-xs"
+                        >
+                          <span className={isSpecialLevel(lvl) ? "text-amber-400 mr-1" : "text-muted-foreground mr-1"}>
+                            {lvl}
+                          </span>
+                          <span className="text-foreground">{n}</span>
+                        </Badge>
+                      ))}
                     </div>
                   </ScrollArea>
                 )}
