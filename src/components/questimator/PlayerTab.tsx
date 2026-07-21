@@ -97,6 +97,23 @@ export function PlayerTab({
   const [newProfileName, setNewProfileName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [players, setPlayers] = useState<PlayersDict | null>(null);
+
+  const chartMaxTheta = useMemo(() => {
+    if (!players) return null;
+    const max = new Map<number, number>();
+    for (const player of Object.values(players)) {
+      if (!player.c) continue;
+      for (const id of Object.keys(player.c)) {
+        const numId = Number(id);
+        const currentMax = max.get(numId) ?? -Infinity;
+        if (player.t > currentMax) {
+          max.set(numId, player.t);
+        }
+      }
+    }
+    return max;
+  }, [players]);
+
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -595,6 +612,7 @@ export function PlayerTab({
                       t={t}
                       mode={mode}
                       targetStatus={targetStatus}
+                      chartMaxTheta={chartMaxTheta}
                     />
                   ))}
                 </div>
@@ -657,8 +675,8 @@ export function PlayerTab({
                                 : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)") 
                             }}>
                               {targetStatus === "HARD"
-                                ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chart.b_hard_display)}?` : format(chart.b_hard_display))
-                                : (chart.n_vhard === 0 ? `>${format(chart.b_vhard_display)}?` : format(chart.b_vhard_display))
+                                ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : format(chart.b_hard_display))
+                                : (chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : format(chart.b_vhard_display))
                               }
                             </span>
                           </TableCell>
@@ -683,7 +701,8 @@ function RecommendationCard({
   formatFn,
   t,
   mode,
-  targetStatus
+  targetStatus,
+  chartMaxTheta
 }: {
   chart: Chart;
   p: number;
@@ -692,6 +711,7 @@ function RecommendationCard({
   t: any;
   mode: string;
   targetStatus: "HARD" | "V-HARD";
+  chartMaxTheta?: Map<number, number> | null;
 }) {
   const bVal = targetStatus === "HARD" ? chart.b_hard_display : chart.b_vhard_display;
   return (
@@ -733,8 +753,8 @@ function RecommendationCard({
               : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)") 
           }}>
             {targetStatus === "HARD"
-              ? (chart.n_hard + chart.n_vhard === 0 ? `>${formatFn(chart.b_hard_display)}?` : formatFn(chart.b_hard_display))
-              : (chart.n_vhard === 0 ? `>${formatFn(chart.b_vhard_display)}?` : formatFn(chart.b_vhard_display))
+              ? (chart.n_hard + chart.n_vhard === 0 ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : formatFn(chart.b_hard_display))
+              : (chart.n_vhard === 0 ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : formatFn(chart.b_vhard_display))
             }
           </span>
         </span>

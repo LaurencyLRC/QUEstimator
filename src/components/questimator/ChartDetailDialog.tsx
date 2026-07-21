@@ -20,6 +20,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   activePlayer?: { id: string; data: PlayerData } | null;
   onClearStatusChange?: (chartId: number, status: number) => void;
+  chartMaxTheta?: Map<number, number> | null;
 }
 
 function fmtRaw(v: number | null, digits = 3): string {
@@ -43,7 +44,7 @@ function getClearBadge(status?: number) {
   return null;
 }
 
-export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onClearStatusChange }: Props) {
+export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onClearStatusChange, chartMaxTheta }: Props) {
   const { t } = useLang();
   const { format, mode } = useScale();
   if (!chart) return null;
@@ -121,7 +122,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             <ParamCard
               label={t.hardClear}
-              value={chart.n_hard + chart.n_vhard === 0 ? `>${format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}
+              value={chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}
               ciCenter={chart.b_hard}
               seValue={chart.se_b_hard}
               fmtCIFn={fmtCI}
@@ -129,7 +130,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
             />
             <ParamCard
               label={t.vhardClear}
-              value={chart.n_vhard === 0 ? `>${format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}
+              value={chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}
               ciCenter={chart.b_vhard}
               seValue={chart.se_b_vhard}
               fmtCIFn={fmtCI}

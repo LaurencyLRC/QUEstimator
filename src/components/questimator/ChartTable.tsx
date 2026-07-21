@@ -29,6 +29,7 @@ interface Props {
   sortDir: SortDir;
   onSortChange: (key: SortKey, dir: SortDir) => void;
   activePlayer?: { id: string; data: PlayerData } | null;
+  chartMaxTheta?: Map<number, number> | null;
 }
 
 function ClearDistBar({
@@ -83,7 +84,7 @@ function ClearDistBar({
   );
 }
 
-export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChange, activePlayer }: Props) {
+export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChange, activePlayer, chartMaxTheta }: Props) {
   const { t } = useLang();
   const { mode, format } = useScale();
   const [query, setQuery] = useState("");
@@ -289,7 +290,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                   <TableCell className="text-right font-mono text-sm">
                     <div className="flex flex-col items-end leading-tight">
                       <span style={{ color: (c.n_hard + c.n_vhard === 0) ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)" }}>
-                        {(c.n_hard + c.n_vhard === 0) ? `>${format(c.b_hard_display)}?` : format(c.b_hard_display)}
+                        {(c.n_hard + c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_hard_display)}?` : format(c.b_hard_display)}
                       </span>
                       {activePlayer && c.a != null && c.b_hard != null && (
                         <span
@@ -305,7 +306,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                   <TableCell className="text-right font-mono text-sm">
                     <div className="flex flex-col items-end leading-tight">
                       <span style={{ color: (c.n_vhard === 0) ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)" }}>
-                        {(c.n_vhard === 0) ? `>${format(c.b_vhard_display)}?` : format(c.b_vhard_display)}
+                        {(c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_vhard_display)}?` : format(c.b_vhard_display)}
                       </span>
                       {activePlayer && c.a != null && c.b_vhard != null && (
                         <span

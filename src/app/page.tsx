@@ -53,6 +53,30 @@ export default function Home() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const [playersData, setPlayersData] = useState<PlayersDict | null>(null);
+
+  useEffect(() => {
+    fetch("data/players.json")
+      .then((r) => r.json())
+      .then((data) => setPlayersData(data))
+      .catch((e) => console.error("Failed to load players.json", e));
+  }, []);
+
+  const chartMaxTheta = useMemo(() => {
+    if (!playersData) return null;
+    const max = new Map<number, number>();
+    for (const player of Object.values(playersData)) {
+      if (!player.c) continue;
+      for (const id of Object.keys(player.c)) {
+        const numId = Number(id);
+        const currentMax = max.get(numId) ?? -Infinity;
+        if (player.t > currentMax) {
+          max.set(numId, player.t);
+        }
+      }
+    }
+    return max;
+  }, [playersData]);
+
   const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
   const { profiles: customProfiles, saveProfile, deleteProfile } = useCustomProfiles();
 
@@ -292,6 +316,7 @@ export default function Home() {
                     sortDir={sortDir}
                     onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
                     activePlayer={activePlayer}
+                    chartMaxTheta={chartMaxTheta}
                   />
                 </div>
               </div>
@@ -337,6 +362,7 @@ export default function Home() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         activePlayer={activePlayer}
+        chartMaxTheta={chartMaxTheta}
         onClearStatusChange={activePlayer?.isCustom ? (chartId, status) => {
           const newData = { ...activePlayer.data, c: { ...(activePlayer.data.c || {}) } };
           if (status < 0) delete newData.c[String(chartId)];
