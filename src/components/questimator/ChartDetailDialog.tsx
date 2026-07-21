@@ -121,19 +121,19 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             <ParamCard
               label={t.hardClear}
-              value={format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}
+              value={chart.n_hard + chart.n_vhard === 0 ? `>${format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}
               ciCenter={chart.b_hard}
               seValue={chart.se_b_hard}
               fmtCIFn={fmtCI}
-              color="oklch(0.70 0.22 25)"
+              color={chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.70 0.22 25)"}
             />
             <ParamCard
               label={t.vhardClear}
-              value={format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}
+              value={chart.n_vhard === 0 ? `>${format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}
               ciCenter={chart.b_vhard}
               seValue={chart.se_b_vhard}
               fmtCIFn={fmtCI}
-              color="oklch(0.70 0.22 305)"
+              color={chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.70 0.22 305)"}
             />
             <ParamCard
               label={t.discrimination}

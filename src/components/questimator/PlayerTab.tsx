@@ -651,8 +651,15 @@ export function PlayerTab({
                             <ProbabilityBadge p={p} />
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            <span style={{ color: targetStatus === "HARD" ? "oklch(0.78 0.18 25)" : "oklch(0.78 0.18 305)" }}>
-                              {format(targetStatus === "HARD" ? chart.b_hard_display : chart.b_vhard_display)}
+                            <span style={{ 
+                              color: targetStatus === "HARD" 
+                                ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)") 
+                                : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)") 
+                            }}>
+                              {targetStatus === "HARD"
+                                ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chart.b_hard_display)}?` : format(chart.b_hard_display))
+                                : (chart.n_vhard === 0 ? `>${format(chart.b_vhard_display)}?` : format(chart.b_vhard_display))
+                              }
                             </span>
                           </TableCell>
                         </TableRow>
@@ -720,7 +727,16 @@ function RecommendationCard({
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span style={{ color: targetStatus === "HARD" ? "oklch(0.78 0.18 25)" : "oklch(0.78 0.18 305)" }}>{formatFn(bVal)}</span>
+          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span style={{ 
+            color: targetStatus === "HARD" 
+              ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)") 
+              : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)") 
+          }}>
+            {targetStatus === "HARD"
+              ? (chart.n_hard + chart.n_vhard === 0 ? `>${formatFn(chart.b_hard_display)}?` : formatFn(chart.b_hard_display))
+              : (chart.n_vhard === 0 ? `>${formatFn(chart.b_vhard_display)}?` : formatFn(chart.b_vhard_display))
+            }
+          </span>
         </span>
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>
