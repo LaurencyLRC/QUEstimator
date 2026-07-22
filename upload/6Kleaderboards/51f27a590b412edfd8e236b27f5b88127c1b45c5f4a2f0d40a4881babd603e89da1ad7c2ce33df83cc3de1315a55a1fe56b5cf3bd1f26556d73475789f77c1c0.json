@@ -1573,10 +1573,10 @@
             "autoMode": 0,
             "avatarID": "SChoVo",
             "avatarName": "SCHOVO",
-            "band": 325,
-            "commentID": "f6dbf4c0e762b40a7555cbea8507175cdbaf072b1863efbf5ad21b2a494994fd476a7ac73a88a7b980f7811f09b771a6310363cc9c8542d08a72a587c153c181",
+            "band": 337,
+            "commentID": "ce29bcbcc48f66e14fa8b945a8c7c1cbfc0ca731f07688a51934d26e4f0a7fb4dcb8e8af255e78938687dee6c1a073c21a48d9bf332cdf7cca3408b59719d55b",
             "commentary": "",
-            "date": "2026-06-23T10:47:24",
+            "date": "2026-07-21T06:15:39",
             "faintNoteMode": 0,
             "handled": 4,
             "hitPointsMode": 2,
@@ -1592,9 +1592,9 @@
             "noteMobilityMode": 0,
             "noteModifyMode": 0,
             "noteSaltMode": 0,
-            "point": 0.9179326923076973,
-            "salt": 516300093,
-            "stand": 729869
+            "point": 0.9434702353484098,
+            "salt": 255305875,
+            "stand": 835691
         },
         {
             "audioMultiplier": 1.0,

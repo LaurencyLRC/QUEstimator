@@ -1093,6 +1093,34 @@
             "stand": 883196
         },
         {
+            "audioMultiplier": 1.0,
+            "autoMode": 0,
+            "avatarID": "~76561198945772764",
+            "avatarName": "하루살이",
+            "band": 266,
+            "commentID": "bdb8326426b4a435c6fe7ed709a4f509cda2a1e10514023742fc2d282d652393565cc366139c01fbc7d7cc000b8cc81cef6ab52a511fdfcc735f6469985485e7",
+            "commentary": "",
+            "date": "2026-07-21T08:06:13",
+            "faintNoteMode": 0,
+            "handled": 1,
+            "hitPointsMode": 1,
+            "inputFavorMode": 0,
+            "inputFlags": 1,
+            "isBand1": false,
+            "isF": false,
+            "isPaused": false,
+            "judgmentMode": 1,
+            "longNoteMode": 0,
+            "lowestJudgmentConditionMode": 0,
+            "multiplier": 13.666666666666666,
+            "noteMobilityMode": 0,
+            "noteModifyMode": 0,
+            "noteSaltMode": 0,
+            "point": 0.9189714285714264,
+            "salt": 455061656,
+            "stand": 869013
+        },
+        {
             "audioMultiplier": 0.9,
             "autoMode": 0,
             "avatarID": "cococd",
@@ -1515,6 +1543,6 @@
     ],
     "favor": false,
     "standMe": 0,
-    "totalComments": 54,
+    "totalComments": 55,
     "totalFavor": 3
 }

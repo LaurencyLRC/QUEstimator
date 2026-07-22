@@ -33,10 +33,10 @@
             "autoMode": 0,
             "avatarID": "rainy",
             "avatarName": "rainy",
-            "band": 245,
-            "commentID": "fb1e830fdfe0f937c6f3c6c18fa9d2995e9e2423f0c8bf678d4889ed45544dcc3e217626ac166feb4b3ba2dfaff98616f3b6c0777c8bd6d928150bc6a5265063",
+            "band": 250,
+            "commentID": "070912ffcf07e8ef1cddc1c943972e8835648e5cb11500e87c0c35d402e44ff2c84847a4dfa3c423baf0c1de966635f484f51d9ffcd6851628f9df934fa6be68",
             "commentary": "",
-            "date": "2026-07-11T09:46:34",
+            "date": "2026-07-19T12:11:02",
             "faintNoteMode": 0,
             "handled": 1,
             "hitPointsMode": 1,
@@ -52,9 +52,9 @@
             "noteMobilityMode": 0,
             "noteModifyMode": 0,
             "noteSaltMode": 0,
-            "point": 0.9368023255813938,
-            "salt": 4148156,
-            "stand": 884258
+            "point": 0.937906976744186,
+            "salt": 346311312,
+            "stand": 884299
         },
         {
             "audioMultiplier": 1.0,
