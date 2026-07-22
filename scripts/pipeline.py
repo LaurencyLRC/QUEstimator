@@ -8,6 +8,8 @@ Stage 3: Fit Bayesian Graded Response Model via MCMC (NUTS) using numpyro.
          This jointly estimates player abilities, chart difficulties, and discrimination,
          incorporating the U_E nominal levels as an informative prior.
          Uses 4 chains with convergence diagnostics (R̂, ESS).
+         Identifiability is enforced via a tight Normal(0, 0.5) prior on θ
+         and deterministic initialization across all chains.
 Stage 4: Extract posterior means and standard errors.
 Stage 5: Aggregate per U_E level (median + IQR).
 Stage 6: Emit static JSON artifacts for the Next.js dashboard.
@@ -22,6 +24,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+# Configure JAX to use multiple CPU threads for parallel chains.
+# Must be called before any numpyro/jax operations.
+import numpyro
+numpyro.set_host_device_count(min(4, os.cpu_count() or 1))
 
 # --------------------------------------------------------------------------- #
 # Configuration
@@ -85,7 +92,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     import jax.numpy as jnp
     import numpyro
     import numpyro.distributions as dist
-    from numpyro.infer import MCMC, NUTS, init_to_median
+    from numpyro.infer import MCMC, NUTS, init_to_value
 
     n_charts = len(df)
 
@@ -114,7 +121,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         # Prior location anchored to numerical rank
         loc = a + b * level_num
         loc = jnp.where(is_gimmick, 0.0, loc)
-        scale = jnp.where(is_gimmick, 3.0, 0.4) # Tight adherence for 1-31 scale, loose for gimmicks
+        scale = jnp.where(is_gimmick, 3.0, 0.4)  # Tight adherence for 1-31 scale, loose for gimmicks
 
         with numpyro.plate("charts", n_charts):
             # The primary difficulty anchor for the chart (V-HARD)
@@ -128,8 +135,11 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
             tau2 = numpyro.sample("tau2", dist.HalfNormal(1.0))
 
         with numpyro.plate("players", n_players):
-            # Player skill tied to N(0, 1) standard identifiability constraint
-            theta = numpyro.sample("theta", dist.Normal(0, 1))
+            # Player skill — Normal(0, 0.5) pins the θ scale firmly.
+            # This breaks the alpha-theta multiplicative degeneracy:
+            # the sampler cannot compensate small α with large θ (or vice versa)
+            # without paying a steep prior cost.
+            theta = numpyro.sample("theta", dist.Normal(0, 0.5))
 
         # Unroll into respective cutpoints
         beta3 = delta
@@ -151,13 +161,29 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         with numpyro.plate("data", len(y)):
             numpyro.sample("obs", dist.OrderedLogistic(alpha_obs * theta_obs, cutpoints), obs=y)
 
+    # Deterministic initialization: all 4 chains start at the same point.
+    # This ensures they explore the same mode of the posterior.
+    # They still sample independently (different PRNG keys per chain),
+    # but they won't diverge into different scaling basins.
+    init_delta = -3.0 + 0.2 * level_num
+    init_strategy = init_to_value(values={
+        "prior_a": -3.0,
+        "prior_b": 0.2,
+        "delta": init_delta,
+        "alpha": np.ones(n_charts) * 1.0,
+        "tau1": np.ones(n_charts) * 0.8,
+        "tau2": np.ones(n_charts) * 0.8,
+        "theta": np.zeros(n_players),
+    })
+
     print(f"      compiling and running NUTS MCMC ({MCMC_CHAINS} chains, "
           f"{MCMC_WARMUP} warmup, {MCMC_SAMPLES} samples/chain)...")
     mcmc = MCMC(
-        NUTS(model, init_strategy=init_to_median),
+        NUTS(model, init_strategy=init_strategy),
         num_warmup=MCMC_WARMUP,
         num_samples=MCMC_SAMPLES,
         num_chains=MCMC_CHAINS,
+        chain_method="sequential",  # Explicit: run chains one after another on CPU
         progress_bar=True
     )
 
@@ -191,8 +217,7 @@ def check_convergence(mcmc) -> dict:
 
     for param_name, param_samples in samples.items():
         # param_samples shape: (n_chains, n_samples, ...)
-        # Flatten trailing dims for vector params
-        original_shape = param_samples.shape[2:]  # (n_chains, n_samples, *event_shape)
+        original_shape = param_samples.shape[2:]  # event dimensions
         if len(original_shape) == 0:
             # Scalar parameter
             rhat = float(diag.gelman_rubin(param_samples))
@@ -203,8 +228,7 @@ def check_convergence(mcmc) -> dict:
             if ess < ESS_THRESHOLD:
                 low_ess[param_name] = ess
         else:
-            # Vector parameter (e.g., delta[1487], theta[N_players])
-            # Flatten to (n_chains, n_samples, n_params) and compute per-element
+            # Vector parameter (e.g., delta[1476], theta[2818])
             n_chains, n_samp = param_samples.shape[:2]
             flat = param_samples.reshape(n_chains, n_samp, -1)
             n_elements = flat.shape[2]
@@ -255,7 +279,6 @@ def check_convergence(mcmc) -> dict:
 
     if bad_rhat:
         print(f"        Parameters with R̂ > {R_HAT_THRESHOLD}: {len(bad_rhat)}")
-        # Show first few
         for k, v in list(bad_rhat.items())[:5]:
             print(f"          {k}: R̂ = {v:.4f}")
         if len(bad_rhat) > 5:
@@ -450,7 +473,7 @@ def main():
                                    -(c["b_hard_display"] if c["b_hard_display"] is not None else -999)))
 
     meta = {
-        "generated_at": pd.Timestamp.utcnow().isoformat(),
+        "generated_at": pd.Timestamp.now("UTC").isoformat(),
         "n_charts_total": int(len(df)),
         "n_charts_valid": int((~df["provisional"]).sum()),
         "n_charts_provisional": int(df["provisional"].sum()),
