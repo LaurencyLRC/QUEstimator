@@ -6,9 +6,10 @@ Stage 1: Parse UEtable.json -> chart database (real metadata).
 Stage 2: Load real IR leaderboard data.
 Stage 3: Fit Bayesian Graded Response Model via MCMC (NUTS) using numpyro.
          Identifiability is enforced by centering log(α) so its geometric
-         mean equals 1, which breaks the α-θ scaling degeneracy.
-         Uses non-centered parameterization for δ and θ~N(0,1) as the
-         standard IRT scale anchor.
+         mean equals 1, breaking the α-θ scaling degeneracy.
+         δ uses a *centered* parameterization (δ ~ Normal(loc, scale))
+         which gives better gradient geometry than the non-centered form
+         for this model.
 Stage 4: Extract posterior means and standard errors.
 Stage 5: Aggregate per U_E level (median + IQR).
 Stage 6: Emit static JSON artifacts for the Next.js dashboard.
@@ -30,7 +31,6 @@ try:
     from tqdm import tqdm
 except ImportError:
     class _FallbackTqdm:
-        """Silent no-op stand-in when tqdm is not installed."""
         def __init__(self, iterable=None, total=None, **kw):
             self.iterable = iterable
             self.total = total
@@ -52,8 +52,6 @@ except ImportError:
             return iterable
         return _FallbackTqdm(total=kw.get("total"))
 
-# Configure JAX to use multiple CPU threads for parallel chains.
-# Must be called before any numpyro/jax operations.
 import numpyro
 numpyro.set_host_device_count(min(4, os.cpu_count() or 1))
 
@@ -64,22 +62,18 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INPUT_PATH = _PROJECT_ROOT / "upload" / "UEtable_enriched.json"
 OUT_DIR = _PROJECT_ROOT / "public" / "data"
 
-# MCMC settings — balanced for CI time limits (~6 h) while still giving
-# excellent posterior resolution.  The centered-α identification makes
-# the posterior unimodal, so modest chain counts / sample sizes are enough
-# for R̂≈1 and high ESS.
-MCMC_WARMUP = 1000
+# 4 chains × (1500 warmup + 2000 samples) = 14 000 iterations.
+# With centered δ the per-iteration cost matches the original model
+# (~1.7 h for 24 k iters), so 14 k iters ≈ ~1 h.
+MCMC_WARMUP = 1500
 MCMC_SAMPLES = 2000
 MCMC_CHAINS = 4
 
-# Convergence thresholds
 R_HAT_THRESHOLD = 1.05
 ESS_THRESHOLD = 200
 
-# Parameters that are deterministic transformations of raw samples.
-# We skip them in convergence diagnostics (if the raw params converge the
-# transforms converge too) — this roughly halves the diagnostic workload.
-_DETERMINISTIC_PARAMS = frozenset({"delta", "alpha"})
+# Deterministic transforms — skipped in convergence diagnostics.
+_DETERMINISTIC_PARAMS = frozenset({"alpha"})
 
 # --------------------------------------------------------------------------- #
 # Stage 1 - Metadata loading
@@ -106,8 +100,7 @@ def load_charts() -> pd.DataFrame:
             "state": (c.get("state") or "").strip(),
             "sha256": (c.get("sha256") or "").strip(),
         })
-    df = pd.DataFrame(rows).drop_duplicates(subset="md5").reset_index(drop=True)
-    return df
+    return pd.DataFrame(rows).drop_duplicates(subset="md5").reset_index(drop=True)
 
 
 def level_sort_key(level: str):
@@ -123,29 +116,19 @@ def level_sort_key(level: str):
 #
 # IDENTIFICATION STRATEGY
 # ───────────────────────
-# The Graded Response Model has a well-known scaling degeneracy:
+# The GRM likelihood P*(θ,βₖ) = logistic(α·(θ−βₖ)) is invariant under
+# (α→cα, θ→θ/c, βₖ→βₖ/c).  This one-dimensional ridge causes multi-chain
+# NUTS to explore incompatible scaling basins (original R̂=17.7).
 #
-#   P*(θ, βₖ) = logistic(α · (θ − βₖ))
+# Fix: constrain geometric mean of α to 1:
+#   log αⱼ = log α̃ⱼ − mean(log α̃)   ⇒   (1/J) Σ log αⱼ = 0
 #
-# is invariant under (α → c·α,  θ → θ/c,  βₖ → βₖ/c) for any c > 0.
+# Combined with θ ~ Normal(0,1) this fully identifies the model.
 #
-# With free αⱼ per chart and free θᵢ per player the posterior has a
-# one-dimensional ridge along this scaling direction.  Multi-chain NUTS
-# explores different points on the ridge → chains diverge → R̂ ≫ 1 and
-# averaging across chains produces meaningless estimates.
-#
-# We break the degeneracy by constraining the *geometric mean* of α to 1:
-#
-#   log αⱼ = log α̃ⱼ − mean(log α̃)      ⇒   (1/J) Σ log αⱼ = 0
-#
-# This removes exactly the one non-identified degree of freedom while
-# preserving all chart-specific discrimination variation.  Combined with
-# θ ~ Normal(0, 1) as the standard IRT scale anchor, the posterior becomes
-# unimodal and all chains converge to the same mode.
-#
-# Additionally, δ uses a non-centered parameterization (δ_raw ~ N(0,1),
-# δ = loc + scale·δ_raw) which improves the geometry for charts whose
-# posterior is concentrated near the prior mean.
+# δ uses a CENTERED parameterization (δ ~ Normal(loc, scale)) because
+# the non-centered form (δ_raw ~ N(0,1), δ = loc + scale·δ_raw) scales
+# gradients by `scale=0.4`, causing NUTS to overshoot and produce
+# R̂≈1.4 / ESS≈3 in the raw space.
 # --------------------------------------------------------------------------- #
 def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     import jax
@@ -155,7 +138,6 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     from numpyro.infer import MCMC, NUTS, init_to_value
 
     n_charts = len(df)
-
     chart_idx = clears[:, 0]
     player_idx = clears[:, 1]
     y = clears[:, 2]
@@ -172,38 +154,39 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         else:
             is_gimmick[i] = True
 
+    # Pre-compute prior locations for initialization
+    init_loc = -3.0 + 0.2 * level_num
+    init_loc = np.where(is_gimmick, 0.0, init_loc)
+
     def model(player_idx, chart_idx, y, level_num, is_gimmick, n_players, n_charts):
-        # ── Hyperparameters for the linear level→difficulty mapping ────
+        # ── Hyperparameters ────────────────────────────────────────────
         prior_a = numpyro.sample("prior_a", dist.Normal(-3.0, 2.0))
         prior_b = numpyro.sample("prior_b", dist.Normal(0.2, 0.2))
 
-        # Prior location anchored to numerical rank
         loc = prior_a + prior_b * level_num
         loc = jnp.where(is_gimmick, 0.0, loc)
         delta_scale = jnp.where(is_gimmick, 3.0, 0.5)
 
         # ── Chart parameters ───────────────────────────────────────────
         with numpyro.plate("charts", n_charts):
-            # Non-centered difficulty:  δ = loc + scale · δ_raw
-            delta_raw = numpyro.sample("delta_raw", dist.Normal(0, 1))
+            # CENTERED difficulty: δ ~ Normal(loc, scale)
+            # This is the original parameterization — gradients are
+            # unscaled so NUTS adapts well.
+            delta = numpyro.sample("delta", dist.Normal(loc, delta_scale))
 
-            # Discrimination *deviations* (before centering).
+            # Discrimination deviations (before centering)
             log_alpha_dev = numpyro.sample("log_alpha_dev", dist.Normal(0, 0.3))
 
             # Threshold spacings
             tau1 = numpyro.sample("tau1", dist.HalfNormal(1.0))
             tau2 = numpyro.sample("tau2", dist.HalfNormal(1.0))
 
-        # ── Deterministic transformations ──────────────────────────────
-        delta = numpyro.deterministic("delta", loc + delta_scale * delta_raw)
-
-        # ★ KEY IDENTIFIABILITY FIX ★
-        # Subtract the mean of log(α̃) so that the geometric mean of α is 1.
+        # ── Identify α scale ───────────────────────────────────────────
+        # ★ KEY FIX: center log(α) so geometric mean = 1 ★
         log_alpha_centered = log_alpha_dev - jnp.mean(log_alpha_dev)
         alpha = numpyro.deterministic("alpha", jnp.exp(log_alpha_centered))
 
         # ── Player skill ───────────────────────────────────────────────
-        # Normal(0, 1) is the standard IRT scale convention.
         with numpyro.plate("players", n_players):
             theta = numpyro.sample("theta", dist.Normal(0, 1))
 
@@ -234,8 +217,8 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     init_strategy = init_to_value(values={
         "prior_a": -3.0,
         "prior_b": 0.2,
-        "delta_raw": np.zeros(n_charts),
-        "log_alpha_dev": np.zeros(n_charts),
+        "delta": init_loc,                     # at prior mean
+        "log_alpha_dev": np.zeros(n_charts),   # α = 1 for all
         "tau1": np.ones(n_charts) * 0.8,
         "tau2": np.ones(n_charts) * 0.8,
         "theta": np.zeros(n_players),
@@ -245,8 +228,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     print(f"      compiling and running NUTS MCMC ({MCMC_CHAINS} chains, "
           f"{MCMC_WARMUP} warmup, {MCMC_SAMPLES} samples/chain "
           f"= {total_iters:,} total iterations)...")
-    print(f"      identification: centered log(α), "
-          f"non-centered δ, θ ~ Normal(0, 1)")
+    print(f"      identification: centered log(α), centered δ, θ ~ N(0,1)")
 
     mcmc = MCMC(
         NUTS(model, init_strategy=init_strategy),
@@ -272,46 +254,32 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
 
 
 # --------------------------------------------------------------------------- #
-# Stage 4 - Convergence diagnostics (vectorized)
+# Stage 4 - Convergence diagnostics
 # --------------------------------------------------------------------------- #
 def _rhat_numpy(z):
-    """
-    Vectorized Gelman–Rubin R̂ computed in pure NumPy.
-    z : (n_chains, n_samples, ...) — trailing dims are element-wise.
-    Returns array of shape z.shape[2:]  (scalar if 2-D input).
+    """Vectorized Gelman–Rubin R̂ in pure NumPy.
+    z: (n_chains, n_samples, ...) → R̂ with shape z.shape[2:]
     """
     n_chains, n_samples = z.shape[:2]
     flat = z.reshape(n_chains, n_samples, -1)
-    # Within-chain variance: mean of per-chain variances
-    W = np.var(flat, axis=1, ddof=1).mean(axis=0)          # (P,)
-    # Between-chain variance: variance of per-chain means
-    B = n_samples * np.var(flat.mean(axis=1), axis=0, ddof=1)  # (P,)
-    # Pooled variance estimate
+    W = np.var(flat, axis=1, ddof=1).mean(axis=0)
+    B = n_samples * np.var(flat.mean(axis=1), axis=0, ddof=1)
     var_plus = ((n_samples - 1) / n_samples) * W + B / n_samples
     rhat = np.sqrt(var_plus / np.maximum(W, 1e-10))
     return rhat.reshape(z.shape[2:]) if z.ndim > 2 else float(rhat.squeeze())
 
 
 def check_convergence(mcmc) -> dict:
-    """
-    Compute convergence diagnostics (R̂ and ESS) from multi-chain samples.
-    Uses vectorized R̂ (NumPy) and tries vectorized ESS first, falling back
-    to element-wise if the numpyro backend does not support batched ESS.
-    Skips deterministic-transform parameters to halve the workload.
-    """
     import numpyro.diagnostics as diag
 
     samples_by_chain = mcmc.get_samples(group_by_chain=True)
-
-    # ── Filter to raw (sampled) parameters only ────────────────────────
     raw_params = {k: v for k, v in samples_by_chain.items()
                   if k not in _DETERMINISTIC_PARAMS}
 
-    # ── Count total scalar elements for the progress bar ───────────────
-    total_elements = 0
-    for _name, s in raw_params.items():
-        shape = s.shape[2:]
-        total_elements += int(np.prod(shape)) if len(shape) else 1
+    total_elements = sum(
+        int(np.prod(s.shape[2:])) if s.ndim > 2 else 1
+        for s in raw_params.values()
+    )
 
     diagnostics = {}
     bad_rhat = {}
@@ -327,7 +295,6 @@ def check_convergence(mcmc) -> dict:
     for param_name, param_samples in raw_params.items():
         original_shape = param_samples.shape[2:]
         if len(original_shape) == 0:
-            # ── Scalar parameter ───────────────────────────────────────
             rhat = float(diag.gelman_rubin(param_samples))
             ess = float(diag.effective_sample_size(param_samples))
             diagnostics[param_name] = {"r_hat": rhat, "n_eff": ess}
@@ -341,10 +308,10 @@ def check_convergence(mcmc) -> dict:
             flat = np.array(param_samples.reshape(n_chains, n_samp, -1))
             n_elements = flat.shape[2]
 
-            # ── Vectorized R̂ (NumPy, instant) ─────────────────────────
+            # Vectorized R̂
             rhats = np.asarray(_rhat_numpy(flat), dtype=float).ravel()
 
-            # ── ESS: try vectorized via numpyro, fall back to loop ─────
+            # ESS: try batch via numpyro, fallback to loop
             try:
                 import jax.numpy as jnp
                 esses = np.asarray(
@@ -355,9 +322,7 @@ def check_convergence(mcmc) -> dict:
             except Exception:
                 esses = np.empty(n_elements)
                 for i in range(n_elements):
-                    esses[i] = float(
-                        diag.effective_sample_size(flat[:, :, i])
-                    )
+                    esses[i] = float(diag.effective_sample_size(flat[:, :, i]))
 
             diagnostics[param_name] = {
                 "r_hat_max": float(rhats.max()),
@@ -379,7 +344,6 @@ def check_convergence(mcmc) -> dict:
 
     pbar.close()
 
-    # ── Overall convergence assessment ─────────────────────────────────
     r_hat_max = max(
         (d.get("r_hat_max", d.get("r_hat", 0.0)) for d in diagnostics.values()),
         default=1.0,
@@ -391,7 +355,6 @@ def check_convergence(mcmc) -> dict:
     )
     convergence_ok = (r_hat_max < R_HAT_THRESHOLD) and (ess_min >= ESS_THRESHOLD)
 
-    # Print summary
     print(f"      convergence diagnostics:")
     print(f"        R̂ max:  {r_hat_max:.4f}  (threshold: {R_HAT_THRESHOLD})")
     print(f"        ESS min: {ess_min:.0f}  (threshold: {ESS_THRESHOLD})")
@@ -476,11 +439,9 @@ def main():
           f"(numpyro NUTS, {MCMC_CHAINS} chains, {total_iters:,} iters) ...")
     mcmc = run_mcmc(clears, df, len(player_map))
 
-    # --- Convergence diagnostics ---
     print("[4/6] Checking convergence (R̂, ESS) ...")
     convergence = check_convergence(mcmc)
 
-    # Extract samples (flatten chains)
     samples = mcmc.get_samples()
 
     a_mean = np.array(samples["alpha"].mean(axis=0))
@@ -544,7 +505,6 @@ def main():
     print(f"      fits complete. provisional charts: "
           f"{int(df['provisional'].sum())} / {len(df)}")
 
-    # ── Stage 5: player θ extraction ───────────────────────────────────
     print("[5/6] Extracting player theta values ...")
     theta_mean = np.array(samples["theta"].mean(axis=0))
     theta_std = float(np.std(theta_mean))
@@ -556,8 +516,7 @@ def main():
     }).groupby("player")
 
     for pid, group in tqdm(
-        p_clears,
-        desc="      Extracting player θ",
+        p_clears, desc="      Extracting player θ",
         total=len(p_clears),
         bar_format="{desc}: {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
     ):
@@ -569,14 +528,12 @@ def main():
             "c": p_c,
         }
 
-    # ── Stage 6: aggregation & JSON output ─────────────────────────────
     print("[6/6] Aggregating per U_E level & emitting JSON artifacts ...")
     level_summary = aggregate_by_level(df)
 
     charts_out = []
     for i, r in tqdm(
-        df.iterrows(),
-        total=len(df),
+        df.iterrows(), total=len(df),
         desc="      Building charts.json",
         bar_format="{desc}: {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
     ):
@@ -626,11 +583,9 @@ def main():
         "player_theta_std": theta_std,
         "data_source": "Qwilight IR leaderboards (real player data)",
         "runtime_sec": round(time.time() - t0, 2),
-        # MCMC configuration
         "mcmc_chains": MCMC_CHAINS,
         "mcmc_warmup": MCMC_WARMUP,
         "mcmc_samples_per_chain": MCMC_SAMPLES,
-        # Convergence diagnostics
         "convergence": {
             "r_hat_max": round(convergence["r_hat_max"], 4),
             "ess_min": int(convergence["ess_min"]),
@@ -640,11 +595,10 @@ def main():
             "r_hat_threshold": R_HAT_THRESHOLD,
             "ess_threshold": ESS_THRESHOLD,
         },
-        # Identification strategy (for reproducibility / documentation)
         "identification": {
             "method": "centered log(α) — geometric mean fixed at 1",
             "theta_prior": "Normal(0, 1)",
-            "delta_parameterization": "non-centered (δ = loc + scale · δ_raw)",
+            "delta_parameterization": "centered (δ ~ Normal(loc, scale))",
         },
     }
 
@@ -668,7 +622,7 @@ def main():
     print(f"  Clears:         {meta['n_clears']:,}")
     print(f"  MCMC:           {MCMC_CHAINS} chains × "
           f"({MCMC_WARMUP} warmup + {MCMC_SAMPLES} samples)")
-    print(f"  Identification: centered log(α), non-centered δ, θ ~ N(0,1)")
+    print(f"  Identification: centered log(α), centered δ, θ ~ N(0,1)")
     print(f"  R̂ max:         {convergence['r_hat_max']:.4f} "
           f"({'✅' if convergence['convergence_ok'] else '⚠️'})")
     print(f"  ESS min:        {convergence['ess_min']:.0f}")
@@ -677,11 +631,10 @@ def main():
     if not convergence["convergence_ok"]:
         print()
         print("  ⚠️  WARNING: Convergence diagnostics indicate potential issues.")
-        print(f"      {convergence['n_bad_rhat']} parameters have "
-              f"R̂ > {R_HAT_THRESHOLD}")
-        print(f"      {convergence['n_low_ess']} parameters have "
-              f"ESS < {ESS_THRESHOLD}")
+        print(f"      {convergence['n_bad_rhat']} parameters have R̂ > {R_HAT_THRESHOLD}")
+        print(f"      {convergence['n_low_ess']} parameters have ESS < {ESS_THRESHOLD}")
 
 
 if __name__ == "__main__":
     main()
+         
