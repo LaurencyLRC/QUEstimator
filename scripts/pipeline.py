@@ -5,8 +5,9 @@ QUEstimator data pipeline.
 Stage 1: Parse UEtable.json -> chart database (real metadata).
 Stage 2: Load real IR leaderboard data.
 Stage 3: Fit Bayesian Graded Response Model via MCMC (NUTS) using numpyro.
-         Identifiability is enforced by centering log(α) so its geometric
-         mean equals 1, breaking the α-θ scaling degeneracy.
+         Identifiability is enforced by fixing one well-observed, typical
+         chart's discrimination to α=1, breaking the α-θ scaling degeneracy
+         without a dense all-chart centering transform.
          δ uses a *centered* parameterization (δ ~ Normal(loc, scale))
          which gives better gradient geometry than the non-centered form
          for this model.
@@ -116,20 +117,65 @@ def level_sort_key(level: str):
 #
 # IDENTIFICATION STRATEGY
 # ───────────────────────
-# The GRM likelihood P*(θ,βₖ) = logistic(α·(θ−βₖ)) is invariant under
-# (α→cα, θ→θ/c, βₖ→βₖ/c).  This one-dimensional ridge causes multi-chain
-# NUTS to explore incompatible scaling basins (original R̂=17.7).
+# The GRM likelihood P*(θ, βₖ) = logistic(α·(θ−βₖ)) is invariant under
+# (α→cα, θ→θ/c, βₖ→βₖ/c).  We use the standard θ ~ Normal(0, 1) scale and
+# set α=1 for ONE fixed, well-observed, representative chart.  Every other
+# log(α) is independently sampled.  This removes the scaling ridge without
+# the dense J×J dependence introduced by
+# `log_alpha_dev - mean(log_alpha_dev)`.
 #
-# Fix: constrain geometric mean of α to 1:
-#   log αⱼ = log α̃ⱼ − mean(log α̃)   ⇒   (1/J) Σ log αⱼ = 0
+# The reference chart only defines the unit of the latent skill/difficulty
+# scale; it does not fix its difficulty or thresholds.  To avoid anchoring to
+# an unusual or data-poor chart, it is selected deterministically from regular
+# charts with at least median coverage, preferring a median-level chart with a
+# high-entropy (mixed) distribution of clear outcomes.  The selected ID and
+# metadata are emitted in meta.json for auditability.
 #
-# Combined with θ ~ Normal(0,1) this fully identifies the model.
-#
-# δ uses a CENTERED parameterization (δ ~ Normal(loc, scale)) because
-# the non-centered form (δ_raw ~ N(0,1), δ = loc + scale·δ_raw) scales
-# gradients by `scale=0.4`, causing NUTS to overshoot and produce
-# R̂≈1.4 / ESS≈3 in the raw space.
+# δ is CENTERED: δ ~ Normal(loc, scale).  Non-centering was empirically worse
+# for this model because its small prior scale attenuated the gradient.
 # --------------------------------------------------------------------------- #
+def select_reference_chart(clears: np.ndarray, df: pd.DataFrame) -> int:
+    """Choose a stable scale anchor, without using fitted parameters.
+
+    A reference chart fixes only α=1.  It must be well observed, non-gimmick,
+    near the middle of the regular-level range, and have varied outcomes so
+    that it informs a slope rather than an almost deterministic response.
+    """
+    n_charts = len(df)
+    counts = np.bincount(clears[:, 0], minlength=n_charts).astype(float)
+    category_counts = np.zeros((n_charts, 4), dtype=float)
+    np.add.at(category_counts, (clears[:, 0], clears[:, 2]), 1)
+    proportions = category_counts / np.maximum(counts[:, None], 1.0)
+    entropy = -(proportions * np.log(np.maximum(proportions, 1e-12))).sum(axis=1)
+
+    numeric_levels = pd.to_numeric(df["level"], errors="coerce").to_numpy(dtype=float)
+    regular = np.isfinite(numeric_levels)
+    if not np.any(regular):
+        # Defensive fallback for a metadata-only test fixture.
+        return int(np.argmax(counts))
+
+    median_count = np.median(counts[regular])
+    candidates = regular & (counts >= max(1.0, median_count))
+    if not np.any(candidates):
+        candidates = regular & (counts > 0)
+    if not np.any(candidates):
+        candidates = regular
+
+    level_midpoint = np.median(numeric_levels[candidates])
+    # Lexicographic ranking: typical level, informative outcomes, coverage,
+    # then chart index.  The fixed order keeps weekly runs reproducible.
+    candidate_indices = np.flatnonzero(candidates)
+    return int(sorted(
+        candidate_indices,
+        key=lambda i: (
+            abs(numeric_levels[i] - level_midpoint),
+            -entropy[i],
+            -counts[i],
+            i,
+        ),
+    )[0])
+
+
 def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     import jax
     import jax.numpy as jnp
@@ -157,6 +203,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     # Pre-compute prior locations for initialization
     init_loc = -3.0 + 0.2 * level_num
     init_loc = np.where(is_gimmick, 0.0, init_loc)
+    reference_chart_idx = select_reference_chart(clears, df)
 
     def model(player_idx, chart_idx, y, level_num, is_gimmick, n_players, n_charts):
         # ── Hyperparameters ────────────────────────────────────────────
@@ -174,17 +221,21 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
             # unscaled so NUTS adapts well.
             delta = numpyro.sample("delta", dist.Normal(loc, delta_scale))
 
-            # Discrimination deviations (before centering)
-            log_alpha_dev = numpyro.sample("log_alpha_dev", dist.Normal(0, 0.3))
-
             # Threshold spacings
             tau1 = numpyro.sample("tau1", dist.HalfNormal(1.0))
             tau2 = numpyro.sample("tau2", dist.HalfNormal(1.0))
 
-        # ── Identify α scale ───────────────────────────────────────────
-        # ★ KEY FIX: center log(α) so geometric mean = 1 ★
-        log_alpha_centered = log_alpha_dev - jnp.mean(log_alpha_dev)
-        alpha = numpyro.deterministic("alpha", jnp.exp(log_alpha_centered))
+        # ── Identify α scale with one reference chart ──────────────────
+        # α_ref is exactly 1.  Unlike mean-centering, each free log(α) has
+        # a local independent prior and no all-chart deterministic coupling.
+        with numpyro.plate("non_reference_charts", n_charts - 1):
+            log_alpha_free = numpyro.sample("log_alpha_free", dist.Normal(0, 0.3))
+        log_alpha = jnp.concatenate((
+            log_alpha_free[:reference_chart_idx],
+            jnp.zeros(1),
+            log_alpha_free[reference_chart_idx:],
+        ))
+        alpha = numpyro.deterministic("alpha", jnp.exp(log_alpha))
 
         # ── Player skill ───────────────────────────────────────────────
         with numpyro.plate("players", n_players):
@@ -218,7 +269,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         "prior_a": -3.0,
         "prior_b": 0.2,
         "delta": init_loc,                     # at prior mean
-        "log_alpha_dev": np.zeros(n_charts),   # α = 1 for all
+        "log_alpha_free": np.zeros(n_charts - 1),  # α = 1 initially
         "tau1": np.ones(n_charts) * 0.8,
         "tau2": np.ones(n_charts) * 0.8,
         "theta": np.zeros(n_players),
@@ -228,7 +279,11 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     print(f"      compiling and running NUTS MCMC ({MCMC_CHAINS} chains, "
           f"{MCMC_WARMUP} warmup, {MCMC_SAMPLES} samples/chain "
           f"= {total_iters:,} total iterations)...")
-    print(f"      identification: centered log(α), centered δ, θ ~ N(0,1)")
+    ref = df.iloc[reference_chart_idx]
+    print("      selected reference chart (its discrimination is fixed at α = 1):")
+    print(f"        id={reference_chart_idx}, title={ref['title']!r}, "
+          f"level={ref['level']!r}, md5={ref['md5']}")
+    print("      identification: reference-chart α=1, centered δ, θ ~ N(0,1)")
 
     mcmc = MCMC(
         NUTS(model, init_strategy=init_strategy),
@@ -250,6 +305,9 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         n_charts=n_charts,
     )
 
+    # Keep the selection with the fitted object so output metadata describes
+    # the exact identification used by this run.
+    mcmc.reference_chart_idx = reference_chart_idx
     return mcmc
 
 
@@ -596,9 +654,16 @@ def main():
             "ess_threshold": ESS_THRESHOLD,
         },
         "identification": {
-            "method": "centered log(α) — geometric mean fixed at 1",
+            "method": "reference-chart discrimination fixed at α = 1",
             "theta_prior": "Normal(0, 1)",
             "delta_parameterization": "centered (δ ~ Normal(loc, scale))",
+            "reference_chart": {
+                "id": int(mcmc.reference_chart_idx),
+                "md5": str(df.iloc[mcmc.reference_chart_idx]["md5"]),
+                "title": str(df.iloc[mcmc.reference_chart_idx]["title"]),
+                "level": str(df.iloc[mcmc.reference_chart_idx]["level"]),
+                "selection": "regular chart with at least median coverage; median-level, high-outcome-entropy tie-break",
+            },
         },
     }
 
@@ -622,7 +687,10 @@ def main():
     print(f"  Clears:         {meta['n_clears']:,}")
     print(f"  MCMC:           {MCMC_CHAINS} chains × "
           f"({MCMC_WARMUP} warmup + {MCMC_SAMPLES} samples)")
-    print(f"  Identification: centered log(α), centered δ, θ ~ N(0,1)")
+    reference = meta["identification"]["reference_chart"]
+    print(f"  Identification: reference-chart α=1, centered δ, θ ~ N(0,1)")
+    print(f"  Reference:      chart {reference['id']} — {reference['title']} "
+          f"[{reference['level']}] (α fixed at 1)")
     print(f"  R̂ max:         {convergence['r_hat_max']:.4f} "
           f"({'✅' if convergence['convergence_ok'] else '⚠️'})")
     print(f"  ESS min:        {convergence['ess_min']:.0f}")
