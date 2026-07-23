@@ -382,6 +382,62 @@ def check_convergence(mcmc) -> dict:
         if len(low_ess) > 5:
             print(f"          ... and {len(low_ess) - 5} more")
 
+    # Summarize diagnostics by latent-variable block.  This is intentionally
+    # computed from the same scalar diagnostics above, so it does not alter
+    # the convergence decision or the fitted model.
+    block_names = ("prior_a", "prior_b", "delta", "tau1", "tau2",
+                   "log_alpha_contrast", "theta")
+    block_summary = {}
+    for block in block_names:
+        entries = []
+        for name, d in diagnostics.items():
+            if name == block:
+                entries.append(d)
+            elif name.startswith(block + "["):
+                n = d.get("n_elements", 0)
+                # Vector diagnostics are summarized below from their extrema;
+                # retain the aggregate record as one block entry.
+                entries.append(d)
+        if not entries:
+            continue
+        rhats = [d.get("r_hat_max", d.get("r_hat", 0.0)) for d in entries]
+        esses = [d.get("n_eff_min", d.get("n_eff", float("inf"))) for d in entries]
+        block_summary[block] = {
+            "r_hat_max": float(max(rhats)),
+            "n_eff_min": float(min(esses)),
+            "n_bad_rhat": int(sum(d.get("n_bad_rhat", 0) for d in entries)),
+            "n_low_ess": int(sum(d.get("n_low_ess", 0) for d in entries)),
+        }
+
+    # NUTS transition diagnostics are useful for separating poor mixing from
+    # insufficient trajectory length.  They are optional across NumPyro/JAX
+    # versions and therefore never affect pipeline success.
+    nuts_summary = {}
+    try:
+        extra = mcmc.get_extra_fields(group_by_chain=True)
+        if "diverging" in extra:
+            nuts_summary["divergences"] = int(np.asarray(extra["diverging"]).sum())
+        if "num_steps" in extra:
+            steps = np.asarray(extra["num_steps"])
+            nuts_summary["num_steps_mean"] = float(steps.mean())
+            nuts_summary["num_steps_max"] = int(steps.max())
+        if "tree_depth" in extra:
+            depth = np.asarray(extra["tree_depth"])
+            nuts_summary["tree_depth_mean"] = float(depth.mean())
+            nuts_summary["tree_depth_max"] = int(depth.max())
+    except Exception as exc:
+        print(f"        NUTS transition diagnostics unavailable: {exc}")
+
+    if block_summary:
+        print("        diagnostics by parameter block:")
+        for block, values in block_summary.items():
+            print(f"          {block}: R̂ max={values['r_hat_max']:.4f}, "
+                  f"ESS min={values['n_eff_min']:.0f}, "
+                  f"bad R̂={values['n_bad_rhat']}, "
+                  f"low ESS={values['n_low_ess']}")
+    if nuts_summary:
+        print(f"        NUTS transitions: {nuts_summary}")
+
     return {
         "r_hat_max": r_hat_max,
         "ess_min": ess_min,
@@ -389,6 +445,8 @@ def check_convergence(mcmc) -> dict:
         "n_bad_rhat": len(bad_rhat),
         "n_low_ess": len(low_ess),
         "diagnostics": diagnostics,
+        "by_parameter_block": block_summary,
+        "nuts": nuts_summary,
     }
 
 
@@ -602,6 +660,8 @@ def main():
             "n_params_low_ess": convergence["n_low_ess"],
             "r_hat_threshold": R_HAT_THRESHOLD,
             "ess_threshold": ESS_THRESHOLD,
+            "by_parameter_block": convergence.get("by_parameter_block", {}),
+            "nuts": convergence.get("nuts", {}),
         },
         "identification": {
             "method": "orthonormal zero-sum Householder log-alpha contrasts",
