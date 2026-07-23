@@ -65,8 +65,8 @@ OUT_DIR = _PROJECT_ROOT / "public" / "data"
 # 4 chains × (1500 warmup + 2000 samples) = 14 000 iterations.
 # With centered δ the per-iteration cost matches the original model
 # (~1.7 h for 24 k iters), so 14 k iters ≈ ~1 h.
-MCMC_WARMUP = 1500
-MCMC_SAMPLES = 2000
+MCMC_WARMUP = 2500
+MCMC_SAMPLES = 2500
 MCMC_CHAINS = 4
 
 R_HAT_THRESHOLD = 1.05
@@ -232,7 +232,12 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
     print("      identification: orthonormal zero-sum log-alpha contrasts, centered δ, θ ~ N(0,1)")
 
     mcmc = MCMC(
-        NUTS(model, init_strategy=init_strategy),
+        NUTS(
+            model,
+            init_strategy=init_strategy,
+            target_accept_prob=0.90,
+            max_tree_depth=11,
+        ),
         num_warmup=MCMC_WARMUP,
         num_samples=MCMC_SAMPLES,
         num_chains=MCMC_CHAINS,
