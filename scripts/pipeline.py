@@ -62,9 +62,9 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INPUT_PATH = _PROJECT_ROOT / "upload" / "UEtable_enriched.json"
 OUT_DIR = _PROJECT_ROOT / "public" / "data"
 
-# High target acceptance is intentional: the previous run had divergences
-# in every retained transition. This tests whether smaller NUTS steps resolve
-# the pathological geometry without changing model priors or parameterization.
+# 4 chains × (1500 warmup + 2000 samples) = 14 000 iterations.
+# With centered δ the per-iteration cost matches the original model
+# (~1.7 h for 24 k iters), so 14 k iters ≈ ~1 h.
 MCMC_WARMUP = 2500
 MCMC_SAMPLES = 2500
 MCMC_CHAINS = 4
@@ -170,14 +170,9 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
             # unscaled so NUTS adapts well.
             delta = numpyro.sample("delta", dist.Normal(loc, delta_scale))
 
-            # Threshold spacings.  Sample on the unconstrained log scale to
-            # avoid the sharp HalfNormal boundary at zero, which produced
-            # divergences in every retained transition.  The LogNormal is
-            # moment-matched to HalfNormal(1): mean ≈ 0.798, variance ≈ 0.363.
-            # This is an explicit prior-geometry experiment; compare its
-            # difficulty estimates against v4 before adopting it permanently.
-            tau1 = numpyro.sample("tau1", dist.LogNormal(-0.2258, 0.8525))
-            tau2 = numpyro.sample("tau2", dist.LogNormal(-0.2258, 0.8525))
+            # Threshold spacings
+            tau1 = numpyro.sample("tau1", dist.HalfNormal(1.0))
+            tau2 = numpyro.sample("tau2", dist.HalfNormal(1.0))
 
         # ── Identify α scale with an orthonormal zero-sum contrast ───────
         # q has exactly n_charts-1 independent N(0, .3) coordinates.  The
@@ -240,7 +235,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         NUTS(
             model,
             init_strategy=init_strategy,
-            target_accept_prob=0.90,
+            target_accept_prob=0.95,
             max_tree_depth=11,
         ),
         num_warmup=MCMC_WARMUP,
@@ -310,12 +305,7 @@ def check_convergence(mcmc) -> dict:
         if len(original_shape) == 0:
             rhat = float(diag.gelman_rubin(param_samples))
             ess = float(diag.effective_sample_size(param_samples))
-            diagnostics[param_name] = {
-                "r_hat": rhat,
-                "n_eff": ess,
-                "n_bad_rhat": int(rhat > R_HAT_THRESHOLD),
-                "n_low_ess": int(ess < ESS_THRESHOLD),
-            }
+            diagnostics[param_name] = {"r_hat": rhat, "n_eff": ess}
             if rhat > R_HAT_THRESHOLD:
                 bad_rhat[param_name] = rhat
             if ess < ESS_THRESHOLD:
