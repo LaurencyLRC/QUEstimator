@@ -170,9 +170,14 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
             # unscaled so NUTS adapts well.
             delta = numpyro.sample("delta", dist.Normal(loc, delta_scale))
 
-            # Threshold spacings
-            tau1 = numpyro.sample("tau1", dist.HalfNormal(1.0))
-            tau2 = numpyro.sample("tau2", dist.HalfNormal(1.0))
+            # Threshold spacings.  Sample on the unconstrained log scale to
+            # avoid the sharp HalfNormal boundary at zero, which produced
+            # divergences in every retained transition.  The LogNormal is
+            # moment-matched to HalfNormal(1): mean ≈ 0.798, variance ≈ 0.363.
+            # This is an explicit prior-geometry experiment; compare its
+            # difficulty estimates against v4 before adopting it permanently.
+            tau1 = numpyro.sample("tau1", dist.LogNormal(-0.2258, 0.8525))
+            tau2 = numpyro.sample("tau2", dist.LogNormal(-0.2258, 0.8525))
 
         # ── Identify α scale with an orthonormal zero-sum contrast ───────
         # q has exactly n_charts-1 independent N(0, .3) coordinates.  The
@@ -235,8 +240,8 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         NUTS(
             model,
             init_strategy=init_strategy,
-            target_accept_prob=0.99,
-            max_tree_depth=12,
+            target_accept_prob=0.90,
+            max_tree_depth=11,
         ),
         num_warmup=MCMC_WARMUP,
         num_samples=MCMC_SAMPLES,
