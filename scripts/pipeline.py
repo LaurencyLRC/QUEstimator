@@ -3,7 +3,8 @@
 QUEstimator GRM pipeline — marginalized-θ, production version.
 
 Fits a Bayesian Graded Response Model to Qwilight IR clear data and writes the
-static JSON the dashboard consumes.
+static JSON the dashboard consumes.  No environment variables are required;
+all settings live in the Configuration block below.
 
 Model
 -----
@@ -78,19 +79,22 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INPUT_PATH = _PROJECT_ROOT / "upload" / "UEtable_enriched.json"
 OUT_DIR = _PROJECT_ROOT / "public" / "data"
 
-MCMC_WARMUP = 1000          # per chain; lower if the runner is time-constrained
-MCMC_SAMPLES = 1000         # per chain
-N_QUAD = 15                 # Gauss–Hermite nodes for the θ integral (11–21 ok)
+# Tuned for a 2-vCPU GitHub Actions runner (6 h budget): ~4–5 h on 2 vCPU,
+# leaving room for data refresh + build.  Raise these on a bigger/local machine.
+MCMC_WARMUP = 500           # per chain
+MCMC_SAMPLES = 500          # per chain
+N_QUAD = 11                 # Gauss–Hermite nodes for the θ integral (validated; 15–21 if time allows)
 TARGET_ACCEPT = 0.90
-MAX_TREE_DEPTH = 9
+MAX_TREE_DEPTH = 8
 
-# Adaptive parallelism: fewer chains on small runners (e.g. a 2-vCPU GitHub
-# Actions runner), and parallel vs. sequential chosen so a 2-vCPU box still runs
-# instead of crashing for lack of pmap devices.
+# Adaptive parallelism.  This model's per-step work is multi-threaded, so on a
+# small runner it is FASTER to run chains sequentially (each chain uses every
+# core) than to split cores across parallel chains.  Go parallel only when there
+# are comfortably more cores than chains.
 _NUM_CPU = max(1, os.cpu_count() or 1)
-MCMC_CHAINS = 4 if _NUM_CPU >= 4 else 2
-_NUM_HOST_DEVICES = MCMC_CHAINS if _NUM_CPU >= MCMC_CHAINS else 1
-CHAIN_METHOD = "parallel" if _NUM_CPU >= MCMC_CHAINS else "sequential"
+MCMC_CHAINS = 4 if _NUM_CPU >= 8 else 2
+_NUM_HOST_DEVICES = MCMC_CHAINS if _NUM_CPU >= 2 * MCMC_CHAINS else 1
+CHAIN_METHOD = "parallel" if _NUM_CPU >= 2 * MCMC_CHAINS else "sequential"
 numpyro.set_host_device_count(_NUM_HOST_DEVICES)
 
 R_HAT_THRESHOLD = 1.05
