@@ -1,18 +1,79 @@
 {
-  "generated_at": "2026-07-18T16:54:54.234845+00:00",
-  "n_charts_total": 1476,
-  "n_charts_valid": 1243,
-  "n_charts_provisional": 233,
-  "n_players": 2800,
-  "n_clears": 167589,
-  "model": "Graded Response Model (marginal MLE, 21-node Gauss-Hermite quadrature)",
+  "generated_at": "2026-07-25T10:00:03.554913+00:00",
+  "n_charts_total": 1487,
+  "n_charts_valid": 1429,
+  "n_charts_provisional": 58,
+  "n_players": 2821,
+  "n_clears": 169577,
+  "model": "Bayesian Graded Response Model (MCMC NUTS)",
   "categories": [
     "FAILED",
     "NORMAL",
     "HARD",
     "V-HARD"
   ],
-  "provisional_rule": "n < 30 OR se_b_vhard > 0.5",
+  "provisional_rule": "n < 10 OR se_b_hard > 1.0",
+  "player_theta_mean": -0.23047581398989955,
+  "player_theta_std": 1.625732153197019,
   "data_source": "Qwilight IR leaderboards (real player data)",
-  "runtime_sec": 17.4
+  "runtime_sec": 11431.89,
+  "mcmc_chains": 4,
+  "mcmc_warmup": 1000,
+  "mcmc_samples_per_chain": 1000,
+  "convergence": {
+    "r_hat_max": 1.0086,
+    "ess_min": 467,
+    "convergence_ok": true,
+    "n_params_bad_rhat": 0,
+    "n_params_low_ess": 0,
+    "r_hat_threshold": 1.05,
+    "ess_threshold": 200,
+    "by_parameter_block": {
+      "prior_a": {
+        "r_hat_max": 1.0085971355438232,
+        "n_eff_min": 481.2923926677488,
+        "n_bad_rhat": 0,
+        "n_low_ess": 0
+      },
+      "prior_b": {
+        "r_hat_max": 1.0059137344360352,
+        "n_eff_min": 467.2772196698699,
+        "n_bad_rhat": 0,
+        "n_low_ess": 0
+      },
+      "delta": {
+        "r_hat_max": 1.003004789352417,
+        "n_eff_min": 1480.8066209612282,
+        "n_bad_rhat": 0,
+        "n_low_ess": 0
+      },
+      "tau1": {
+        "r_hat_max": 1.0037213563919067,
+        "n_eff_min": 2000.0,
+        "n_bad_rhat": 0,
+        "n_low_ess": 0
+      },
+      "tau2": {
+        "r_hat_max": 1.00564706325531,
+        "n_eff_min": 1607.4195891619404,
+        "n_bad_rhat": 0,
+        "n_low_ess": 0
+      },
+      "log_alpha_contrast": {
+        "r_hat_max": 1.0025607347488403,
+        "n_eff_min": 1658.640580368946,
+        "n_bad_rhat": 0,
+        "n_low_ess": 0
+      }
+    },
+    "nuts": {
+      "divergences": 0
+    }
+  },
+  "identification": {
+    "method": "orthonormal zero-sum Householder log-alpha contrasts",
+    "theta_prior": "Normal(0, 1), marginalized out of the sampler (recovered per-player by EAP)",
+    "delta_parameterization": "centered (δ ~ Normal(loc, scale))",
+    "log_alpha_prior": "isotropic Normal(0, 0.3) on the zero-sum subspace"
+  }
 }
