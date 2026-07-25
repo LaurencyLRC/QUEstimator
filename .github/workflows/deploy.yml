@@ -1,4 +1,10 @@
 # .github/workflows/deploy.yml
+#
+# Build + deploy ONLY — no MCMC/pipeline step, no data refresh.
+# The GRM pipeline (scripts/pipeline.py) and any data refresh are run LOCALLY
+# (e.g. on your Ryzen, where it converges in ~3 h with 0 divergences). Commit
+# the generated public/data/*.json and push; this workflow builds the static
+# site from those committed files and deploys to GitHub Pages.
 name: Deploy to GitHub Pages
 
 on:
@@ -7,7 +13,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
   pages: write
   id-token: write
 
@@ -16,60 +21,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  refresh-and-build:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check if data refresh should run
-        id: should_refresh
+      - name: Verify dashboard data is committed
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "should_refresh=true" >> $GITHUB_OUTPUT
-            echo "Running data refresh (triggered by ${{ github.event_name }})"
-          else
-            echo "should_refresh=false" >> $GITHUB_OUTPUT
-            echo "Skipping data refresh (triggered by ${{ github.event_name }})"
-          fi
-
-      - name: Set up Python
-        if: steps.should_refresh.outputs.should_refresh == 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Python dependencies
-        if: steps.should_refresh.outputs.should_refresh == 'true'
-        run: pip install httpx numpy scipy pandas
-
-      - name: Refresh data
-        if: steps.should_refresh.outputs.should_refresh == 'true'
-        run: python3 scripts/refresh_data.py
-
-      - name: Commit refreshed data
-        if: steps.should_refresh.outputs.should_refresh == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add upload/UEtable.json upload/UEtable_enriched.json upload/6Kleaderboards/
-          if git diff --staged --quiet; then
-            echo "No data changes to commit"
-          else
-            git commit -m "data: weekly refresh $(date -u +%Y-%m-%d)"
-            git push
-          fi
-
-      - name: Set up Python (for pipeline)
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Python dependencies (for pipeline)
-        run: pip install httpx numpy scipy pandas numpyro jax jaxlib
-
-      - name: Run GRM pipeline
-        run: python3 scripts/pipeline.py
+          set -e
+          for f in charts.json level-summary.json meta.json players.json; do
+            if [ ! -f "public/data/$f" ]; then
+              echo "ERROR: public/data/$f is missing."
+              echo "Run scripts/pipeline.py locally, then commit public/data/*.json before pushing."
+              exit 1
+            fi
+          done
+          echo "All dashboard JSON files present."
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -105,7 +73,7 @@ jobs:
           path: ./out
 
   deploy:
-    needs: refresh-and-build
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
