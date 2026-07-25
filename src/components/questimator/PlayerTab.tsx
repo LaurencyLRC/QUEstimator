@@ -13,15 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Search, User, Target, Sparkles, TrendingUp, Save, Trash2, Download, Upload } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Search, User, Sparkles, TrendingUp, Save, Trash2, Download, Upload } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import {
@@ -49,6 +43,8 @@ interface Props {
   onDeleteCustomProfile?: (id: string) => void;
 }
 
+const GIMMICK_LEVELS = new Set(["-_-", "?!", "◆"]);
+
 const STATUS_LABELS: Record<number, { short: string; color: string }> = {
   0: { short: "F",  color: "oklch(0.55 0 0)"        },
   1: { short: "N",  color: "oklch(0.72 0.16 95)"    },
@@ -59,9 +55,6 @@ const STATUS_LABELS: Record<number, { short: string; color: string }> = {
 const REC_MIN_PROB = 0.30;
 const REC_MAX_PROB = 0.70;
 const REC_LIMIT = 24;
-
-const PROB_MIN_THRESHOLD = 0.05;
-const PROB_LIMIT = 60;
 
 function fmtPct(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
@@ -97,6 +90,7 @@ export function PlayerTab({
   const [newProfileName, setNewProfileName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [players, setPlayers] = useState<PlayersDict | null>(null);
+  const [showGimmicks, setShowGimmicks] = useState(false);
 
   const chartMaxTheta = useMemo(() => {
     if (!players) return null;
@@ -148,7 +142,7 @@ export function PlayerTab({
       setIsCustomProfile(!!activePlayerExternal.isCustom);
       setQuery(activePlayerExternal.id);
     }
-  }, [activePlayerExternal]); // Sync when the external object changes (e.g., clicking on ranking tab)
+  }, [activePlayerExternal]);
 
   const currentPlayer = useMemo<PlayerData | null>(() => {
     if (isCustomProfile) return customProfiles?.[submittedID] ?? null;
@@ -205,18 +199,16 @@ export function PlayerTab({
     const theta = currentPlayer.t;
     type Rec = { chart: Chart; p: number };
     const recommendations: Rec[] = [];
-    const allProbabilities: Rec[] = [];
 
     for (const c of charts) {
       if (c.provisional) continue;
+      if (!showGimmicks && GIMMICK_LEVELS.has(c.level)) continue;
+
       const p = targetStatus === "HARD" ? pHard(theta, c) : pVHard(theta, c);
       if (p == null) continue;
       const status = currentPlayer.c?.[String(c.id)] ?? 0;
       if (status >= (targetStatus === "HARD" ? 2 : 3)) continue; // Skip if target status or higher is cleared
 
-      if (p >= PROB_MIN_THRESHOLD) {
-        allProbabilities.push({ chart: c, p });
-      }
       if (p >= REC_MIN_PROB && p <= REC_MAX_PROB) {
         recommendations.push({ chart: c, p });
       }
@@ -236,9 +228,6 @@ export function PlayerTab({
     });
     const recommendationsLimited = recommendations.slice(0, REC_LIMIT);
 
-    allProbabilities.sort((a, b) => b.p - a.p);
-    const allProbabilitiesLimited = allProbabilities.slice(0, PROB_LIMIT);
-
     const clearedByLevel = new Map<string, number>();
     for (const [idStr, status] of Object.entries(currentPlayer.c || {})) {
       if (status < 2) continue; // 2 is HARD, 3 is V-HARD
@@ -256,11 +245,10 @@ export function PlayerTab({
       statusCounts,
       totalClears,
       recommendations: recommendationsLimited,
-      allProbabilities: allProbabilitiesLimited,
       clearedLevels,
       targetStatus,
     };
-  }, [currentPlayer, charts, targetStatus]);
+  }, [currentPlayer, charts, targetStatus, showGimmicks, chartMaxTheta]);
 
   const percentile = useMemo(() => {
     if (!currentPlayer || !samplePlayers) return null;
@@ -591,20 +579,35 @@ export function PlayerTab({
 
           <Card className="gap-3 py-4">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-400" />
                   {t.recommendedCharts}
                 </CardTitle>
-                <Select value={targetStatus} onValueChange={(v: any) => setTargetStatus(v)}>
-                  <SelectTrigger className="w-[110px] h-8 text-xs font-mono">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HARD">HARD</SelectItem>
-                    <SelectItem value="V-HARD">V-HARD</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center space-x-2 bg-muted/40 px-2.5 py-1 rounded-md border border-border/40">
+                    <Checkbox
+                      id="show-gimmicks"
+                      checked={showGimmicks}
+                      onCheckedChange={(checked) => setShowGimmicks(Boolean(checked))}
+                    />
+                    <Label
+                      htmlFor="show-gimmicks"
+                      className="text-xs font-medium cursor-pointer select-none"
+                    >
+                      {t.lang === "en" ? "Show gimmicks" : "기믹 포함"}
+                    </Label>
+                  </div>
+                  <Select value={targetStatus} onValueChange={(v: any) => setTargetStatus(v)}>
+                    <SelectTrigger className="w-[110px] h-8 text-xs font-mono">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="HARD">HARD</SelectItem>
+                      <SelectItem value="V-HARD">V-HARD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {t.lang === "en"
@@ -634,75 +637,6 @@ export function PlayerTab({
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card className="gap-3 py-4">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Target className={`w-4 h-4 ${targetStatus === "HARD" ? "text-rose-400" : "text-purple-400"}`} />
-                {t.yourProbabilities}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t.lang === "en"
-                  ? `All uncompleted charts with P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
-                  : `P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border border-border/60 overflow-hidden">
-                <ScrollArea className="max-h-[480px]">
-                  <Table className="w-full text-sm">
-                    <TableHeader className="sticky top-0 bg-card z-10">
-                      <TableRow className="border-b border-border/60 text-left">
-                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs">{t.chart}</TableHead>
-                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-center w-[60px]">{t.level}</TableHead>
-                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">P({targetStatus})</TableHead>
-                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">b_{targetStatus === "HARD" ? "hard" : "vhard"}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {analytics.allProbabilities.map(({ chart, p }) => (
-                        <TableRow
-                          key={chart.md5}
-                          onClick={() => onSelectChart(chart)}
-                          className="border-b border-border/30 hover:bg-muted/40 cursor-pointer"
-                        >
-                          <TableCell className="font-medium font-jp">
-                            <div className="flex flex-col">
-                              <span className="text-sm leading-snug line-clamp-1">{chart.title}</span>
-                              <span className="text-[11px] text-muted-foreground">
-                                {chart.artist || "unknown"}
-                                {chart.name_diff && ` · ${chart.name_diff}`}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center font-mono text-sm">
-                            <span className={isSpecialLevel(chart.level) ? "text-amber-400" : "text-muted-foreground"}>
-                              {chart.level}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            <ProbabilityBadge p={p} />
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            <span style={{ 
-                              color: targetStatus === "HARD" 
-                                ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)") 
-                                : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)") 
-                            }}>
-                              {targetStatus === "HARD"
-                                ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : format(chart.b_hard_display))
-                                : (chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : format(chart.b_vhard_display))
-                              }
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </div>
             </CardContent>
           </Card>
         </>
@@ -778,17 +712,5 @@ function RecommendationCard({
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>
     </button>
-  );
-}
-
-function ProbabilityBadge({ p }: { p: number }) {
-  let color = "oklch(0.55 0 0)";
-  if (p >= 0.80) color = "oklch(0.70 0.18 145)";
-  else if (p >= 0.50) color = "oklch(0.70 0.18 200)";
-  else if (p >= 0.20) color = "oklch(0.70 0.18 75)";
-  return (
-    <span className="font-mono font-semibold" style={{ color }}>
-      {fmtPct(p)}
-    </span>
   );
 }
