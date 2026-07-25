@@ -87,14 +87,10 @@ N_QUAD = 11                 # Gauss–Hermite nodes for the θ integral (validat
 TARGET_ACCEPT = 0.90
 MAX_TREE_DEPTH = 8
 
-# Adaptive parallelism.  This model's per-step work is multi-threaded, so on a
-# small runner it is FASTER to run chains sequentially (each chain uses every
-# core) than to split cores across parallel chains.  Go parallel only when there
-# are comfortably more cores than chains.
 _NUM_CPU = max(1, os.cpu_count() or 1)
 MCMC_CHAINS = 4 if _NUM_CPU >= 8 else 2
 _NUM_HOST_DEVICES = MCMC_CHAINS if _NUM_CPU >= 2 * MCMC_CHAINS else 1
-CHAIN_METHOD = "parallel" if _NUM_CPU >= 2 * MCMC_CHAINS else "sequential"
+CHAIN_METHOD = "sequential"
 numpyro.set_host_device_count(_NUM_HOST_DEVICES)
 
 R_HAT_THRESHOLD = 1.05
