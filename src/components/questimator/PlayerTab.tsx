@@ -170,7 +170,9 @@ export function PlayerTab({
       setNotFound(false);
       return;
     }
-    const foundId = Object.keys(data).find(k => k.toLowerCase() === id.toLowerCase());
+    const foundId = Object.keys(data).find(
+      k => k.toLowerCase() === id.toLowerCase() || data[k].n?.toLowerCase() === id.toLowerCase()
+    );
     if (foundId) {
       setSubmittedID(foundId);
       setNotFound(false);
@@ -326,7 +328,14 @@ export function PlayerTab({
           )}
           {currentPlayer && (
             <div className="mt-2 text-xs text-muted-foreground">
-              <span className="font-mono text-foreground">{activePlayerExternal?.id ?? submittedID}</span>
+              <span className="font-mono text-foreground text-sm font-semibold">
+                {currentPlayer.n ? `${currentPlayer.n}` : (activePlayerExternal?.id ?? submittedID)}
+              </span>
+              {currentPlayer.n && (
+                <span className="ml-1.5 opacity-60 text-xs font-normal">
+                  ({activePlayerExternal?.id ?? submittedID})
+                </span>
+              )}
               <span className="mx-1.5">·</span>
               {t.clearsCount(analytics?.totalClears ?? 0)}
               {percentile != null && (

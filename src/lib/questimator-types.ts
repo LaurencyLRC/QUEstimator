@@ -32,6 +32,7 @@ export interface Chart {
 
 export interface PlayerData {
   t: number; // theta (estimated skill level)
+  n?: string; // player display name
   c: Record<string, number>; // map of chart_id (string) -> status
 }
 

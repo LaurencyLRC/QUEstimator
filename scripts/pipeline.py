@@ -562,7 +562,7 @@ def main():
     print("[2/6] Loading IR leaderboard data ...")
     sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
     from load_ir_clears import load_ir_clears, print_stats as print_ir_stats
-    clears, player_map, ir_stats = load_ir_clears(df)
+    clears, player_map, player_names, ir_stats = load_ir_clears(df)
     print_ir_stats(ir_stats)
 
     total_iters = MCMC_CHAINS * (MCMC_WARMUP + MCMC_SAMPLES)
@@ -646,6 +646,7 @@ def main():
                            bar_format="{desc}: {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"):
         player_data[inv_player_map[pid]] = {
             "t": round(float(theta_eap[pid]), 3),
+            "n": player_names.get(pid, ""),
             "c": {str(int(r["chart"])): int(r["status"]) for _, r in group.iterrows()},
         }
 

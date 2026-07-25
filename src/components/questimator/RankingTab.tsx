@@ -128,7 +128,7 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
   const filtered = useMemo(() => {
     if (!query.trim()) return ranked;
     const q = query.trim().toLowerCase();
-    return ranked.filter((r) => r.id.toLowerCase().includes(q));
+    return ranked.filter((r) => r.id.toLowerCase().includes(q) || r.data.n?.toLowerCase().includes(q));
   }, [ranked, query]);
 
   const globalRankById = useMemo(() => {
@@ -241,8 +241,13 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm truncate max-w-[320px]" title={r.id}>
-                                {r.id}
+                                {r.data.n ? r.data.n : r.id}
                               </span>
+                              {r.data.n && (
+                                <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={r.id}>
+                                  ({r.id})
+                                </span>
+                              )}
                               {!r.eligible && (
                                 <Badge
                                   variant="outline"

@@ -85,8 +85,8 @@ export const STRINGS = {
 
     // Player tab
     playerProfile: "Player Profile",
-    playerProfileDesc: "Enter your Qwilight Avatar ID to view your estimated skill (θ) and get personalized chart recommendations.",
-    playerIdPlaceholder: "Enter Avatar ID (e.g. Laurency)",
+    playerProfileDesc: "Enter your Qwilight Avatar ID or Player Name to view your estimated skill (θ) and get personalized chart recommendations.",
+    playerIdPlaceholder: "Enter Avatar ID or Name (e.g. Laurency)",
     search: "Search",
     offlineProfiles: "Offline Profiles",
     selectOfflineProfile: "Select an offline profile...",
@@ -99,7 +99,7 @@ export const STRINGS = {
     deleteProfile: "Delete",
     exportProfile: "Export",
     importProfile: "Import",
-    playerNotFound: "Player not found. Make sure you typed the exact Avatar ID.",
+    playerNotFound: "Player not found. Make sure you typed the exact Avatar ID or Player Name.",
     estimatedSkill: "Estimated Skill",
     clearsCount: (n: number) => `${n} clears logged`,
     recommendedCharts: "Recommended Targets",
@@ -220,8 +220,8 @@ export const STRINGS = {
 
     // Player tab
     playerProfile: "플레이어 프로필",
-    playerProfileDesc: "Qwilight Avatar ID를 입력하여 추정 실력(θ)을 확인하고 맞춤형 추천 채보를 받아보세요.",
-    playerIdPlaceholder: "Avatar ID 입력 (예: Laurency)",
+    playerProfileDesc: "Qwilight Avatar ID 또는 플레이어 이름을 입력하여 추정 실력(θ)을 확인하고 맞춤형 추천 채보를 받아보세요.",
+    playerIdPlaceholder: "Avatar ID 또는 이름 입력 (예: Laurency)",
     search: "검색",
     offlineProfiles: "오프라인 프로필",
     selectOfflineProfile: "오프라인 프로필 선택...",
@@ -234,7 +234,7 @@ export const STRINGS = {
     deleteProfile: "삭제",
     exportProfile: "내보내기",
     importProfile: "가져오기",
-    playerNotFound: "플레이어를 찾을 수 없습니다. 정확한 Avatar ID를 입력했는지 확인하세요.",
+    playerNotFound: "플레이어를 찾을 수 없습니다. 정확한 Avatar ID 또는 이름을 입력했는지 확인하세요.",
     estimatedSkill: "추정 실력",
     clearsCount: (n: number) => `클리어 기록 ${n}개`,
     recommendedCharts: "추천 목표",

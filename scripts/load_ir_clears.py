@@ -86,6 +86,7 @@ def load_ir_clears(charts_df: pd.DataFrame):
         clears: np.ndarray of shape (n_records, 3), dtype int64
                 columns: [chart_idx, player_idx, clear_status]
         player_map: dict mapping avatarID → player_idx
+        player_names: dict mapping player_idx → avatarName
         stats: dict with diagnostic statistics
     """
     # Build SHA-512 → chart_idx lookup
@@ -97,6 +98,7 @@ def load_ir_clears(charts_df: pd.DataFrame):
 
     records = []  # list of (chart_idx, player_idx, clear_status)
     player_map = {}  # avatarID → player_idx
+    player_names = {} # player_idx → avatarName
     next_player_idx = 0
 
     # Diagnostics
@@ -138,7 +140,12 @@ def load_ir_clears(charts_df: pd.DataFrame):
             avatar_id = entry["avatarID"]
             if avatar_id not in player_map:
                 player_map[avatar_id] = next_player_idx
+                player_names[next_player_idx] = entry.get("avatarName", "")
                 next_player_idx += 1
+            else:
+                # Update with latest seen name if available
+                if entry.get("avatarName"):
+                    player_names[player_map[avatar_id]] = entry.get("avatarName")
             player_idx = player_map[avatar_id]
 
             clear_status = HANDLED_TO_GRM[entry["handled"]]
@@ -162,7 +169,7 @@ def load_ir_clears(charts_df: pd.DataFrame):
     stats["valid_entries"] = len(clears)  # after dedup
     stats["per_chart_valid"] = np.array(stats["per_chart_valid"])
 
-    return clears, player_map, stats
+    return clears, player_map, player_names, stats
 
 
 def print_stats(stats: dict):
@@ -193,7 +200,7 @@ if __name__ == "__main__":
     print(f"  {len(charts_df)} charts loaded")
 
     print("\nLoading IR clears...")
-    clears, player_map, stats = load_ir_clears(charts_df)
+    clears, player_map, player_names, stats = load_ir_clears(charts_df)
     print_stats(stats)
 
     # Show category distribution
