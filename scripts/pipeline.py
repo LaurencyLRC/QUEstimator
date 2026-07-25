@@ -45,27 +45,80 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# tqdm is optional (the pipeline works without it; bars just disappear).
+# CI (GitHub Actions, etc.) sets CI=true.  CI logs don't honor the \r refresh
+# that tqdm uses, so a live progress bar explodes into thousands of log lines
+# and breaks the Actions UI.  In CI we use a silent stub + a heartbeat instead.
+_IN_CI = bool(os.environ.get("CI"))
+
+# Progress state the CI heartbeat reads.  In CI we swap tqdm for a silent
+# recorder: numpyro still drives it (so it counts iterations), but it prints
+# nothing; the heartbeat thread prints a one-line summary every minute instead.
+_PROGRESS = {"desc": "", "n": 0, "total": 0}
+
+
+class _RecordingBar:
+    """tqdm stand-in for CI: records progress into _PROGRESS, prints nothing,
+    and silently accepts any method via __getattr__."""
+    def __init__(self, iterable=None, total=None, desc=None, **kw):
+        self._it = iterable
+        self.total = int(total) if total else 0
+        self.n = 0
+        if total:
+            _PROGRESS["total"] = int(total)
+        _PROGRESS["n"] = 0
+        if desc:
+            _PROGRESS["desc"] = str(desc).strip()
+            self.desc = str(desc).strip()
+
+    def update(self, n=1):
+        self.n += int(n)
+        _PROGRESS["n"] = self.n
+
+    def set_description(self, desc="", *a, **k):
+        if desc:
+            self.desc = str(desc).strip()
+            _PROGRESS["desc"] = self.desc
+
+    def reset(self, total=None):
+        self.n = 0
+        _PROGRESS["n"] = 0
+        if total:
+            self.total = int(total)
+            _PROGRESS["total"] = int(total)
+
+    def close(self):
+        pass
+
+    def __iter__(self):
+        if self._it is None:
+            return
+        for x in self._it:
+            _PROGRESS["n"] += 1
+            yield x
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        pass
+
+    def __getattr__(self, name):
+        return lambda *a, **k: None
+
+
 try:
-    from tqdm import tqdm
+    from tqdm import tqdm as _real_tqdm
 except ImportError:
-    def tqdm(iterable=None, total=None, **kw):
-        if iterable is not None:
-            return iterable
-        class _Dummy:
-            def __init__(self):
-                self.n = 0
-            def update(self, n=1):
-                self.n += n
-            def set_description(self, *a, **k):
-                pass
-            def close(self):
-                pass
-            def __enter__(self):
-                return self
-            def __exit__(self, *_):
-                self.close()
-        return _Dummy()
+    _real_tqdm = None
+
+if _IN_CI:
+    # Patch the tqdm module BEFORE numpyro imports it, so numpyro's own internal
+    # bar also becomes the silent recorder (otherwise it spams CI logs).
+    import tqdm as _tqdm_module
+    _tqdm_module.tqdm = _RecordingBar
+    tqdm = _RecordingBar
+else:
+    tqdm = _real_tqdm if _real_tqdm is not None else _RecordingBar
 
 # JAX/XLA must be configured before JAX imports.
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
@@ -87,9 +140,15 @@ N_QUAD = 11                 # Gauss–Hermite nodes for the θ integral (validat
 TARGET_ACCEPT = 0.90
 MAX_TREE_DEPTH = 8
 
+# Adaptive parallelism.  This model's per-step work is multi-threaded, so on a
+# small runner it is FASTER to run chains sequentially (each chain uses every
+# core) than to split cores across parallel chains.  Go parallel only when there
+# are comfortably more cores than chains.
 _NUM_CPU = max(1, os.cpu_count() or 1)
 MCMC_CHAINS = 4 if _NUM_CPU >= 8 else 2
-_NUM_HOST_DEVICES = MCMC_CHAINS if _NUM_CPU >= 2 * MCMC_CHAINS else 1
+# Sequential is PROVEN correct for this model.  Parallel (pmap) produced a
+# degenerate zero-step run on the CI runner, so default to sequential.
+_NUM_HOST_DEVICES = 1
 CHAIN_METHOD = "sequential"
 numpyro.set_host_device_count(_NUM_HOST_DEVICES)
 
@@ -229,6 +288,27 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         chain_method=CHAIN_METHOD, progress_bar=True,
     )
 
+    # In CI the bar is a silent recorder (see _RecordingBar); this heartbeat
+    # prints its live iteration count once a minute so the step stays openable
+    # AND you can see real progress.
+    _hb_stop = None
+    if _IN_CI:
+        import threading
+        _hb_stop = threading.Event()
+        _hb_t0 = time.time()
+
+        def _heartbeat():
+            while not _hb_stop.wait(60):
+                d = _PROGRESS["desc"]
+                n, tot = _PROGRESS["n"], _PROGRESS["total"]
+                pct = f"{100 * n / tot:.0f}%" if tot else "?"
+                prog = f"{n}/{tot} ({pct})" if tot else f"{n}"
+                desc = f"{d} " if d else ""
+                print(f"      ... {desc}{prog}, {int((time.time() - _hb_t0) / 60)} min elapsed",
+                      flush=True)
+
+        threading.Thread(target=_heartbeat, daemon=True).start()
+
     t0 = time.time()
     mcmc.run(
         jax.random.PRNGKey(42),
@@ -237,6 +317,8 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         level_num=jnp.asarray(level_num), is_gimmick=jnp.asarray(is_gimmick),
         n_charts=n_charts, n_players=n_players,
     )
+    if _hb_stop is not None:
+        _hb_stop.set()
     print(f"      NUTS: sampling finished in {(time.time() - t0) / 60:.1f} min.", flush=True)
 
     return mcmc, {
@@ -491,12 +573,20 @@ def main():
     print("[4/6] Checking convergence (R̂, ESS, divergences) ...")
     convergence = check_convergence(mcmc)
 
-    # Fail-closed: never emit posterior-derived artifacts from a divergent run.
+    # Fail-closed: never emit posterior-derived artifacts from a bad run. Two
+    # independent checks — divergences AND R̂/ESS — because a degenerate run
+    # (e.g. parallel-chain failure) can have 0 divergences yet terrible mixing.
     divergences = int(convergence.get("nuts", {}).get("divergences", 0))
     if divergences:
         raise RuntimeError(
             f"MCMC produced {divergences:,} divergent post-warmup transitions; "
             "refusing to emit posterior-derived JSON artifacts.")
+    if not convergence["convergence_ok"]:
+        raise RuntimeError(
+            f"Convergence failed — R̂ max {convergence['r_hat_max']:.4f} "
+            f"(threshold {R_HAT_THRESHOLD}) or ESS min {convergence['ess_min']:.0f} "
+            f"(threshold {ESS_THRESHOLD}); refusing to emit posterior-derived "
+            "JSON artifacts.")
 
     samples = mcmc.get_samples()
     a_mean = np.array(samples["alpha"].mean(axis=0))
