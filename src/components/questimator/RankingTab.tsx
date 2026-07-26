@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -58,6 +58,7 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const fetchedRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (fetchedRef.current) return;
@@ -95,19 +96,23 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
       let nFailed = 0;
       let eligPlays = 0;
       let eligHardOrBetter = 0;
+
       for (const [cidStr, s] of Object.entries(data.c)) {
         if (s === 3) nVhard += 1;
         else if (s === 2) nHard += 1;
         else if (s === 1) nNormal += 1;
         else if (s === 0) nFailed += 1;
+
         if (rankingChartIds.has(Number(cidStr))) {
           eligPlays += 1;
           if (s >= 2) eligHardOrBetter += 1;
         }
       }
+
       const nClears = nVhard + nHard + nNormal + nFailed;
       const eligible =
         eligPlays >= MIN_PLAYS && eligHardOrBetter >= MIN_HARD_OR_BETTER;
+
       return { id, data, nClears, nVhard, nHard, eligible };
     });
 
@@ -128,7 +133,11 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
   const filtered = useMemo(() => {
     if (!query.trim()) return ranked;
     const q = query.trim().toLowerCase();
-    return ranked.filter((r) => r.id.toLowerCase().includes(q) || r.data.n?.toLowerCase().includes(q));
+    return ranked.filter(
+      (r) =>
+        r.id.toLowerCase().includes(q) ||
+        r.data.n?.toLowerCase().includes(q)
+    );
   }, [ranked, query]);
 
   const globalRankById = useMemo(() => {
@@ -136,6 +145,21 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
     ranked.forEach((r, i) => m.set(r.id, i + 1));
     return m;
   }, [ranked]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 64,
+    overscan: 12,
+    getItemKey: (index) => filtered[index]?.id ?? index,
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const paddingBottom =
+    virtualItems.length > 0
+      ? rowVirtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end
+      : 0;
 
   return (
     <Card className="gap-3 py-4">
@@ -192,8 +216,9 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
                 {t.unrankedNote(unrankedCount)}
               </div>
             )}
+
             <div className="rounded-md border border-border/60 overflow-hidden">
-              <ScrollArea className="h-[640px]">
+              <div ref={scrollRef} className="h-[640px] overflow-y-auto">
                 <Table>
                   <TableHeader className="sticky top-0 bg-card z-10">
                     <TableRow>
@@ -205,86 +230,111 @@ export function RankingTab({ charts, onSelectPlayer }: Props) {
                       <TableHead className="text-right">{t.vhardCol}</TableHead>
                     </TableRow>
                   </TableHeader>
+
                   <TableBody>
-                    {filtered.length === 0 && (
+                    {filtered.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                           {t.noMatch}
                         </TableCell>
                       </TableRow>
-                    )}
-                    {filtered.map((r) => {
-                      const gRank = globalRankById.get(r.id) ?? 0;
-                      const medalColor = rankBadgeColor(gRank);
-                      return (
-                        <TableRow
-                          key={r.id}
-                          onClick={() => onSelectPlayer(r.id, r.data)}
-                          className="cursor-pointer hover:bg-muted/40"
-                        >
-                          <TableCell className="text-right font-mono text-sm">
-                            {medalColor ? (
-                              <span
-                                className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold"
-                                style={{
-                                  background: medalColor,
-                                  color: "oklch(0.20 0 0)",
-                                }}
-                                title={`Rank ${gRank}`}
-                              >
-                                {gRank}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">{gRank}</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm truncate max-w-[320px]" title={r.id}>
-                                {r.data.n ? r.data.n : r.id}
-                              </span>
-                              {r.data.n && (
-                                <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={r.id}>
-                                  ({r.id})
-                                </span>
-                              )}
-                              {!r.eligible && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[9px] py-0 px-1 text-muted-foreground border-border/60 shrink-0"
-                                >
-                                  {t.lang === "en" ? "ineligible" : "비대상"}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            <span
-                              className={r.eligible ? "font-semibold" : "font-semibold text-muted-foreground"}
-                              style={r.eligible ? { color: "oklch(0.78 0.18 200)" } : undefined}
+                    ) : (
+                      <>
+                        {paddingTop > 0 && (
+                          <TableRow aria-hidden className="border-0 hover:bg-transparent">
+                            <TableCell colSpan={6} style={{ height: `${paddingTop}px`, padding: 0, border: 0 }} />
+                          </TableRow>
+                        )}
+
+                        {virtualItems.map((virtualRow) => {
+                          const r = filtered[virtualRow.index];
+                          const gRank = globalRankById.get(r.id) ?? 0;
+                          const medalColor = rankBadgeColor(gRank);
+
+                          return (
+                            <TableRow
+                              key={r.id}
+                              data-index={virtualRow.index}
+                              ref={rowVirtualizer.measureElement}
+                              onClick={() => onSelectPlayer(r.id, r.data)}
+                              className="cursor-pointer hover:bg-muted/40"
                             >
-                              {format(r.data.t, mode === "lerp" ? 2 : 3)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                            {r.nClears}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            <span style={{ color: r.nHard > 0 ? "oklch(0.78 0.18 25)" : "text-muted-foreground" }}>
-                              {r.nHard}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            <span style={{ color: r.nVhard > 0 ? "oklch(0.78 0.18 305)" : "text-muted-foreground" }}>
-                              {r.nVhard}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                              <TableCell className="text-right font-mono text-sm">
+                                {medalColor ? (
+                                  <span
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold"
+                                    style={{
+                                      background: medalColor,
+                                      color: "oklch(0.20 0 0)",
+                                    }}
+                                    title={`Rank ${gRank}`}
+                                  >
+                                    {gRank}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">{gRank}</span>
+                                )}
+                              </TableCell>
+
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm truncate max-w-[320px]" title={r.id}>
+                                    {r.data.n ? r.data.n : r.id}
+                                  </span>
+                                  {r.data.n && (
+                                    <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={r.id}>
+                                      ({r.id})
+                                    </span>
+                                  )}
+                                  {!r.eligible && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[9px] py-0 px-1 text-muted-foreground border-border/60 shrink-0"
+                                    >
+                                      {t.lang === "en" ? "ineligible" : "비대상"}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+
+                              <TableCell className="text-right font-mono text-sm">
+                                <span
+                                  className={r.eligible ? "font-semibold" : "font-semibold text-muted-foreground"}
+                                  style={r.eligible ? { color: "oklch(0.78 0.18 200)" } : undefined}
+                                >
+                                  {format(r.data.t, mode === "lerp" ? 2 : 3)}
+                                </span>
+                              </TableCell>
+
+                              <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                                {r.nClears}
+                              </TableCell>
+
+                              <TableCell className="text-right font-mono text-sm">
+                                <span style={{ color: r.nHard > 0 ? "oklch(0.78 0.18 25)" : "text-muted-foreground" }}>
+                                  {r.nHard}
+                                </span>
+                              </TableCell>
+
+                              <TableCell className="text-right font-mono text-sm">
+                                <span style={{ color: r.nVhard > 0 ? "oklch(0.78 0.18 305)" : "text-muted-foreground" }}>
+                                  {r.nVhard}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+
+                        {paddingBottom > 0 && (
+                          <TableRow aria-hidden className="border-0 hover:bg-transparent">
+                            <TableCell colSpan={6} style={{ height: `${paddingBottom}px`, padding: 0, border: 0 }} />
+                          </TableRow>
+                        )}
+                      </>
+                    )}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+              </div>
             </div>
           </>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Table,
   TableBody,
@@ -89,7 +90,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
   const { mode, format } = useScale();
   const [query, setQuery] = useState("");
   const [showProvisional, setShowProvisional] = useState(false);
-  
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const STATUS_ROW_TINT: Record<number, string> = {
     3: "oklch(0.28 0.10 305 / 0.18)",
@@ -153,7 +154,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
         : (bv as number) - (av as number);
     });
     return sorted;
-  }, [charts, query, sortKey, sortDir, showProvisional]);
+  }, [charts, query, sortKey, sortDir, showProvisional, chartMaxTheta]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -162,6 +163,21 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
       onSortChange(key, key === "title" || key === "level" ? "asc" : "desc");
     }
   };
+
+  const rowVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 104,
+    overscan: 10,
+    getItemKey: (index) => filtered[index]?.md5 ?? index,
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const paddingBottom =
+    virtualItems.length > 0
+      ? rowVirtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end
+      : 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -190,7 +206,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
       </div>
 
       <div className="rounded-md border border-border/60 overflow-hidden">
-        <div className="max-h-[640px] overflow-y-auto">
+        <div ref={scrollRef} className="max-h-[640px] overflow-y-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow>
@@ -252,88 +268,107 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map((c) => {
-                const status = activePlayer?.data.c?.[c.id.toString()];
-                const hasStatus = status != null && status >= 0 && status <= 3;
-                const rowTint = hasStatus ? STATUS_ROW_TINT[status] : undefined;
-                return (
-                  <TableRow
-                    key={c.md5}
-                    onClick={() => onSelectChart(c)}
-                    className="cursor-pointer hover:bg-muted/40"
-                    style={rowTint ? { background: rowTint } : undefined}
-                  >
-                    <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-sm leading-snug line-clamp-3">
-                          {c.title}
+              {filtered.length > 0 && (
+                <>
+                  {paddingTop > 0 && (
+                    <TableRow aria-hidden className="border-0 hover:bg-transparent">
+                      <TableCell colSpan={6} style={{ height: `${paddingTop}px`, padding: 0, border: 0 }} />
+                    </TableRow>
+                  )}
+
+                  {virtualItems.map((virtualRow) => {
+                    const c = filtered[virtualRow.index];
+                    const status = activePlayer?.data.c?.[c.id.toString()];
+                    const hasStatus = status != null && status >= 0 && status <= 3;
+                    const rowTint = hasStatus ? STATUS_ROW_TINT[status] : undefined;
+                    return (
+                      <TableRow
+                        key={c.md5}
+                        data-index={virtualRow.index}
+                        ref={rowVirtualizer.measureElement}
+                        onClick={() => onSelectChart(c)}
+                        className="cursor-pointer hover:bg-muted/40"
+                        style={rowTint ? { background: rowTint } : undefined}
+                      >
+                        <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm leading-snug line-clamp-3">
+                              {c.title}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {c.artist || "unknown"}
+                              {c.name_diff && ` · ${c.name_diff}`}
+                            </span>
+                            {c.provisional && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] py-0 px-1 text-blue-400 border-blue-500/40 w-fit"
+                              >
+                                {t.provisional}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                      <TableCell className="text-center font-mono text-sm">
+                        <span className={isSpecialLevel(c.level) ? "text-amber-400" : "text-muted-foreground"}>
+                          {c.level}
                         </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {c.artist || "unknown"}
-                          {c.name_diff && ` · ${c.name_diff}`}
-                        </span>
-                        {c.provisional && (
-                          <Badge
-                            variant="outline"
-                            className="text-[9px] py-0 px-1 text-blue-400 border-blue-500/40 w-fit"
-                          >
-                            {t.provisional}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                  <TableCell className="text-center font-mono text-sm">
-                    <span className={isSpecialLevel(c.level) ? "text-amber-400" : "text-muted-foreground"}>
-                      {c.level}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <div className="flex flex-col items-end leading-tight">
-                      <span style={{ color: (c.n_hard + c.n_vhard === 0) ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)" }}>
-                        {(c.n_hard + c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_hard_display)}?` : format(c.b_hard_display)}
-                      </span>
-                      {activePlayer && c.a != null && c.b_hard != null && (
-                        <span
-                          className="text-[10px] font-semibold tabular-nums"
-                          style={{ color: "oklch(0.70 0.22 25)" }}
-                          title="Your HARD clear probability"
-                        >
-                          {(pStar(activePlayer.data.t, c.a, c.b_hard) * 100).toFixed(1)}%
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <div className="flex flex-col items-end leading-tight">
-                      <span style={{ color: (c.n_vhard === 0) ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)" }}>
-                        {(c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_vhard_display)}?` : format(c.b_vhard_display)}
-                      </span>
-                      {activePlayer && c.a != null && c.b_vhard != null && (
-                        <span
-                          className="text-[10px] font-semibold tabular-nums"
-                          style={{ color: "oklch(0.70 0.22 305)" }}
-                          title="Your V-HARD clear probability"
-                        >
-                          {(pStar(activePlayer.data.t, c.a, c.b_vhard) * 100).toFixed(1)}%
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                    {c.a != null ? c.a.toFixed(2) : "–"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <ClearDistBar
-                      n={c.n}
-                      nFailed={c.n_failed ?? 0}
-                      nNormal={c.n_normal ?? 0}
-                      nHard={c.n_hard ?? 0}
-                      nVhard={c.n_vhard ?? 0}
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <div className="flex flex-col items-end leading-tight">
+                          <span style={{ color: (c.n_hard + c.n_vhard === 0) ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)" }}>
+                            {(c.n_hard + c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_hard_display)}?` : format(c.b_hard_display)}
+                          </span>
+                          {activePlayer && c.a != null && c.b_hard != null && (
+                            <span
+                              className="text-[10px] font-semibold tabular-nums"
+                              style={{ color: "oklch(0.70 0.22 25)" }}
+                              title="Your HARD clear probability"
+                            >
+                              {(pStar(activePlayer.data.t, c.a, c.b_hard) * 100).toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <div className="flex flex-col items-end leading-tight">
+                          <span style={{ color: (c.n_vhard === 0) ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)" }}>
+                            {(c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_vhard_display)}?` : format(c.b_vhard_display)}
+                          </span>
+                          {activePlayer && c.a != null && c.b_vhard != null && (
+                            <span
+                              className="text-[10px] font-semibold tabular-nums"
+                              style={{ color: "oklch(0.70 0.22 305)" }}
+                              title="Your V-HARD clear probability"
+                            >
+                              {(pStar(activePlayer.data.t, c.a, c.b_vhard) * 100).toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                        {c.a != null ? c.a.toFixed(2) : "–"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <ClearDistBar
+                          n={c.n}
+                          nFailed={c.n_failed ?? 0}
+                          nNormal={c.n_normal ?? 0}
+                          nHard={c.n_hard ?? 0}
+                          nVhard={c.n_vhard ?? 0}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                
+                  {paddingBottom > 0 && (
+                    <TableRow aria-hidden className="border-0 hover:bg-transparent">
+                      <TableCell colSpan={6} style={{ height: `${paddingBottom}px`, padding: 0, border: 0 }} />
+                    </TableRow>
+                  )}
+                </>
+              )}
             </TableBody>
           </Table>
         </div>
