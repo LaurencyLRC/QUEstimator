@@ -13,9 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Search, User, Sparkles, TrendingUp, Save, Trash2, Download, Upload } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Search, User, Target, Sparkles, TrendingUp, Save, Trash2, Download, Upload } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import {
@@ -43,8 +49,6 @@ interface Props {
   onDeleteCustomProfile?: (id: string) => void;
 }
 
-const GIMMICK_LEVELS = new Set(["-_-", "?!", "◆"]);
-
 const STATUS_LABELS: Record<number, { short: string; color: string }> = {
   0: { short: "F",  color: "oklch(0.55 0 0)"        },
   1: { short: "N",  color: "oklch(0.72 0.16 95)"    },
@@ -55,6 +59,9 @@ const STATUS_LABELS: Record<number, { short: string; color: string }> = {
 const REC_MIN_PROB = 0.30;
 const REC_MAX_PROB = 0.70;
 const REC_LIMIT = 24;
+
+const PROB_MIN_THRESHOLD = 0.05;
+const PROB_LIMIT = 60;
 
 function fmtPct(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
@@ -90,7 +97,9 @@ export function PlayerTab({
   const [newProfileName, setNewProfileName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [players, setPlayers] = useState<PlayersDict | null>(null);
-  const [showGimmicks, setShowGimmicks] = useState(false);
+  const [searchResults, setSearchResults] = useState<
+    { id: string; name: string; clears: number }[] | null
+  >(null);
 
   const chartMaxTheta = useMemo(() => {
     if (!players) return null;
@@ -156,23 +165,54 @@ export function PlayerTab({
   }, [currentPlayer, submittedID, isCustomProfile, onPlayerChange]);
 
   const handleSearch = async () => {
-    const id = query.trim();
-    if (!id) return;
+    const q = query.trim();
+    if (!q) return;
     const data = await fetchPlayers.current?.();
     if (!data) {
       setSubmittedID("");
       setNotFound(false);
+      setSearchResults(null);
       return;
     }
-    const foundId = Object.keys(data).find(
-      k => k.toLowerCase() === id.toLowerCase() || data[k].n?.toLowerCase() === id.toLowerCase()
-    );
-    if (foundId) {
-      setSubmittedID(foundId);
+
+    const ql = q.toLowerCase();
+
+    // 1. Exact avatar ID → go straight there.
+    const exact = Object.keys(data).find((k) => k.toLowerCase() === ql);
+    if (exact) {
+      setSubmittedID(exact);
       setNotFound(false);
-    } else {
+      setSearchResults(null);
+      return;
+    }
+
+    // 2. Fuzzy match by display name (n) or partial avatar ID.
+    const matches: { id: string; name: string; clears: number }[] = [];
+    for (const [pid, p] of Object.entries(data)) {
+      const dname = (p.n ?? pid).toLowerCase();
+      if (dname.includes(ql) || pid.toLowerCase().includes(ql)) {
+        matches.push({
+          id: pid,
+          name: p.n ?? pid,
+          clears: Object.keys(p.c ?? {}).length,
+        });
+      }
+    }
+
+    if (matches.length === 0) {
       setSubmittedID("");
       setNotFound(true);
+      setSearchResults(null);
+    } else if (matches.length === 1) {
+      setSubmittedID(matches[0].id);
+      setNotFound(false);
+      setSearchResults(null);
+    } else {
+      // Multiple matches — show disambiguation list, sorted by activity.
+      matches.sort((a, b) => b.clears - a.clears);
+      setSearchResults(matches);
+      setSubmittedID("");
+      setNotFound(false);
     }
   };
 
@@ -199,16 +239,18 @@ export function PlayerTab({
     const theta = currentPlayer.t;
     type Rec = { chart: Chart; p: number };
     const recommendations: Rec[] = [];
+    const allProbabilities: Rec[] = [];
 
     for (const c of charts) {
       if (c.provisional) continue;
-      if (!showGimmicks && GIMMICK_LEVELS.has(c.level)) continue;
-
       const p = targetStatus === "HARD" ? pHard(theta, c) : pVHard(theta, c);
       if (p == null) continue;
       const status = currentPlayer.c?.[String(c.id)] ?? 0;
-      if (status >= (targetStatus === "HARD" ? 2 : 3)) continue; // Skip if target status or higher is cleared
+      if (status >= (targetStatus === "HARD" ? 2 : 3)) continue;
 
+      if (p >= PROB_MIN_THRESHOLD) {
+        allProbabilities.push({ chart: c, p });
+      }
       if (p >= REC_MIN_PROB && p <= REC_MAX_PROB) {
         recommendations.push({ chart: c, p });
       }
@@ -218,19 +260,22 @@ export function PlayerTab({
       const da = Math.abs(a.p - 0.5);
       const db = Math.abs(b.p - 0.5);
       if (Math.abs(da - db) > 1e-6) return da - db;
-      const aVal = targetStatus === "HARD" 
-        ? ((a.chart.n_hard + a.chart.n_vhard === 0) ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_hard_display ?? -99) : a.chart.b_hard_display) 
+      const aVal = targetStatus === "HARD"
+        ? ((a.chart.n_hard + a.chart.n_vhard === 0) ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_hard_display ?? -99) : a.chart.b_hard_display)
         : (a.chart.n_vhard === 0 ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_vhard_display ?? -99) : a.chart.b_vhard_display);
-      const bVal = targetStatus === "HARD" 
-        ? ((b.chart.n_hard + b.chart.n_vhard === 0) ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_hard_display ?? -99) : b.chart.b_hard_display) 
+      const bVal = targetStatus === "HARD"
+        ? ((b.chart.n_hard + b.chart.n_vhard === 0) ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_hard_display ?? -99) : b.chart.b_hard_display)
         : (b.chart.n_vhard === 0 ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_vhard_display ?? -99) : b.chart.b_vhard_display);
       return (bVal ?? -99) - (aVal ?? -99);
     });
     const recommendationsLimited = recommendations.slice(0, REC_LIMIT);
 
+    allProbabilities.sort((a, b) => b.p - a.p);
+    const allProbabilitiesLimited = allProbabilities.slice(0, PROB_LIMIT);
+
     const clearedByLevel = new Map<string, number>();
     for (const [idStr, status] of Object.entries(currentPlayer.c || {})) {
-      if (status < 2) continue; // 2 is HARD, 3 is V-HARD
+      if (status < 2) continue;
       const c = chartById.get(Number(idStr));
       if (!c) continue;
       clearedByLevel.set(c.level, (clearedByLevel.get(c.level) ?? 0) + 1);
@@ -245,10 +290,11 @@ export function PlayerTab({
       statusCounts,
       totalClears,
       recommendations: recommendationsLimited,
+      allProbabilities: allProbabilitiesLimited,
       clearedLevels,
       targetStatus,
     };
-  }, [currentPlayer, charts, targetStatus, showGimmicks, chartMaxTheta]);
+  }, [currentPlayer, charts, targetStatus]);
 
   const percentile = useMemo(() => {
     if (!currentPlayer || !samplePlayers) return null;
@@ -314,15 +360,31 @@ export function PlayerTab({
               {t.loadFailed}: {loadError}
             </p>
           )}
+          {searchResults && searchResults.length > 1 && (
+            <div className="mt-2 max-h-60 overflow-y-auto rounded-md border border-border/50">
+              {searchResults.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    setSubmittedID(r.id);
+                    setSearchResults(null);
+                    setQuery(r.id);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-muted/40 flex items-center justify-between border-b border-border/30 last:border-0"
+                >
+                  <span className="font-medium">{r.name}</span>
+                  <span className="text-xs text-muted-foreground font-mono ml-2">
+                    {r.id} · {r.clears} clears
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           {currentPlayer && (
             <div className="mt-2 text-xs text-muted-foreground">
-              <span className="font-mono text-foreground text-sm font-semibold">
-                {currentPlayer.n ? `${currentPlayer.n}` : (activePlayerExternal?.id ?? submittedID)}
-              </span>
+              <span className="font-mono text-foreground">{activePlayerExternal?.id ?? submittedID}</span>
               {currentPlayer.n && (
-                <span className="ml-1.5 opacity-60 text-xs font-normal">
-                  ({activePlayerExternal?.id ?? submittedID})
-                </span>
+                <span className="ml-1.5">· {currentPlayer.n}</span>
               )}
               <span className="mx-1.5">·</span>
               {t.clearsCount(analytics?.totalClears ?? 0)}
@@ -359,14 +421,14 @@ export function PlayerTab({
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex-1 space-y-3">
               <div className="text-sm font-medium">{t.manage}</div>
-              
+
               {isCreating ? (
                 <div className="flex items-center gap-2">
-                  <Input 
-                    placeholder={t.profileName} 
+                  <Input
+                    placeholder={t.profileName}
                     value={newProfileName}
                     onChange={e => setNewProfileName(e.target.value)}
                     className="h-8 text-xs"
@@ -386,12 +448,12 @@ export function PlayerTab({
                   />
                   <Button size="sm" className="h-8 text-xs" onClick={() => {
                     if (newProfileName.trim() && onSaveCustomProfile) {
-                        const name = newProfileName.trim();
-                        onSaveCustomProfile(name, currentPlayer ? { ...currentPlayer, c: { ...currentPlayer.c } } : { t: 0, c: {} });
-                        setIsCustomProfile(true);
-                        setSubmittedID(name);
-                        setIsCreating(false);
-                        setNewProfileName("");
+                      const name = newProfileName.trim();
+                      onSaveCustomProfile(name, currentPlayer ? { ...currentPlayer, c: { ...currentPlayer.c } } : { t: 0, c: {} });
+                      setIsCustomProfile(true);
+                      setSubmittedID(name);
+                      setIsCreating(false);
+                      setNewProfileName("");
                     }
                   }}>
                     {t.save}
@@ -402,7 +464,7 @@ export function PlayerTab({
                 </div>
               ) : (
                 <div className="flex gap-2 flex-wrap">
-                  <Button 
+                  <Button
                     size="sm" variant="outline" className="text-xs"
                     onClick={() => {
                       setIsCreating(true);
@@ -410,10 +472,10 @@ export function PlayerTab({
                   >
                     <Save className="w-3 h-3 mr-1" /> {currentPlayer ? t.cloneProfile : t.newProfile}
                   </Button>
-                  
+
                   {isCustomProfile && currentPlayer && (
                     <>
-                      <Button 
+                      <Button
                         size="sm" variant="outline" className="text-xs text-rose-400 border-rose-400/30 hover:bg-rose-400/10"
                         onClick={() => {
                           if (onDeleteCustomProfile) {
@@ -425,7 +487,7 @@ export function PlayerTab({
                       >
                         <Trash2 className="w-3 h-3 mr-1" /> {t.deleteProfile}
                       </Button>
-                      <Button 
+                      <Button
                         size="sm" variant="outline" className="text-xs"
                         onClick={() => {
                           const blob = new Blob([JSON.stringify(currentPlayer)], { type: "application/json" });
@@ -441,13 +503,13 @@ export function PlayerTab({
                       </Button>
                     </>
                   )}
-                  
-                  <Button 
+
+                  <Button
                     size="sm" variant="outline" className="text-xs relative overflow-hidden"
                   >
                     <Upload className="w-3 h-3 mr-1" /> {t.importProfile}
-                    <input 
-                      type="file" 
+                    <input
+                      type="file"
                       accept=".json"
                       className="absolute inset-0 opacity-0 cursor-pointer"
                       onChange={(e) => {
@@ -579,35 +641,20 @@ export function PlayerTab({
 
           <Card className="gap-3 py-4">
             <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-400" />
                   {t.recommendedCharts}
                 </CardTitle>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center space-x-2 bg-muted/40 px-2.5 py-1 rounded-md border border-border/40">
-                    <Checkbox
-                      id="show-gimmicks"
-                      checked={showGimmicks}
-                      onCheckedChange={(checked) => setShowGimmicks(Boolean(checked))}
-                    />
-                    <Label
-                      htmlFor="show-gimmicks"
-                      className="text-xs font-medium cursor-pointer select-none"
-                    >
-                      {t.lang === "en" ? "Show gimmicks" : "기믹 포함"}
-                    </Label>
-                  </div>
-                  <Select value={targetStatus} onValueChange={(v: any) => setTargetStatus(v)}>
-                    <SelectTrigger className="w-[110px] h-8 text-xs font-mono">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="HARD">HARD</SelectItem>
-                      <SelectItem value="V-HARD">V-HARD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={targetStatus} onValueChange={(v: any) => setTargetStatus(v)}>
+                  <SelectTrigger className="w-[110px] h-8 text-xs font-mono">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HARD">HARD</SelectItem>
+                    <SelectItem value="V-HARD">V-HARD</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {t.lang === "en"
@@ -637,6 +684,75 @@ export function PlayerTab({
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="gap-3 py-4">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Target className={`w-4 h-4 ${targetStatus === "HARD" ? "text-rose-400" : "text-purple-400"}`} />
+                {t.yourProbabilities}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t.lang === "en"
+                  ? `All uncompleted charts with P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
+                  : `P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border border-border/60 overflow-hidden">
+                <ScrollArea className="max-h-[480px]">
+                  <Table className="w-full text-sm">
+                    <TableHeader className="sticky top-0 bg-card z-10">
+                      <TableRow className="border-b border-border/60 text-left">
+                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs">{t.chart}</TableHead>
+                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-center w-[60px]">{t.level}</TableHead>
+                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">P({targetStatus})</TableHead>
+                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">b_{targetStatus === "HARD" ? "hard" : "vhard"}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {analytics.allProbabilities.map(({ chart, p }) => (
+                        <TableRow
+                          key={chart.md5}
+                          onClick={() => onSelectChart(chart)}
+                          className="border-b border-border/30 hover:bg-muted/40 cursor-pointer"
+                        >
+                          <TableCell className="font-medium font-jp">
+                            <div className="flex flex-col">
+                              <span className="text-sm leading-snug line-clamp-1">{chart.title}</span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {chart.artist || "unknown"}
+                                {chart.name_diff && ` · ${chart.name_diff}`}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-sm">
+                            <span className={isSpecialLevel(chart.level) ? "text-amber-400" : "text-muted-foreground"}>
+                              {chart.level}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            <ProbabilityBadge p={p} />
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            <span style={{
+                              color: targetStatus === "HARD"
+                                ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)")
+                                : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)")
+                            }}>
+                              {targetStatus === "HARD"
+                                ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : format(chart.b_hard_display))
+                                : (chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : format(chart.b_vhard_display))
+                              }
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         </>
@@ -698,10 +814,10 @@ function RecommendationCard({
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span style={{ 
-            color: targetStatus === "HARD" 
-              ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)") 
-              : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)") 
+          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span style={{
+            color: targetStatus === "HARD"
+              ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)")
+              : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)")
           }}>
             {targetStatus === "HARD"
               ? (chart.n_hard + chart.n_vhard === 0 ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : formatFn(chart.b_hard_display))
@@ -712,5 +828,17 @@ function RecommendationCard({
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>
     </button>
+  );
+}
+
+function ProbabilityBadge({ p }: { p: number }) {
+  let color = "oklch(0.55 0 0)";
+  if (p >= 0.80) color = "oklch(0.70 0.18 145)";
+  else if (p >= 0.50) color = "oklch(0.70 0.18 200)";
+  else if (p >= 0.20) color = "oklch(0.70 0.18 75)";
+  return (
+    <span className="font-mono font-semibold" style={{ color }}>
+      {fmtPct(p)}
+    </span>
   );
 }
