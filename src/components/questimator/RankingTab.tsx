@@ -34,7 +34,7 @@ interface RankRow {
 
 const MIN_PLAYS = 10;
 const MIN_HARD_OR_BETTER = 1;
-const EXCLUDED_LEVELS = new Set(["-_", "?!", "◆"]);
+const EXCLUDED_LEVELS = new Set(["-_-", "?!", "◆"]);
 
 function isValidRankingChart(c: Chart): boolean {
   if (c.provisional) return false;
