@@ -571,6 +571,59 @@ def main():
     clears, player_map, player_names, ir_stats = load_ir_clears(df)
     print_ir_stats(ir_stats)
 
+    if "--recover-theta-only" in sys.argv:
+        print("[*] Fast EAP recovery: computing player θ from public/data/charts.json (101-point quadrature)...")
+        with open(OUT_DIR / "charts.json", "r", encoding="utf-8") as f:
+            charts_data = json.load(f)
+        chart_by_md5 = {c["md5"]: c for c in charts_data}
+        a_mean = np.array([chart_by_md5.get(r["md5"], {}).get("a") or 1.0 for _, r in df.iterrows()])
+        b_hard = np.array([chart_by_md5.get(r["md5"], {}).get("b_hard") or 0.0 for _, r in df.iterrows()])
+        b_vhard = np.array([chart_by_md5.get(r["md5"], {}).get("b_vhard") or 0.8 for _, r in df.iterrows()])
+        delta_mean = b_vhard
+        tau2_mean = b_vhard - b_hard
+        tau1_mean = tau2_mean
+
+        order = np.argsort(clears[:, 1], kind="stable")
+        clears_s = clears[order]
+        chart_idx = clears_s[:, 0]
+        y = clears_s[:, 2]
+        player_seg = clears_s[:, 1]
+        n_players = len(player_map)
+
+        z_101, wz_101 = np.polynomial.hermite.hermgauss(101)
+        theta_q_101 = np.sqrt(2.0) * z_101
+        log_w_q_101 = np.log(wz_101 / np.sqrt(np.pi))
+
+        print(f"    Computing 101-point EAP for {n_players:,} players ...")
+        theta_eap, theta_se = eap_theta(
+            a_mean, delta_mean, tau1_mean, tau2_mean,
+            chart_idx, y, player_seg, n_players,
+            theta_q_101, log_w_q_101)
+
+        inv_player_map = {v: k for k, v in player_map.items()}
+        p_clears = pd.DataFrame({"chart": chart_idx, "player": player_seg, "status": y}).groupby("player")
+        player_data = {}
+        for pid, group in tqdm(p_clears, total=len(p_clears), desc="      Building players.json"):
+            player_data[inv_player_map[pid]] = {
+                "t": round(float(theta_eap[pid]), 3),
+                "n": player_names.get(pid, ""),
+                "c": {str(int(r["chart"])): int(r["status"]) for _, r in group.iterrows()},
+            }
+
+        with open(OUT_DIR / "players.json", "w", encoding="utf-8") as fh:
+            json.dump(player_data, fh, separators=(",", ":"))
+
+        if (OUT_DIR / "meta.json").exists():
+            with open(OUT_DIR / "meta.json", "r", encoding="utf-8") as fh:
+                meta = json.load(fh)
+            meta["player_theta_mean"] = float(np.mean(theta_eap))
+            meta["player_theta_std"] = float(np.std(theta_eap))
+            with open(OUT_DIR / "meta.json", "w", encoding="utf-8") as fh:
+                json.dump(meta, fh, ensure_ascii=False, indent=2)
+
+        print(f"Done! EAP recovered: min={min(theta_eap):.3f}, mean={np.mean(theta_eap):.3f}, max={max(theta_eap):.3f}")
+        return
+
     total_iters = MCMC_CHAINS * (MCMC_WARMUP + MCMC_SAMPLES)
     print(f"[3/6] Fitting Bayesian GRM via MCMC "
           f"(numpyro NUTS, {MCMC_CHAINS} chains, {total_iters:,} iters) ...")
@@ -637,11 +690,14 @@ def main():
     df["b_vhard_display"] = df["b_vhard"]
     print(f"      provisional charts: {int(df['provisional'].sum())} / {len(df)}")
 
-    print("[5/6] Recovering player θ via EAP ...")
+    print("[5/6] Recovering player θ via EAP (101-point Gauss–Hermite) ...")
+    z_101, wz_101 = np.polynomial.hermite.hermgauss(101)
+    theta_q_101 = np.sqrt(2.0) * z_101
+    log_w_q_101 = np.log(wz_101 / np.sqrt(np.pi))
     theta_eap, theta_se = eap_theta(
         a_mean, delta_mean, tau1_mean, tau2_mean,
         marg["chart_idx"], marg["y"], marg["player_seg"], marg["n_players"],
-        marg["theta_q"], marg["log_w_q"])
+        theta_q_101, log_w_q_101)
     theta_std = float(np.std(theta_eap))
     inv_player_map = {v: k for k, v in player_map.items()}
     p_clears = pd.DataFrame({"chart": marg["chart_idx"], "player": marg["player_seg"],

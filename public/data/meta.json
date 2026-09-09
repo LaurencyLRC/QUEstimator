@@ -13,8 +13,8 @@
     "V-HARD"
   ],
   "provisional_rule": "n < 10 OR se_b_hard > 1.0",
-  "player_theta_mean": -0.1975938605499824,
-  "player_theta_std": 1.6411571405743492,
+  "player_theta_mean": -0.16153247566242288,
+  "player_theta_std": 1.6241485702244134,
   "data_source": "Qwilight IR leaderboards (real player data)",
   "runtime_sec": 16865.19,
   "mcmc_chains": 4,
