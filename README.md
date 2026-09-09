@@ -1,6 +1,6 @@
 # QUEstimator
 
-**QUEstimator** is an Item Response Theory (IRT) difficulty estimation and player skill tracking system for the **Qwilight U_E (Ultimate / Extended) 6-Key BMS Table**.
+QUEstimator is an item response theory (IRT) difficulty estimation and player skill tracking system for the U_E 6-key BMS table.
 
 Using actual clear records from the Qwilight Internet Ranking (IR), QUEstimator fits a **Bayesian Graded Response Model (GRM)** with MCMC (No-U-Turn Sampler) to estimate continuous difficulty thresholds for every chart, alongside individual player latent ability ($\theta$).
 
