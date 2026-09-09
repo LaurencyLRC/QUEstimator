@@ -35,6 +35,7 @@ import {
   isSpecialLevel,
 } from "@/lib/questimator-types";
 import { PlayerSkillHistogram } from "@/components/questimator/PlayerSkillHistogram";
+import { fetchPlayersData } from "@/lib/players-cache";
 
 interface Props {
   charts: Chart[];
@@ -47,6 +48,10 @@ interface Props {
   customProfiles?: Record<string, PlayerData>;
   onSaveCustomProfile?: (id: string, data: PlayerData) => void;
   onDeleteCustomProfile?: (id: string) => void;
+  players?: PlayersDict | null;
+  loadingPlayers?: boolean;
+  loadError?: string | null;
+  chartMaxTheta?: Map<number, number> | null;
 }
 
 const STATUS_LABELS: Record<number, { short: string; color: string }> = {
@@ -88,6 +93,10 @@ export function PlayerTab({
   customProfiles = {},
   onSaveCustomProfile,
   onDeleteCustomProfile,
+  players: propPlayers,
+  loadingPlayers: propLoadingPlayers,
+  loadError: propLoadError,
+  chartMaxTheta: propChartMaxTheta,
 }: Props) {
   const { t } = useLang();
   const { mode, format } = useScale();
@@ -96,12 +105,22 @@ export function PlayerTab({
   const [isCustomProfile, setIsCustomProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [players, setPlayers] = useState<PlayersDict | null>(null);
+  const [internalPlayers, setInternalPlayers] = useState<PlayersDict | null>(null);
   const [searchResults, setSearchResults] = useState<
     { id: string; name: string; clears: number }[] | null
   >(null);
 
-  const chartMaxTheta = useMemo(() => {
+  const [internalLoadingPlayers, setInternalLoadingPlayers] = useState(false);
+  const [internalLoadError, setInternalLoadError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
+
+  const players = propPlayers !== undefined ? propPlayers : internalPlayers;
+  const loadingPlayers = propLoadingPlayers !== undefined ? propLoadingPlayers : internalLoadingPlayers;
+  const loadError = propLoadError !== undefined ? propLoadError : internalLoadError;
+
+  const internalChartMaxTheta = useMemo(() => {
+    if (propChartMaxTheta !== undefined && propChartMaxTheta !== null) return propChartMaxTheta;
     if (!players) return null;
     const max = new Map<number, number>();
     for (const player of Object.values(players)) {
@@ -115,31 +134,26 @@ export function PlayerTab({
       }
     }
     return max;
-  }, [players]);
+  }, [players, propChartMaxTheta]);
 
-  const [loadingPlayers, setLoadingPlayers] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
+  const chartMaxTheta = propChartMaxTheta !== undefined && propChartMaxTheta !== null ? propChartMaxTheta : internalChartMaxTheta;
 
   const fetchPlayers = useRef<( () => Promise<PlayersDict | null> ) | null>(null);
 
   useEffect(() => {
     fetchPlayers.current = async () => {
       if (players) return players;
-      setLoadingPlayers(true);
-      setLoadError(null);
+      setInternalLoadingPlayers(true);
+      setInternalLoadError(null);
       try {
-        const res = await fetch("data/players.json");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as PlayersDict;
-        setPlayers(data);
+        const data = await fetchPlayersData();
+        setInternalPlayers(data);
         return data;
       } catch (e) {
-        setLoadError(e instanceof Error ? e.message : String(e));
+        setInternalLoadError(e instanceof Error ? e.message : String(e));
         return null;
       } finally {
-        setLoadingPlayers(false);
+        setInternalLoadingPlayers(false);
       }
     };
   }, [players]);
@@ -167,7 +181,7 @@ export function PlayerTab({
   const handleSearch = async () => {
     const q = query.trim();
     if (!q) return;
-    const data = await fetchPlayers.current?.();
+    const data = players ?? (await fetchPlayers.current?.());
     if (!data) {
       setSubmittedID("");
       setNotFound(false);

@@ -13,6 +13,7 @@ import { LangToggle } from "@/components/questimator/LangToggle";
 import { ScaleToggle } from "@/components/questimator/ScaleToggle";
 import { RankingTab } from "@/components/questimator/RankingTab";
 import { PlayerTab } from "@/components/questimator/PlayerTab";
+import { fetchPlayersData } from "@/lib/players-cache";
 import { useLang } from "@/lib/i18n";
 import { ScaleProvider, useScale } from "@/lib/value-scale";
 import { useCustomProfiles } from "@/hooks/use-custom-profiles";
@@ -53,12 +54,22 @@ export default function Home() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const [playersData, setPlayersData] = useState<PlayersDict | null>(null);
+  const [playersLoading, setPlayersLoading] = useState(true);
+  const [playersError, setPlayersError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("data/players.json")
-      .then((r) => r.json())
-      .then((data) => setPlayersData(data))
-      .catch((e) => console.error("Failed to load players.json", e));
+    fetchPlayersData()
+      .then((data) => {
+        setPlayersData(data);
+        setPlayersError(null);
+      })
+      .catch((e) => {
+        console.error("Failed to load players.json", e);
+        setPlayersError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        setPlayersLoading(false);
+      });
   }, []);
 
   const chartMaxTheta = useMemo(() => {
@@ -333,6 +344,10 @@ export default function Home() {
                 customProfiles={customProfiles}
                 onSaveCustomProfile={saveProfile}
                 onDeleteCustomProfile={deleteProfile}
+                players={playersData}
+                loadingPlayers={playersLoading}
+                loadError={playersError}
+                chartMaxTheta={chartMaxTheta}
                 onPlayerChange={(id, player, isCustom) => {
                   setActivePlayer((prev) => {
                     if (!player) return prev === null ? prev : null;
@@ -346,6 +361,9 @@ export default function Home() {
             <TabsContent value="ranking" className="mt-0">
               <RankingTab
                 charts={charts}
+                players={playersData}
+                loading={playersLoading}
+                error={playersError}
                 onSelectPlayer={handleSelectPlayerFromRanking}
               />
             </TabsContent>

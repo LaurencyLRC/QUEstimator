@@ -17,10 +17,14 @@ import { Trophy, Search } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import type { Chart, PlayerData, PlayersDict } from "@/lib/questimator-types";
+import { fetchPlayersData } from "@/lib/players-cache";
 
 interface Props {
   charts: Chart[];
   onSelectPlayer: (id: string, data: PlayerData) => void;
+  players?: PlayersDict | null;
+  loading?: boolean;
+  error?: string | null;
 }
 
 interface RankRow {
@@ -50,34 +54,43 @@ function rankBadgeColor(rank: number): string | null {
   return null;
 }
 
-export function RankingTab({ charts, onSelectPlayer }: Props) {
+export function RankingTab({
+  charts,
+  onSelectPlayer,
+  players: propPlayers,
+  loading: propLoading,
+  error: propError,
+}: Props) {
   const { t } = useLang();
   const { mode, format } = useScale();
-  const [players, setPlayers] = useState<PlayersDict | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [internalPlayers, setInternalPlayers] = useState<PlayersDict | null>(null);
+  const [internalLoading, setInternalLoading] = useState(false);
+  const [internalError, setInternalError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const fetchedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const players = propPlayers !== undefined ? propPlayers : internalPlayers;
+  const loading = propLoading !== undefined ? propLoading : internalLoading;
+  const error = propError !== undefined ? propError : internalError;
+
   useEffect(() => {
+    if (propPlayers !== undefined) return;
     if (fetchedRef.current) return;
     fetchedRef.current = true;
     (async () => {
-      setLoading(true);
-      setError(null);
+      setInternalLoading(true);
+      setInternalError(null);
       try {
-        const res = await fetch("data/players.json");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as PlayersDict;
-        setPlayers(data);
+        const data = await fetchPlayersData();
+        setInternalPlayers(data);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setInternalError(e instanceof Error ? e.message : String(e));
       } finally {
-        setLoading(false);
+        setInternalLoading(false);
       }
     })();
-  }, []);
+  }, [propPlayers]);
 
   const rankingChartIds = useMemo(() => {
     const s = new Set<number>();
