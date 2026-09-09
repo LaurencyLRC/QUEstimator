@@ -45,6 +45,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # CI (GitHub Actions, etc.) sets CI=true.  CI logs don't honor the \r refresh
 # that tqdm uses, so a live progress bar explodes into thousands of log lines
 # and breaks the Actions UI.  In CI we use a silent stub + a heartbeat instead.

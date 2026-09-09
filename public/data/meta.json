@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-07-25T10:00:03.554913+00:00",
-  "n_charts_total": 1487,
-  "n_charts_valid": 1429,
-  "n_charts_provisional": 58,
-  "n_players": 2821,
-  "n_clears": 169577,
-  "model": "Bayesian Graded Response Model (MCMC NUTS)",
+  "generated_at": "2026-09-09T14:32:51.955312+00:00",
+  "n_charts_total": 1544,
+  "n_charts_valid": 1477,
+  "n_charts_provisional": 67,
+  "n_players": 2946,
+  "n_clears": 179981,
+  "model": "Bayesian Graded Response Model (MCMC NUTS, θ marginalized)",
   "categories": [
     "FAILED",
     "NORMAL",
@@ -13,16 +13,16 @@
     "V-HARD"
   ],
   "provisional_rule": "n < 10 OR se_b_hard > 1.0",
-  "player_theta_mean": -0.23047581398989955,
-  "player_theta_std": 1.625732153197019,
+  "player_theta_mean": -0.1975938605499824,
+  "player_theta_std": 1.6411571405743492,
   "data_source": "Qwilight IR leaderboards (real player data)",
-  "runtime_sec": 11431.89,
+  "runtime_sec": 16865.19,
   "mcmc_chains": 4,
-  "mcmc_warmup": 1000,
-  "mcmc_samples_per_chain": 1000,
+  "mcmc_warmup": 500,
+  "mcmc_samples_per_chain": 500,
   "convergence": {
-    "r_hat_max": 1.0086,
-    "ess_min": 467,
+    "r_hat_max": 1.004,
+    "ess_min": 517,
     "convergence_ok": true,
     "n_params_bad_rhat": 0,
     "n_params_low_ess": 0,
@@ -30,38 +30,38 @@
     "ess_threshold": 200,
     "by_parameter_block": {
       "prior_a": {
-        "r_hat_max": 1.0085971355438232,
-        "n_eff_min": 481.2923926677488,
+        "r_hat_max": 1.0025700330734253,
+        "n_eff_min": 532.3174999539688,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "prior_b": {
-        "r_hat_max": 1.0059137344360352,
-        "n_eff_min": 467.2772196698699,
+        "r_hat_max": 1.0019707679748535,
+        "n_eff_min": 517.5600035145122,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "delta": {
-        "r_hat_max": 1.003004789352417,
-        "n_eff_min": 1480.8066209612282,
+        "r_hat_max": 1.0039823055267334,
+        "n_eff_min": 1327.7939535335865,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "tau1": {
-        "r_hat_max": 1.0037213563919067,
+        "r_hat_max": 1.0029325485229492,
         "n_eff_min": 2000.0,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "tau2": {
-        "r_hat_max": 1.00564706325531,
-        "n_eff_min": 1607.4195891619404,
+        "r_hat_max": 1.0031745433807373,
+        "n_eff_min": 1597.478063761996,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "log_alpha_contrast": {
-        "r_hat_max": 1.0025607347488403,
-        "n_eff_min": 1658.640580368946,
+        "r_hat_max": 1.0032750368118286,
+        "n_eff_min": 1518.564435624899,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       }
@@ -72,8 +72,10 @@
   },
   "identification": {
     "method": "orthonormal zero-sum Householder log-alpha contrasts",
-    "theta_prior": "Normal(0, 1), marginalized out of the sampler (recovered per-player by EAP)",
+    "theta_prior": "Normal(0, 1), marginalized out of the sampler (recovered by EAP)",
     "delta_parameterization": "centered (δ ~ Normal(loc, scale))",
-    "log_alpha_prior": "isotropic Normal(0, 0.3) on the zero-sum subspace"
+    "tau_prior": "HalfNormal(1.0)",
+    "log_alpha_prior": "isotropic Normal(0, 0.3) on the zero-sum subspace",
+    "quadrature_nodes": 11
   }
 }

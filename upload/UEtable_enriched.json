@@ -431,7 +431,7 @@
         "url": "",
         "artist": "CSH",
         "comment": "Enclosed Chart",
-        "state": "1",
+        "state": "",
         "sha512": "490fc684ca6688dd2aa890c8c41cf6336c9d4af7b8f76ea0001c3f304673db910603fe2b5789b3adbc88112d1703a238a9102e466ff6b8b7da6320d64de910fe"
     },
     {
@@ -3476,7 +3476,7 @@
         "url": "",
         "artist": "EmoCosine",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "88b56b990ac8d687b53a28e9129371e0f1006e16107b0e5119a7ed4335fff4a09fe9ef00ad8ea1cedecacbcd15caf8949f8622fb36b8b6f1fd8c0e4942684ffe"
     },
     {
@@ -3611,7 +3611,7 @@
         "url": "",
         "artist": "MiKaDo feat.GUMI",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "65d9df6076604e492fb202d76940ba11566bccf2465ab0d79e538c31581a32767d8717c1200d776ac626086b33bb8991b94ed21e46bdb4e9af3017f6eae3e2a8"
     },
     {
@@ -3941,7 +3941,7 @@
         "url": "",
         "artist": "こどものなみだ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "6fd94b81235530b6b43dc713b878a0bf7978bc937b2b5f0ad49f0ec2597b71eac6af39724ae35220708eae141dc2524164f1f6d0c9bbfc2ba9c8885aef73a6b6"
     },
     {
@@ -3986,7 +3986,7 @@
         "url": "",
         "artist": "ねこみりん feat. みゆ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "4ff2ae293ff1b9e024ae6abbc5483a81f1057faf0998783ffc4d56969c663f3e6a72f1804058299575c24e0b513c3f7a15c926d1fbb6e92fb6f7409d080dc386"
     },
     {
@@ -4076,7 +4076,7 @@
         "url": "",
         "artist": "siromaru",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "197fca12b140e2d5919616b305ff6c836bc340e7897b641c184a06cff4e6a09b08358c073b65c7780658a776b19453d9794b8c812f9cfe5733f20578a9a9e189"
     },
     {
@@ -4586,7 +4586,7 @@
         "url": "",
         "artist": "ETIA. feat Jenga",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "f300f31f73b738f3205c984b2cba1f388caf0a6257dfb04491ebd00729ce3992ad09889acff574e15287233ae0e1bda5d1dd903332455f234efafdc413f78540"
     },
     {
@@ -5036,7 +5036,7 @@
         "url": "",
         "artist": "ハルガスミ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "93d91d35b27ebd1dfe6dc394defac01864a6fcd62dc03650d54f198c85e7316fc84515954edf9a9dda8d05a9a0a8bff4d469a547cfbe0e40b3521c4bf101d2c4"
     },
     {
@@ -5321,7 +5321,7 @@
         "url": "",
         "artist": "siromaru",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "bccf803e3c165c6a6e4907230fea36b6712ce97d4a808219ed0148083e427234715bebafbb70e35a1397ac619a4c9ac15ee4c08dbb78ddae6c43e6ddf844c32d"
     },
     {
@@ -5561,7 +5561,7 @@
         "url": "",
         "artist": "Aoi",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "38e1ed143e9663fc65441703b269c0512c0359b312097b4ff1d0cf115a895024d27b049611e8bb29b00ea611193ee98ab316fcc43ddf31d0bbf57cca59cafed1"
     },
     {
@@ -5786,7 +5786,7 @@
         "url": "",
         "artist": "eFeL",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "4271ff94eb0ca5657bf7cf08f06553010be9c59724bc518664c67da08bfea90e898c928926ac6545633cc2f900e49bfc91beb9050a59643fd6edef35f2e4acb1"
     },
     {
@@ -6746,7 +6746,7 @@
         "url": "",
         "artist": "こどものなみだ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "074c493234b96e00c8f32fb164f0931084f31cc47925bd2a9383b34a46286b3bef769097d64e58290abf7b1f8ebf8518cee99018c417590274cdec2becf80c78"
     },
     {
@@ -6866,7 +6866,7 @@
         "url": "",
         "artist": "CSH",
         "comment": "Enclosed Chart",
-        "state": "1",
+        "state": "",
         "sha512": "2b05af31999811cdc462e654a29df80d62fb773beb2b045cf840ae657fdb0010d0ef95f1413797f9333d757f2515acd0af3f5c9391e7a38cc3c3c62459a28df2"
     },
     {
@@ -7091,7 +7091,7 @@
         "url": "",
         "artist": "xi",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "5e202179b89d7fa4e5e985004a7c8489a81a2e3779b5046db9f695478e07862ebdc6448205fac73799533431bc2f0d27a088cf1f516c909a4a0eaef5b7aeea6f"
     },
     {
@@ -7466,7 +7466,7 @@
         "url": "",
         "artist": "あとぅす feat.つゆり花鈴",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "1a034d149a045cc16d1fb840f2c9b129411ddd8ca8db0f307d5241ad5d5e57ebdc283bde063d5dbe924062a4b2ab9c0bc0c9ed9f6bd21a05c4db9f36f4f2f2c4"
     },
     {
@@ -7511,7 +7511,7 @@
         "url": "",
         "artist": "CSH",
         "comment": "Enclosed Chart",
-        "state": "1",
+        "state": "",
         "sha512": "2c296245d3e018862916a3dad973b4cafa6d53c96860ebd015b83ce054a3bb1c0dfabf092afdb4321e2f5dea615b3f64cfb4cddef77af791818415c0dba5ccb6"
     },
     {
@@ -8096,7 +8096,7 @@
         "url": "",
         "artist": "Abel",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "dbad1d7d3f35467c7051608767b841d78b27eb770fe2a03c3673977df11194c1f4da9bea2730a0a17ca3a48085926ee52d81eb3b0728a8aa38f0898e9bed8569"
     },
     {
@@ -8336,7 +8336,7 @@
         "url": "",
         "artist": "plastic feat. サキト",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "478fe4b46efe1cdf7f9c905a5ceebd4a5e3862515a7a1ec7b03ed69a6e09068d8549f5083e7db550bbbb06a05b0cfe07a1e9ec29e7fd998ecc194cd1dfd44568"
     },
     {
@@ -8640,7 +8640,7 @@
         "sha512": "950f2d6044e8ff1ee0dfadd694a299105804cf498f932e279b8b69e7fea1927fb6a8b0b3d6a275dc8e0ca8336ce19dd78b36ba4b37c8fe4adfd6fe295dd8317e"
     },
     {
-        "level": "19",
+        "level": "-_-",
         "title": "AltMirrorBell [6K UE MX]",
         "sha256": "",
         "md5": "fc10d2ebdf300bb6a1364b3eca7de3b7",
@@ -9461,7 +9461,7 @@
         "url": "",
         "artist": "おみー feat. Eleanor Forte",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "90886b6814b2966ff60a30dea0226906d55ba1fa5b87b9b48631f5dcea7a9675ef1c285f6bdd770d570e3372ac43b32744a5879b7ad0246dc033e608b5d12a43"
     },
     {
@@ -9491,7 +9491,7 @@
         "url": "",
         "artist": "MiKaDo feat.GUMI",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "db57972602871819f4333bd2f6d3a6692168b75d9fbce36d5245037652b87a83c0db69c6e1cddbb6b9b1aca8f3a23e5f2c7f58332d882119ccbfdb41172aeb59"
     },
     {
@@ -9525,7 +9525,7 @@
         "sha512": "d79cdacb6885d2a7c8d25361cd62d0d6c0e6763aefa249ee1edb723c075f8e5a3aeb6a5570041625ab1f4c04b0703e02c8f8b3e4b5d89c3ecb5a41696f5d7927"
     },
     {
-        "level": "19",
+        "level": "20",
         "title": "Sijaelewa Chochote [6K UE Mol?roo]",
         "sha256": "",
         "md5": "aec5ac5d80f1b9393cc4903628edd9b4",
@@ -9641,7 +9641,7 @@
         "url": "",
         "artist": "ROKINA",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "d64cc29f5145a653d7ac5fcab6d2db7e4458865e6f3303af74ad07c341efe788b7c572b844e1773ec6d620f6d20439b14d126a0da0aa22ac1b522115aeeb256d"
     },
     {
@@ -9776,7 +9776,7 @@
         "url": "",
         "artist": "LisicA vs. ルゼ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "362d624b5498d114c75c8ab8f48e771d16edd529eecc4384a664eb2a0e01095a6580dfcc31f590708507d8761362ccbf4fb21cf73741a3b1a8a83dd2a33b0d7d"
     },
     {
@@ -9866,7 +9866,7 @@
         "url": "",
         "artist": "ハルガスミ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "cf008623e6f3a24fd705788b80b14fb42f3959cf9475e7a8047a6dd8d60553f197c302675fb2ab954caf1e7584a9d59f6f73a0546ef3c7b307011074f2e59923"
     },
     {
@@ -9881,7 +9881,7 @@
         "url": "",
         "artist": "daiki* feat.重音テト",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "54d1082e0eb44a17cb074f77ee7ac416a3b78721ce88349d28f24f41428b2f3ce4e5066435c0d9887978fa11123e9410290e991bbc0a5933f637803943fc3ebe"
     },
     {
@@ -9941,7 +9941,7 @@
         "url": "",
         "artist": "Juka_Box feat.カゼヒキ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "65535694eb5ce9a4b570caa291fe56c02b98987ec8eea197bfeec51992d7d9d9de79aab9f7afc95c9f335cbd1d97d982d2aa8f867a45eecdc794efd386bfd139"
     },
     {
@@ -10046,7 +10046,7 @@
         "url": "",
         "artist": "Micelle",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "4ef98b369495e685e8e1ae8e207f273f216f1cadb7fc9bc54ccd5f230f0796fe2481455e43c4bea6fec7f0344521ec0a3772e497ee660f2396d35eb9e247b031"
     },
     {
@@ -10181,7 +10181,7 @@
         "url": "",
         "artist": "ねこみりん feat. みゆ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "fa39f0afbc83ca9d0814c3deeb77dea650f2155d9c91a6cb19c0884d96a173204ec0f91a56c195fa07eefbda2db4ee2e71e212afb9b3eb2258849f7e6d9dcef1"
     },
     {
@@ -10245,7 +10245,7 @@
         "sha512": "324d1e865174d688d59ea08f17f6b9748aa45efe22de104c3237238537b4ac3e5e5031ad489fb2e1e1f6e281c3213316ddb984d1b54b0e5038b7e3eea2687ddc"
     },
     {
-        "level": "20",
+        "level": "21",
         "title": "太れコア [6K UE ガチ押し太れ]",
         "sha256": "",
         "md5": "17adcb3389eb6d4ea21877ce42b0acd1",
@@ -10256,7 +10256,7 @@
         "url": "",
         "artist": "momo★yama",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "ada98374687955146dd009438151aaf6aba5512e37782a743e471a9f35f5829f1d45751ce4ced64cd8fb722130af37cd0b14874d0ba04b5fffcde7b7902bd82e"
     },
     {
@@ -10286,7 +10286,7 @@
         "url": "",
         "artist": "otoshi.b",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "78f56df205b8317d10c6ce9da2f293d87494d185adaed80c3506710602090e3232209549cacf84a5a2c0ea3824d8eeda639b5dc0b3f3fc6d4fc9b1e65e74e1b3"
     },
     {
@@ -10436,7 +10436,7 @@
         "url": "",
         "artist": "Rethisly",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "5cc082678aba80752d17960fc5967de5b6f99100db1834cebfe477fabb7acf37c6e30cfce92875c783b63f584242a2e49d17edea119f33b073006b75073b26bb"
     },
     {
@@ -10781,7 +10781,7 @@
         "url": "",
         "artist": "ice",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "f270612d0a5006755d4d5099cf0c926fdaf29adef040887ff17080ed4aff45dafd1a8df34e92703f26d542df40339bbbddf9e1a7438ebf820db57c1d527cfc9c"
     },
     {
@@ -11081,7 +11081,7 @@
         "url": "",
         "artist": "ETIA. feat Jenga",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "bdf35aeb8e1ec82576ab6f89ab9e864958683c0dac198e2cc2858e2bcb57a3263b3626bdab999e50b061919cfff25aa8e944281134d1e4f322bffe96a38674e2"
     },
     {
@@ -11396,7 +11396,7 @@
         "url": "",
         "artist": "Abel",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "09214321931d3b01660ab3de98b4127e275590e4e49aa8f76eeee84b6dd02cbe4e432b4544d215b342248caa39968df870260de216bbf549a2c8e8e89fd11e8c"
     },
     {
@@ -11606,7 +11606,7 @@
         "url": "",
         "artist": "Sound piercer & Sobrem",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "c5687b13d7e3ac014fb55784ac81e4d0203af32ebf2840288796105176d8feb9dbd74f6a55480656e5bc0346cb6b79e2f1df587537a6cf00fdca3ba366e3493c"
     },
     {
@@ -11831,11 +11831,11 @@
         "url": "",
         "artist": "CSH",
         "comment": "Enclosed Chart",
-        "state": "1",
+        "state": "",
         "sha512": "5642fb385fb0d6ebc70a06b5c68553ead4113ead3f79de298513f7a636df824dc7523e1a7f171b00fc05be7ad56aa7d1668f525be3060a6c26cc5c90a6901e4a"
     },
     {
-        "level": "21",
+        "level": "22",
         "title": "翼の折れた天使たちのレクイエム [6K UE Angel Noises]",
         "sha256": "",
         "md5": "0c46af1139c3a549760a767616419ff8",
@@ -12405,7 +12405,7 @@
         "sha512": "cea316b2458dc640af24cf96b93117097a3f7aba63b46278db4e8e31373f66834238fcf34b36cd594b5245d9baaa94d27286855c94f44af2f83e122c4c037b6f"
     },
     {
-        "level": "21",
+        "level": "22",
         "title": "FLVX [6K SHD]",
         "sha256": "",
         "md5": "5cef4d512fa189eb879523e3220dde38",
@@ -12581,7 +12581,7 @@
         "url": "",
         "artist": "silcostones feat. 小宮真央",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "0db1d5d88f42be63ec22bf502e7f933d9cf576baaaf054cc1cd58dd9824f5681a75d27f691e35ceaa5333334d43c6c04bb6836025cc2af6377ec45ff79673d1f"
     },
     {
@@ -12750,7 +12750,7 @@
         "sha512": "498ad43efd4af8707f74463b9ee88fad8a0b45c8eda187930784a8095b01136cd2b1a45916a3c021780de94c36129694cbcb2d9c3a7eed9576966cee8ef4f9b6"
     },
     {
-        "level": "21",
+        "level": "?!",
         "title": "NS31 [6K UE BEEP]",
         "sha256": "",
         "md5": "474aba08a77b72f7c843ca76986b3bdf",
@@ -12840,7 +12840,7 @@
         "sha512": "dcd5ff21d16dfb81909ba9a8095d81715d898cc15e35c4ea2b6a79a56b4813feb4f5d02c348d6e9bd38eb57758e4b86304563fc969045f277b1be6566e489333"
     },
     {
-        "level": "21",
+        "level": "20",
         "title": "Paraclete [6K UE HARD]",
         "sha256": "",
         "md5": "a0f049c9b5a6604fbc9b9b80c7c1e1f7",
@@ -13391,7 +13391,7 @@
         "url": "",
         "artist": "こどものなみだ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "1462edcb4de641b1bb0091652ff74dff955adb056dd5945bf12ccaf788debae167a462a29c47da07cd4331ad66481736fff2fc7fa68050c42c6907e36e9c31b5"
     },
     {
@@ -13451,7 +13451,7 @@
         "url": "",
         "artist": "ルゼ feat. えみゅう。",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "d8a62234baad343ed52cf54d422fe50da89d9716a848f28cc0239d210fbd0128a54d456c40e2aa6c2af93b1ea051afac4dd06c18c8151302341fb071b70ea135"
     },
     {
@@ -13575,7 +13575,7 @@
         "sha512": "f5048711448bfdb40731f7b189539d1b27bcf8880d8542f5020cb43e943f7209ba865d94c2197df24655f979f1a0e89502b0667a32a88a8e02119c0cc71c31dd"
     },
     {
-        "level": "22",
+        "level": "23",
         "title": "A [6K UE C]",
         "sha256": "",
         "md5": "7f9acb339648c7b872c257793c4fc540",
@@ -13766,7 +13766,7 @@
         "url": "",
         "artist": "Aoi",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "35a11766620bb91f6c39d88c81d861d56791a3bb2cc4f202b5a9a7dbdbceebd2bba1477067d30f2ee03741ea94dc9bd6cdb3a17b24699cd7b3e4fd565852dac3"
     },
     {
@@ -14006,7 +14006,7 @@
         "url": "",
         "artist": "403 ERROR",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "fbd96a9d07415e512086362fbe0567049522f74aac538cc0fb1e56f2cbbdf17746c5f064746495cbf5df6699730784f683bd08ac267d45ec0d1bfc0da475ac1f"
     },
     {
@@ -14321,7 +14321,7 @@
         "url": "",
         "artist": "MiKaDo feat.GUMI",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "cdc05dff97b66193f8e75caa59955839c5429d0335c6b3ca9cc37fa5cef68aecff45b7a59b4ae65d6ef327e22df5f3f5e8939cf3ad467c0320e67324f2a32a7d"
     },
     {
@@ -14625,7 +14625,7 @@
         "sha512": "8d2926a835130d0e01695627003b8b4011d360444a31ca69abd1aa50251dca8f6dab0c2a9f993fd098b786c0d6acfe943982367489667605542ba0ab3fda2d3e"
     },
     {
-        "level": "22",
+        "level": "?!",
         "title": "キミとボクへの葬送歌 [6K UE Hard]",
         "sha256": "",
         "md5": "137823ed1ce1ff83600f4fb803af833c",
@@ -14838,7 +14838,7 @@
         "level": "23",
         "title": "燐寸と緞帳 [6K UE ソワレ]",
         "sha256": "",
-        "md5": "dc65e9a66420d669dd53f22d16752aaf",
+        "md5": "90077c617ac2669b6b4f614b4ec610df",
         "video1": "",
         "video2": "",
         "url_diff": "",
@@ -14847,7 +14847,7 @@
         "artist": "Juka_Box feat. 綜花",
         "comment": "",
         "state": "",
-        "sha512": "e8413ea888b1d57bdf3bb5a21d32e163838760acf96650f56bd5c26f84496886a102fc6b2dca87648e22f29fb8e46e24074bea18a9db46b24d5918f46aae7020"
+        "sha512": "5cef6d167d7e501b7329348be0a457904a3e7bcd7c2edf2ba27d9e5a168d318e99c7be3728024c2a63bbd4586356f3a3f7bf5fe82d091dcdce556670a55c0fe7"
     },
     {
         "level": "23",
@@ -15071,7 +15071,7 @@
         "url": "",
         "artist": "siromaru",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "acaadb3f3ddef517f46fb62f1d813171fafa09d98ed832743d9ce00da86f480da95f9e39d2055acee4707fdb526633b9b77e26e77e5e5dc1a2a64cfbe5931fd9"
     },
     {
@@ -15540,7 +15540,7 @@
         "sha512": "c2f1562b9052a54866a0e4c37c026c7267d0392c8dd5811144a4ae6685495ed9b6caf898b0326435cfe01810374dd610cdb7c0c1b9c9257915051bae04c49ea0"
     },
     {
-        "level": "23",
+        "level": "24",
         "title": "Lacrimosa [6K UE Legio Mariae]",
         "sha256": "",
         "md5": "6fad63a52410cf2d7731e095d5fc21e8",
@@ -15975,7 +15975,7 @@
         "sha512": "e5728ed2f2c14bdbd4d1fac9468389f9c1938abd5c8c99d67fad3d1be2086955b140d04729415fe92fe5bc45e62f063c8998aa63baf1a1aa061c7e59c5465634"
     },
     {
-        "level": "23",
+        "level": "22",
         "title": "Transcendence [6K UE UHD]",
         "sha256": "",
         "md5": "ff959a85578912fd98f901accf620ee5",
@@ -15986,7 +15986,7 @@
         "url": "",
         "artist": "Abel",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "4297b8904e0b5ba7d6e0ded6d96c843e3fdf7348c7243108c43f7468c7ae7d9a5e07a4f855cc72acefd6f73d7f1f15eaa772b97de506417420210589c16a944b"
     },
     {
@@ -16151,7 +16151,7 @@
         "url": "",
         "artist": "plastic feat. サキト",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "61ad871190e6803f86ccc2ce6df0b7f034d5f3978ea5af82a79407a29ee1dae72f4b90e212e8d5269675dff1bbfe70bcd49c47b3c4516f3b42e4d878d3d406d1"
     },
     {
@@ -16350,7 +16350,7 @@
         "sha512": "b3844b1e0a2de32975cf50f524a4527e243b5bc78e55b81e4d97ae44bc9891a7e18c320710c05dcb70e4ebe68efe8e3e8d0afd0b1b8461a35dfc5007d4c10424"
     },
     {
-        "level": "24",
+        "level": "25",
         "title": "運命論 [6K UE Eschatology]",
         "sha256": "",
         "md5": "af23c24c02ce7a713ab5ef2935feb0b1",
@@ -16530,7 +16530,7 @@
         "sha512": "ae6d2ea9549d55205f49b7ac0535f1695a6e7d90f60b465eea62b5cd8827819541e3bdeb706cc09ccd13931ea85e5c5431f796ff83643e39e85b5bc5586fdfb6"
     },
     {
-        "level": "24",
+        "level": "23",
         "title": "Death by Glamour [6K UE OHHHHHHH YESSSSSSSSS~]",
         "sha256": "",
         "md5": "5db9b14f56018ecd8deb110819cfa808",
@@ -16811,7 +16811,7 @@
         "url": "",
         "artist": "おみー feat. Eleanor Forte",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "cc1fb220ec88aefafdbf6849341749d6bfebe2f37ed902eb6ee3198a935ca368ab54c19dc431a7d4e53c794a5f48c8c5c42a800367756c1492e9ab2a29d6f0a9"
     },
     {
@@ -16916,7 +16916,7 @@
         "url": "",
         "artist": "SP-#",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "dd348e1832a8799d23a519fda1492785e57281193d443098b38f38dea3573db1036d4264a7263fd501f65533ab8e92a6062677204fba47af8f8d01ff990cfed7"
     },
     {
@@ -17021,7 +17021,7 @@
         "url": "",
         "artist": "Her Boundary.",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "70972070744615ab65861f1ae893e9a0a2d9901a5dce1042bd9f7af5cfc81923e7041b83e49f5a07f47900e0d5fcc519b28e6d56268ffa2091c15fb4bc8dbba8"
     },
     {
@@ -17070,7 +17070,7 @@
         "sha512": "277890a461f03a75ed102b7809c27cb8f8c295e742c90589eecd468db393c1eafc3c4fd9047bc08d2e750aec5378c50a304e8c0d25f318ab6dd1f1cd1788152b"
     },
     {
-        "level": "24",
+        "level": "25",
         "title": "ドキッ！けふぃーとひ・み・つ♡のサッカータイム☆☆ニャホニャホしても、いいんですよ…？～KEFIFAワールドカップ編 we love 汚滝健太郎～ [6K UE]",
         "sha256": "",
         "md5": "7790556464fb7067607bb296b7b6a2f4",
@@ -17336,7 +17336,7 @@
         "url": "",
         "artist": "ユナイテッド・メルトダウン・オ嬢 (†Sennzai†ひめりんご†) / kanone,Kaoru",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "a47d37b73986ab6159a7c1d26b8847c589c1deefcd7cb912c1d0cd99b46e2baf518063f3df859a0980fd11894ace0543a1d450bbaa440d5dd541a6877223cb4e"
     },
     {
@@ -17475,7 +17475,7 @@
         "sha512": "a9c7a9d05a7febf08ae668320178271ccc3811cefd7fef9ba4540d1acf4ff983590fff043d12ca0f6009cedd47ae867b04f91571707a89533516c1895516c86e"
     },
     {
-        "level": "25",
+        "level": "24",
         "title": "Etude for the Sinners [6K UE EX]",
         "sha256": "",
         "md5": "b24c01281a739c6c7a0b3b52820f56f7",
@@ -17486,7 +17486,7 @@
         "url": "",
         "artist": "ice",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "6a5cdda917a586eb05fbe4142ce5765c4ddf61e62462987625aff7e9e6c50201733b018470d84aef720eb80df90e7990ea2853a7b91b449d123de061d290460d"
     },
     {
@@ -17771,7 +17771,7 @@
         "url": "",
         "artist": "Abel",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "a54e86d205b56af79f0d94144fe35b7c4ea81903a560b62016185dd763bcd5ba2e54d8a51bfdfd6f05ba8436618b507afd1e3b06477ab184c042436641e26040"
     },
     {
@@ -17801,7 +17801,7 @@
         "url": "",
         "artist": "tarolabo",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "0899bcce8c707f78188b3953936d316257d328a5f8a34bf1421b631cf52ec8af72526aa9e36ae228ecbc888f527a573a903d9f21613c15864d89ad56ed7a073e"
     },
     {
@@ -17861,7 +17861,7 @@
         "url": "",
         "artist": "あとぅす",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "ffaf0faf648d950952cb8d6b62b854b6d23dc0e63b9f0be6c6441a7fb85207bbdb129409176af28bcec1472fba674f336bc5edddee68ce5ad2b2ad9ea8d4ab5f"
     },
     {
@@ -18071,7 +18071,7 @@
         "url": "",
         "artist": "eFeL",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "8fae033fa8d06d0771e778ea916bb41d5fc39c962d3506988e8d4ae1a77e99a56e58939609c90ca420505de76674debd0ef9ae8281b4ab013e8d582472548928"
     },
     {
@@ -18101,7 +18101,7 @@
         "url": "",
         "artist": "403 ERROR",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "d092850fe3b3f0f4c9b1416df8d1b4acb44fb3647bb6e80c7d931bb64fe12c517297cf0d3c170bf4f6caaf3b2eff29f4b7df88b924894df79136e0c321004615"
     },
     {
@@ -18210,7 +18210,7 @@
         "sha512": "ee5da366df0c50cc93a82a1d031d4c95a5621a1f99642301cbd78f0e0aa52d09ed844d5843cf52b27be17c3dd609355c5f2052c2375da114d66094200e3f93a9"
     },
     {
-        "level": "26",
+        "level": "27",
         "title": "Melotte 333 [6K UE Haven 333]",
         "sha256": "",
         "md5": "7931bc965423eb79a46872cc6e3c069f",
@@ -18491,7 +18491,7 @@
         "url": "",
         "artist": "Ark-Z",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "483e32a48d33eab9074a0cb2fc6443a5df0f5b6f9a38ff61d927f25dccc4fa2a3570ad82bbe465689b24651f231cf7f862076b997c9117e3cfa5dbb9943555d3"
     },
     {
@@ -18570,7 +18570,7 @@
         "sha512": "ddf2398d86efe5ffc71626e15856fc715db17b9dd16238099bc21b04d315a72e9fd20e2fe20b998c6388a61b2376ced28c619abd221b8faa629bfa487a3be2ec"
     },
     {
-        "level": "27",
+        "level": "-_-",
         "title": "Espresso Shots [6K UE FOUR SHOTS]",
         "sha256": "",
         "md5": "abff3c81f439005916bbcde784ed8849",
@@ -18731,7 +18731,7 @@
         "url": "",
         "artist": "qfeileadh",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "407c9d292c9802cffc9e81ea5a2ad89905294c501d65580ddde953f3dd160e33c00b868f7859af32ac4c137d2c17696b9f25233ea13e2d8450e0badaeb884cc3"
     },
     {
@@ -18776,7 +18776,7 @@
         "url": "",
         "artist": "あとぅす",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "b78f1eda4f3d6f0cb36988aa3fceb44f72f54d40394a29ed77ac853691e770dcd4be8ebc502fd6bdac0cb3d0ee2749259ba898be06a6ad67a2116105733a4782"
     },
     {
@@ -18851,7 +18851,7 @@
         "url": "",
         "artist": "otoshi.b",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "7468e8fdd96d60071f1bb17d156cd1d7619be60078b80b1f3731860e9b2ced5a4886abcf064f3c292a8b893d8d85dac85d2ea6b405b8abd061f9da36a6dac8a3"
     },
     {
@@ -19001,7 +19001,7 @@
         "url": "",
         "artist": "SP-# remixed by LeaF",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "9c797725625b6dd14586efdd58aedfc966e239187d11ee7198b642ede62323f25a3ba3c06919e1e36a3bb2005c7711cf2377322eb7f269453924f809c0314478"
     },
     {
@@ -19050,7 +19050,7 @@
         "sha512": "e3c0053f9343c5dd126c10802187411a510ca55ec4cafd0400ff14e72c669fee0b42d4ec7f602f7c7722f97ec6bcdfad6b739e6f7e82e7bb86577a10e797ed95"
     },
     {
-        "level": "29",
+        "level": "30",
         "title": "7th Force [6K UE Forceful Beat]",
         "sha256": "",
         "md5": "77e69d1f16293ba23705b41f6657fb87",
@@ -19106,7 +19106,7 @@
         "url": "",
         "artist": "403 ERROR",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "3667348e07ed977a97ad6628f06f3500f69552d634cb6030c7014fbbb0e42dbd9b84d4770a812e41dc399c1d0ede5d92a65f9f7c45f5b38b14daf943d6cd037a"
     },
     {
@@ -19211,7 +19211,7 @@
         "url": "",
         "artist": "daiki* feat.重音テト",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "56b68007af9f6d2771db5a96fe887caf864053ddff7a43be092b6cbf3811f2c03d87d11249b58a653906824a8012e02a802dace7517aa7fc8f27aa867f0f352b"
     },
     {
@@ -19331,7 +19331,7 @@
         "url": "",
         "artist": "beta",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "af17ec98883ab611ee8e099b0d065fd7e08b870cf96ebb205923be6b31a9452ce9a258951f1a298fe723eb871d6304b2db2c48bd431ba594127006ea7fb7915a"
     },
     {
@@ -19886,7 +19886,7 @@
         "url": "",
         "artist": "Chopin",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "646f8ca98522f71d9140b5dcb341ccc8acb78fe725d5cc03454205e972d541a48ee19ee0e5bd2d2e0bd272486d280d9064f94c356aa382c255443876c53f25d5"
     },
     {
@@ -19961,7 +19961,7 @@
         "url": "",
         "artist": "xi",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "a59b5a7e4dda19f45634d36fa6dab3410b3ab2ae4a17d414d1e838c1a2f40e4a9f70d0d4225e733bfeac359f35923c2085b3188f0e3152011c85f239255edc89"
     },
     {
@@ -20366,7 +20366,7 @@
         "url": "",
         "artist": "silcostones feat. 小宮真央",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "4cd120dbebdd4b8f897e340479431a64467d27ebc54cdcfe7ff3907392e05f306167c6ae3d02b56e825a8cba1f2152eb7e4b620615e073bb1b8590adf13eaef8"
     },
     {
@@ -20381,7 +20381,7 @@
         "url": "",
         "artist": "silcostones feat. 小宮真央",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "5f39bc5480e109b09ef71a7bb80fe3cb4b4e00bb0d2733b41fce1fcb4b7159491d44fdff894f295952c6589a180bd054737f4b0dc131ae0d5383eb675cfa5e34"
     },
     {
@@ -20411,7 +20411,7 @@
         "url": "",
         "artist": "かんざきしおん",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "f0233f5d42099a261ceede5c8ee96ef2e30790eb1fb61f8b46c4059a586f6b834c1a98b5b164575e6a30118b422273d5465512572068d655b7091394d5a49770"
     },
     {
@@ -20426,7 +20426,7 @@
         "url": "",
         "artist": "かんざきしおん",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "410a584dea004b7a1ca0db91575ce032ec3c5c17b1383608f479304d3ffe7bfd6c09f8387374ecfa8a387289d24ea3eb54e459fca7ca930ae1a6ba59842f2d71"
     },
     {
@@ -21326,7 +21326,7 @@
         "url": "",
         "artist": "CSH",
         "comment": "Enclosed Chart",
-        "state": "1",
+        "state": "",
         "sha512": "a716753bd344263d1fedc9fb8de8543feefbd9ede11fb935d71a2d816537b2bab43d93eb26ddf3b6d19c04e033b86a23638bd18bb396f5f687bf3b7fa2fab864"
     },
     {
@@ -21761,7 +21761,7 @@
         "url": "",
         "artist": "Greetea feat. ninnikuu",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "989440c00fbda6413752a3490716e700eff23597ac613d2613079fb94b53fcc908b8fbb3b14ec632794d1cbb3fb5b4c75384b302059345a0b304e74bf13d4716"
     },
     {
@@ -21986,7 +21986,7 @@
         "url": "",
         "artist": "beta",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "bcfdfcc4ab783f62a0a1947fcb9a82aad9290c55ef73eae173e7e4e1d133d7c0637d80af0a8719c673216a1ba73ce0fa340e8c34902d1e6a989d9d23c17b5a73"
     },
     {
@@ -22016,7 +22016,7 @@
         "url": "",
         "artist": "sogum",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "0692e9a9d4e2428714b842fb87a46e37eeea91a15f950d3b2f7fa8f3f7549ce7173398a617ca90063c067431f31575b5413a6eed4241b145017de15d9d929ee7"
     },
     {
@@ -22035,7 +22035,7 @@
         "sha512": "3da21b612fd8d7afbcceee6884f7154f85d1d5206827d0254b79fb6be3c65150d7c366da341134420434ed5fd09401a77e5a21d2ea00e49b4d76f4a1ed79fa83"
     },
     {
-        "level": "Ω",
+        "level": "30",
         "title": "Fuck the Anthem [6K UE EX]",
         "sha256": "",
         "md5": "ec24d091607e926b2967d20d93f699b5",
@@ -22121,7 +22121,7 @@
         "url": "",
         "artist": "すてらべえ",
         "comment": "",
-        "state": "1",
+        "state": "",
         "sha512": "60157dffcd91b3e73724933b748f2a85b9df2edd65d80f1932a2dcd0cd6e281b29b93fbe5131c2b002d96138bbf4b9e1209788ef744e1a19261aefc6ce51f464"
     },
     {
@@ -22138,5 +22138,1025 @@
         "comment": "304 bpm",
         "state": "",
         "sha512": "d6067a38cfb56ea4ac19c34ecc2b009752b86b348f1fa8ada816d44ecfd4577316400bde00b36f7d823681c4dcf9c8db3adb256f168fbd8b8c62ad25d997f30c"
+    },
+    {
+        "level": "20",
+        "title": ".357 Magnum [6K Desert Eagle]",
+        "sha256": "",
+        "md5": "77ffb8de16c4e97cc047258266668798",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "xi",
+        "comment": "",
+        "state": "1",
+        "sha512": "1afa401174f3c5bf98918d3a3b630c38e68e61c5d56a90e26c2085293b91d57ef65a136e7629df46e60a4ce10cb041e83a1e831eeed3bb1c8c868e39c124ce3b"
+    },
+    {
+        "level": "26",
+        "title": "＂Alice in Wonderland＂：crazy apple could not live in real life [6K UE \"Murder of Alice\"]",
+        "sha256": "",
+        "md5": "6d2e4614d317cf222d697097c0153638",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "ClassICNooB",
+        "url": "",
+        "artist": "kyou1110 vs Takuya Namba",
+        "comment": "",
+        "state": "1",
+        "sha512": "a4f8f87b9dc2cabfb3fab8e4b04379cd1a116342e041ff6249106aed7bde4e2acc43b50eaa6e2aec8ab863efdb85dcfbab911d220018556fe5233cde8707f7eb"
+    },
+    {
+        "level": "◆",
+        "title": "[line:theta] [6K UE LN]",
+        "sha256": "",
+        "md5": "fef9958ef444453ede97257982cf5b14",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "ClassICNooB",
+        "url": "",
+        "artist": "[nitro]",
+        "comment": "",
+        "state": "1",
+        "sha512": "b9e2ff9e234c32024841098955d88a8e31bb4ec6c36b8a80e7b3ce4a1b2a5c3e7e123d6e6d7e96f9793e60fafd924adc20e8d910733fbe931e219754294ae0bc"
+    },
+    {
+        "level": "19",
+        "title": "東風谷早苗が悲しい顔をする理由。 [6K UE Hard]",
+        "sha256": "",
+        "md5": "13f92833ea11160bd854d3560ec91105",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "Dream",
+        "url": "",
+        "artist": "nmk feat.かなえゆめ",
+        "comment": "",
+        "state": "1",
+        "sha512": "f9bb1f867285af59acb7720c755c3dbabf305a422b0533ee18e41a27a1717f56e382f516b7e7c04bdd2d8a5e73f0750aef52645cd3a9d3a91218eb05afc850f7"
+    },
+    {
+        "level": "24",
+        "title": "糸引く夏のエデンにて。[6K UE 楽園]",
+        "sha256": "",
+        "md5": "5fe6349e196e7cd457436772ef398034",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "Pree",
+        "url": "",
+        "artist": "Setca.",
+        "comment": "",
+        "state": "1",
+        "sha512": "5cd03d4fc7a79ab4777b1e0c0657b6df3e2fc9054b507700ba0bc605290bd54cab4bbbef4237a6411fa0a1205d46c0dd63b9a7dd648e9228250ffab73fff08a1"
+    },
+    {
+        "level": "10",
+        "title": "命日 (Piano Ver.) [6K UE NM]",
+        "sha256": "",
+        "md5": "7f8174dac189af0511f0c0596309c83d",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "LeaF",
+        "comment": "",
+        "state": "1",
+        "sha512": "9a86e1c67faef5eea5d21e45ba3ca06e58a538ede2e6db2f08fe03c04334aa4cc146cc3f17725089efe3782c8bc0c050f18cdb0f292691b4c21336deb400dc3c"
+    },
+    {
+        "level": "20",
+        "title": "命日 [6K UE HD]",
+        "sha256": "",
+        "md5": "bb109b5d574bc6b76655894ac7950a33",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "LeaF",
+        "comment": "",
+        "state": "1",
+        "sha512": "8d395e374a985325a3cf54b3248edec979429fcd7ac088a615584561bcffeb248513b737ec5dbf31adaa719099b884fff6591cb355fef5d28d2fb27498524e00"
+    },
+    {
+        "level": "24",
+        "title": "命日 [6K UE SHD]",
+        "sha256": "",
+        "md5": "d09edc4ac1417f2ad22b39dfd7e83466",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "LeaF",
+        "comment": "",
+        "state": "1",
+        "sha512": "a27d86b7d967a66c3da07d793769f16f64357a04b7b096e811a208ed408ace2dbd1d0317a563118e15710e5e8cc8bf1bfe7f8b35381ea9eb2de8c06da84c1b99"
+    },
+    {
+        "level": "15",
+        "title": "爽の滴 [6K UE Aquarius]",
+        "sha256": "",
+        "md5": "8af19810a18a5d3a4917bfad15e11a47",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "ClassICNooB Resp. Another",
+        "url": "",
+        "artist": "GanniGanni",
+        "comment": "",
+        "state": "1",
+        "sha512": "06b999fb793932ebe6458d8a546a84a70c34d2abde63359e3cbf18151eb14e0ae26031b44908b881509ecbcdc008524eb9ebb749080254e42286082995e2fb86"
+    },
+    {
+        "level": "22",
+        "title": "爽の滴 [6K UE Aquarius+]",
+        "sha256": "",
+        "md5": "e1cf6b74acc8790dd1c2c98323799812",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "ClassICNooB",
+        "url": "",
+        "artist": "GanniGanni",
+        "comment": "",
+        "state": "1",
+        "sha512": "e7eb9fc5d5de58ad4bc6d22a22b6d0fc4e6e6771719ec971e94feb87352c76d98af8948da1a71241328646af117dc61ee17fe492a2db241833aeafc20c78367b"
+    },
+    {
+        "level": "22",
+        "title": "世界殺戮ブラッドローズ [6K UE EX]",
+        "sha256": "",
+        "md5": "5c276caddf8b0e7e3282c14002f7c572",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "LiA",
+        "comment": "",
+        "state": "1",
+        "sha512": "e0c86b266fb8cc4810832325490f630d5794ca7d0d6aa7454e0fb948a13512b5a22a8cc80f571fb8c7bb27cd7b52199938f6e26b7edf119c4cdd4b8ed1923276"
+    },
+    {
+        "level": "17",
+        "title": "世界殺戮ブラッドローズ [6K UE HARD]",
+        "sha256": "",
+        "md5": "fdfb890e7d0a284c88611748be35afb9",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "LiA",
+        "comment": "",
+        "state": "1",
+        "sha512": "00def9a2c2941e87e3a9dd975527f545059e1939af0a0a4458c9a23419b87edc252ab066a8527d084fe50f0f63db722edb1ae30503a611c3a1c5711d8454dc97"
+    },
+    {
+        "level": "20",
+        "title": "誰がために鳴る銃声、散るは白髪 [6K UE SHD]",
+        "sha256": "",
+        "md5": "5bf797c2bf26cb8c0fc2996ed298c82d",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Lanait",
+        "comment": "",
+        "state": "1",
+        "sha512": "d3fe19cd7339e8484737766c2a0e7a70788c3bc3d7b0135edf8d8a88eccc85f1c3b42aa16651810f99949df0de95c3211d3b7a8bad45a1f65da6ec00ce0c712c"
+    },
+    {
+        "level": "16",
+        "title": "異説彼岸花 第二 -終世のリコリス- [6K UE HD]",
+        "sha256": "",
+        "md5": "3f7d21aa9da607f8a1db4deb3a3e7cc1",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "田井中 律",
+        "comment": "",
+        "state": "1",
+        "sha512": "f9619b97acf2bd724d9a065b721497417bcfcb5fa64cd1fcc0cda1230c64fc76e86f7e244eab47eeb9fbad129e9a562ca40ca00e67adc431bb2551d8aee52493"
+    },
+    {
+        "level": "20",
+        "title": "異説彼岸花 第二 -終世のリコリス- [6K UE SHD]",
+        "sha256": "",
+        "md5": "7f865e7795ee3010b135b8c510588465",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "田井中 律",
+        "comment": "",
+        "state": "1",
+        "sha512": "1b6a9944d4081aa1a850816c593656a83e3fe50ad60b536c5b109c47e997b154f9aa66d0f90183d8534753b31630ed11215f87247db06717e77f348f0005e93b"
+    },
+    {
+        "level": "18",
+        "title": "異説彼岸花 第一 -原初のアマリリス- [6K UE HD]",
+        "sha256": "",
+        "md5": "174b1d2846a456ea7a64310e925451bb",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "44teru-k remixed by wa.",
+        "comment": "",
+        "state": "1",
+        "sha512": "99acd675f33df7fa902b45e8bbfcba05cf7ecf84707d85cb84168a1d16013f923ab98ae7b5cfeb67314e682ebc29847fd72dd5317f62f6067477da091a4ceef9"
+    },
+    {
+        "level": "22",
+        "title": "異説彼岸花 第一 -原初のアマリリス- [6K UE SHD]",
+        "sha256": "",
+        "md5": "388a59d2f3db142c2468b41c8525828b",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "44teru-k remixed by wa.",
+        "comment": "",
+        "state": "1",
+        "sha512": "b24e08a990a9067948a2235237fca15c70ad91b862fe3860ecdfc856cf6c449ec2c4e8b342cca9876732eccad380d3f81c3199d3cf78dd0ba21f174bfefea743"
+    },
+    {
+        "level": "23",
+        "title": "秩序の秋桜 [6K UE StreamHeaven]",
+        "sha256": "",
+        "md5": "110570228ff3251f056f729232e7bcd3",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "obj : DignitaS / reobj:Dream",
+        "url": "",
+        "artist": "くっちー",
+        "comment": "",
+        "state": "1",
+        "sha512": "e2a4b7218640803dabb9e8da7b45567868ab327ad84281e6a1c8d9e4c28325bc16313de71eda19e54d463ff780858aabe2f4e75442a74b1e4ad5a214ac7ba283"
+    },
+    {
+        "level": "22",
+        "title": "Aldebaran [6K UE Taurus]",
+        "sha256": "",
+        "md5": "d722356596094d25703fe1823c5f9583",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "ClassICNooB",
+        "url": "",
+        "artist": "DJ SA2KI",
+        "comment": "",
+        "state": "1",
+        "sha512": "fbabeacdcb5ebed26f1d9b5b305143449bd28f45183444a0f4998e5d844a8cabde48c724a43441dd88f2d321e6f55aa7fb5d8e2b9265460cabae7076264691e7"
+    },
+    {
+        "level": "Ω",
+        "title": "Amethyst Moon [6K UE Lunar Veil]",
+        "sha256": "",
+        "md5": "bcc75e65053a857edcf15b36fb37fef3",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "rainy",
+        "url": "",
+        "artist": "Rethisly",
+        "comment": "",
+        "state": "1",
+        "sha512": "625b8f27444236f08bb0129344e0d6095fbb2f8b91bf28a8bc67b075c76e43dc4bf5d24ef6dcadbaf537d1551c6560629d7caa42a69da6e3d6c1a4191f9e90b5"
+    },
+    {
+        "level": "-_-",
+        "title": "Angelic Layer 6K UE 名人",
+        "sha256": "",
+        "md5": "3c0628cd934defdeec01df9dd843e247",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "SHIKI",
+        "comment": "",
+        "state": "1",
+        "sha512": "534f33f4795325633559d6e321cfc4eeed424f3e678377657b583fda685e8931ee17f1bf4775194e1000adfa4a51b331fd8e08c6f2241f71ace1dbbf154981b5"
+    },
+    {
+        "level": "24",
+        "title": "Animation Warrior Theme [6K UE Ball Pit]",
+        "sha256": "",
+        "md5": "235230dd7bf73275884b4544ab7432f6",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "",
+        "url": "",
+        "artist": "Nighthawk22",
+        "comment": "",
+        "state": "1",
+        "sha512": "8709a751377e1b921a192218017a7e003b43388b545e1ce45b0adb0580aa50d76b0059f6efa4c67ef0448962be7660cddfb48da012652b4ce5971016596d2a7b"
+    },
+    {
+        "level": "Ω",
+        "title": "Animation Warrior Theme [6K UE ORBIT]",
+        "sha256": "",
+        "md5": "c9fa98062350e8f5d78039eee5785658",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "",
+        "url": "",
+        "artist": "Nighthawk22",
+        "comment": "",
+        "state": "1",
+        "sha512": "c375241a709393c6bbc02e24913705738c9f535a4ef13f9f2be0d712e20e89b4de28a168d9f04e6ee430c346a575ecd30ab5e6ad9a917869bef8995cfe770736"
+    },
+    {
+        "level": "16",
+        "title": "Beachside Pixel [6K UE HD]",
+        "sha256": "",
+        "md5": "1d9ac21570b78d834901f7d6dccbf096",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "E",
+        "comment": "",
+        "state": "1",
+        "sha512": "23ae1d1751aa685c6b3194d4d1fb57a4519b17869ccffb03ff84cffe2c0d12fb704ac81039ada9881220bb4681094547d4acb3d0484f88be621a41a421b4c516"
+    },
+    {
+        "level": "11",
+        "title": "Beachside Pixel [6K UE NM]",
+        "sha256": "",
+        "md5": "61efbc1f5c53b44c274ab3b865b776ac",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "E",
+        "comment": "",
+        "state": "1",
+        "sha512": "1b490116b4461d1d5dc12f4fd61a7fade2ca1e5932f67d301ceec08b9e8b23aa4fa6b4fd2baf18cb75b5aaee8a4b59476ed79f7309ba2c348116f60dfb518b98"
+    },
+    {
+        "level": "20",
+        "title": "Beachside Pixel [6K UE SHD]",
+        "sha256": "",
+        "md5": "bf0ee56d0d5fcce7557999ded5e1188c",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "E",
+        "comment": "",
+        "state": "1",
+        "sha512": "1f6edfa8495196304512a9fc4048878096c4d876ce8a7a19709e3aa44483d65c98ed284a52ab6b75979030e5637c329799857aea82874b423ae972f5d3c5b239"
+    },
+    {
+        "level": "-_-",
+        "title": "Beachside Pixel [6K UE UHD]",
+        "sha256": "",
+        "md5": "9f90ad858c91e5035c29a236062d72e3",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "E",
+        "comment": "",
+        "state": "1",
+        "sha512": "8476734caac68e592cc3e3dc737a1727366031dbad3c78f3a671528087a8ca406e580f98433c4121313a539c416e3a05f3806468db8ad18f839c9846c4c2155d"
+    },
+    {
+        "level": "19",
+        "title": "Black Erica [6K UE SHD]",
+        "sha256": "",
+        "md5": "ada75ebaf4565ae631aefe5ce8a66cf1",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "numuto",
+        "comment": "",
+        "state": "1",
+        "sha512": "40adeefed03a96ed112da9de45dd868f5937b3bfac89fb655c44d3a7fa96bdd7549686842ae844b58336542946a31b6afce67d19b089db0fb61073b43e9e1e2c"
+    },
+    {
+        "level": "28",
+        "title": "Black Erica [6K UE EX]",
+        "sha256": "",
+        "md5": "5923ab28f3ad5831eeb5dcf66b148bfe",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "numuto",
+        "comment": "",
+        "state": "1",
+        "sha512": "45a3ac665a7e5bfeac07fe279b10464b647e9cb4c445713d58f2555f596198f88e3f68179f78d4c52175da0a01e07bba262c1e654fff58c024fe4ce4dbd41b2f"
+    },
+    {
+        "level": "26",
+        "title": "CAT ROTATION [6K UE EX]",
+        "sha256": "",
+        "md5": "a45596eae7d18cc779c4666b932a5517",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "pree",
+        "url": "",
+        "artist": "かたぎり",
+        "comment": "",
+        "state": "1",
+        "sha512": "6034a8ecf87488ee1c416789ac7a5ff25cc7f56cde0f2a28c472153f7b3f26bf2f7f74fc967bd68b70a2a6bf4fe04852105934969c3bbb2b8394b2dfe0ee1edf"
+    },
+    {
+        "level": "23",
+        "title": "edelweiss (bms edit) [6K UE edelayweiss]",
+        "sha256": "",
+        "md5": "0f2c92b06f0ac4cbac254b1bfa112279",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Orange Strophe",
+        "comment": "",
+        "state": "1",
+        "sha512": "4ea95169db353cbdec3ee73f20917d3685e170173439d193f346e85bae4ef8b9ee9a03696c513070cef988c23eb2d12bfae1e12986bd20db0bb3ade5d521ac8f"
+    },
+    {
+        "level": "22",
+        "title": "ETERNiZE [6K EVERLASTiNG]",
+        "sha256": "",
+        "md5": "2ff42bc2f24f1f2b817db70ebd9562dc",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "rainy",
+        "url": "",
+        "artist": "Pleiades (あとぅす vs Lian)",
+        "comment": "",
+        "state": "1",
+        "sha512": "9334ddc63c6d603b3eb32a0e5efdc3a252651f25c723535109ce51d58b3e56b6d5777a7df34d1f0dedbd923e438b3fb4b045d96fffa41a0f82e739a8324df4c3"
+    },
+    {
+        "level": "19",
+        "title": "EXILE [6K UE NM]",
+        "sha256": "",
+        "md5": "416c4d6d15f13033874282cadc8cd4a7",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "Dream",
+        "url": "",
+        "artist": "-45",
+        "comment": "",
+        "state": "1",
+        "sha512": "27ebfa3fbe361c020baf97c763127f8e69a9f3435f11ca2a0f29716c20bc2f39f5dd67ff2a16e5cdb12b892af552e2ff588563220210fd2e5ab4fd8b2430f44d"
+    },
+    {
+        "level": "20",
+        "title": "far in the blue sky... [6K UE HARD]",
+        "sha256": "",
+        "md5": "46840c508f68910c7570f6ec80610a4b",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "saikoro",
+        "comment": "",
+        "state": "1",
+        "sha512": "fe7feaf253174fe1b97e9a73a1f136f5b35e555b1076690cce0d418d40a298b1430ea9c06c16c43d71d5da8cfd343d9d858520f7132b21589f8c83f34928f799"
+    },
+    {
+        "level": "30",
+        "title": "GIGAHERTZ [6K UE 10^9]",
+        "sha256": "",
+        "md5": "a0820d76dac155100794bb39bf53ec29",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "DignitaS",
+        "url": "",
+        "artist": "Snack_X",
+        "comment": "",
+        "state": "1",
+        "sha512": "d8cdec7c53581dab0c2889edd7957a25d9afbc3984f491485800fe6c92f559309eae792ea43fd06a85df35f36b9ba82f5f9bdd9bdde054492ada723b4a2ed687"
+    },
+    {
+        "level": "24",
+        "title": "It's \"alice\" dream [6K UE Bucurest]",
+        "sha256": "",
+        "md5": "6613f3904250e4446edf4d6636e2125b",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "polysha",
+        "comment": "",
+        "state": "1",
+        "sha512": "71d3352e3e73f2ecba6d50de6a639a40d7fe0a8814997a4768b4eb467ea9a94e3bc1e515e8e942151fc6dd5caa98c1eeef875dda73b04c6dbccb9aa3cc89691b"
+    },
+    {
+        "level": "11",
+        "title": "LaVI-Bavellabion -6K Hope-",
+        "sha256": "",
+        "md5": "6b1605c41af046f0e11815671bfa8cb4",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "七海",
+        "url": "",
+        "artist": "SLAVE.V-V-R",
+        "comment": "",
+        "state": "1",
+        "sha512": "803931b5938bee1a4e328f6b861fa994a8e1f244c8e3d3baba1ddd25727519ee77e41f373d2af9587e51651e5d3880a7b73ef7817e29e126bd5aa04103a41e00"
+    },
+    {
+        "level": "16",
+        "title": "LaVI-Bavellabion -6K Hopeless-",
+        "sha256": "",
+        "md5": "c4c3d9288ef4c649b1a54678422032aa",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "七海",
+        "url": "",
+        "artist": "SLAVE.V-V-R",
+        "comment": "",
+        "state": "1",
+        "sha512": "08178709bc8cc58c0f4d1281ff1f2ed9c3156e2dcbcf442fda974de1086b0834ace564ec01579929ee4b3c7ee4a35f383a891c182a79ac3f5c5598dba150f10e"
+    },
+    {
+        "level": "20",
+        "title": "Lunatic Rave [6K UE R.I.P]",
+        "sha256": "",
+        "md5": "80b89b5d2976e118d5e8209a5147539b",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "曺承輝",
+        "url": "",
+        "artist": "Ark-Z",
+        "comment": "",
+        "state": "1",
+        "sha512": "c2d439aca62b0be2571ede2c84e6746ea9fb7d64b6fb5862dc03f5319615b51243198fdcb7be152f289cd68e610b9192dd4ecfc837602881adf71e6d03adb8e0"
+    },
+    {
+        "level": "21",
+        "title": "MAdEaR MAdEaR (BMS edit) [6K SHD]",
+        "sha256": "",
+        "md5": "c22eb991ace558fbbc59e8f67e94abfd",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "",
+        "url": "",
+        "artist": "org. SLAVE.V-V-R",
+        "comment": "",
+        "state": "1",
+        "sha512": "97dcdcf77b77a8b93163366ea0976ee216d01eabb4233bf772e20b8b1d7bc35aea4780f71d12dcf3740695b957780271b0f06f02fce5538ab3fb936e41cac8d9"
+    },
+    {
+        "level": "17",
+        "title": "Nocturne [6K UE HD]",
+        "sha256": "",
+        "md5": "e07120b1425551dd0bf31495a270ec49",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Lime / Kankitsu",
+        "comment": "",
+        "state": "1",
+        "sha512": "4a702e51bde12fd313f7b9ba41963470a5c8eeed35b37ace1a246d79ca3c8bbfcfd6939bc862f27db37d2d5b40922d0ff2c83c859b0bc1f99c8314b3f67106fe"
+    },
+    {
+        "level": "22",
+        "title": "Nocturne [6K UE SHD]",
+        "sha256": "",
+        "md5": "44da3d7946e48467c42855f321ac3a70",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Lime / Kankitsu",
+        "comment": "",
+        "state": "1",
+        "sha512": "bf6e40a541bf1047021274cd877554383b1f5499270bd03c0d6ecf6ef56f9b8d6f7a854c0699c0a38d5259be3d436198eb238c085fb908b6ee994db436331e6e"
+    },
+    {
+        "level": "20",
+        "title": "NS31 [6K UE31-]",
+        "sha256": "",
+        "md5": "4e532e4025cd0eca3d190a30aa41463b",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "2783",
+        "url": "",
+        "artist": "3034 remixed by 0310",
+        "comment": "",
+        "state": "1",
+        "sha512": "4cf1f4e6c9a827e1a06c63fcde2a5e80387352645322e86b774b84b6fa18ed924f9a969896984fe4a3d1f38f2338c85b82d73eb25df6c8da3386b5d364eeaaca"
+    },
+    {
+        "level": "27",
+        "title": "NS31 [6K UE31]",
+        "sha256": "",
+        "md5": "fc8fa8c95a6cabe4d49fec5bc0d7afcd",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "2783",
+        "url": "",
+        "artist": "3034 remixed by 0310",
+        "comment": "",
+        "state": "1",
+        "sha512": "4704a53b67aade2eed126800084657af318f583c9d2917c1e63ec2f7f5fa1d4ec592558a007671a472b1c557f691e201f3ab05a8187b48737341098f6c0942a2"
+    },
+    {
+        "level": "25",
+        "title": "OMEGA XII [6K ZETA]",
+        "sha256": "",
+        "md5": "f197722111a7ca2af847b19781afc5e4",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "NIKANON",
+        "url": "",
+        "artist": "Atomic Sphere",
+        "comment": "",
+        "state": "1",
+        "sha512": "bd3c596a218ffdd457c378b5d356a43f096e6bf1118f683725df59b4a7759878a7845702c805ef8ac7f5dcacbe0b9ebff7075f9f9663e1d44017e556340613b7"
+    },
+    {
+        "level": "20",
+        "title": "On The Floor -Batimore Club mix- [6K Party Parrot]",
+        "sha256": "",
+        "md5": "86c4ab55df4f5869909b44d59abfca09",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "LeaF",
+        "comment": "",
+        "state": "1",
+        "sha512": "3b56848af69fe600c80768830298b1927bd316f7ab9656057b45189260583489b3ff053b23fd2fce5656f7e56f89fc365857373a5fd7b65d8c50ea7482b7f877"
+    },
+    {
+        "level": "23",
+        "title": "Pedrolino [6K UE EX]",
+        "sha256": "",
+        "md5": "2b9d95d77c4ef2542f0237e66317adec",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "ルゼ",
+        "comment": "",
+        "state": "1",
+        "sha512": "4a13ae03fae1161823b0f76c67017a1628aa0a343cc0c75d1f6d927f556855607c4969ce9aa7552f92a7c6d2d47d8431897d005849fcadad0496571e8f01226b"
+    },
+    {
+        "level": "18",
+        "title": "Pedrolino [6K UE HARD]",
+        "sha256": "",
+        "md5": "403ec443794791a881bf3edfb8dff833",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "ルゼ",
+        "comment": "",
+        "state": "1",
+        "sha512": "3be658497560ee8c6cb0389f4587fe38c999c4b3c964a4614cfe6203fdb69f307ffe42ce0c40e8ade90e491d33fa8b7e24424e63d051130b2cfe05a2622ddffa"
+    },
+    {
+        "level": "25",
+        "title": "Primo Magic [6K Relentless Path]",
+        "sha256": "",
+        "md5": "dac19780bab0bfff9b42346ea68d389c",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "rainy",
+        "url": "",
+        "artist": "kooridori Feat.猫柳なぎ",
+        "comment": "",
+        "state": "1",
+        "sha512": "78e4e57ef4181ab9ad433b82bf1d7bf51f7178eda53b1c034a74fc4024cfb384aa19948c026e88b44bac505cce40f215298e5cc8c96815e17337e530eeb551b3"
+    },
+    {
+        "level": "20",
+        "title": "Primo Magic [6K Spell of Dawn]",
+        "sha256": "",
+        "md5": "942b6d74cf22bddaa0e1ed4ced9a22cc",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "rainy",
+        "url": "",
+        "artist": "kooridori Feat.猫柳なぎ",
+        "comment": "",
+        "state": "1",
+        "sha512": "91b8f492180eddf0c81e06eb0657ade1d8216e9ff87e172ddc27063f16be40878ce9d39822435a72c5014fb70526e40461fdf70b37861492e126a340852902f9"
+    },
+    {
+        "level": "28",
+        "title": "RE::beatA [6K UE RE::ViVEa]",
+        "sha256": "",
+        "md5": "2c0101fa23acb2cbdfc3966f21654b46",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "ClassICNooB",
+        "url": "",
+        "artist": "KAH",
+        "comment": "",
+        "state": "1",
+        "sha512": "0594256d3ba7477f7d2bd95c2f6273b90f20e16bbae44b07a795ced53471227becea253869dae5b663ea35283dfbdb1f5fb219f630cee8f11c532a23270f9678"
+    },
+    {
+        "level": "22",
+        "title": "RETROCONNECTION [6K UE Millenium]",
+        "sha256": "",
+        "md5": "0a70401d0637f2b3c2d99da2454a7b00",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "ClassICNooB",
+        "url": "",
+        "artist": "Nego_tiator",
+        "comment": "",
+        "state": "1",
+        "sha512": "48effe06fe87ca5abf474a4bc00c6dd9f0ecc45d17974fc5d6d1375e831cc56c314875e01e31e69e149bef0f191ca97ba634c2d81ddac1828a394a85f34510e9"
+    },
+    {
+        "level": "24",
+        "title": "Sigmoid [6K Sigrid]",
+        "sha256": "",
+        "md5": "c440ce1956cde7bb8ba50f1ee53ed362",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Yu^ta feat.みずにんじん",
+        "comment": "",
+        "state": "1",
+        "sha512": "6dea16b41ecb0b49962ce6318c2c35291fcb088c2a29a84d5961a25d24e918b310a2ed69d17767f8560f8c7da3a0cf938ff98e59be3aebb4ab52be4b5ac301a0"
+    },
+    {
+        "level": "22",
+        "title": "The Blue Bird [6K SHD]",
+        "sha256": "",
+        "md5": "02ec7db3ae1e96aff847a6a9c73c6fe0",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "ClassICNooB",
+        "url": "",
+        "artist": "Yu^ta feat.みずにんじん",
+        "comment": "",
+        "state": "1",
+        "sha512": "115f66d2e8bf206d6267168d500cb47dc3079c21e4b5560e6af8c5bd6053d423e22672f86527d6419e9ea43d4248010f064403e3ddcd34430202d785bfe2490a"
+    },
+    {
+        "level": "19",
+        "title": "The world of another Mabinogi <bms edit> [6K UE NAO]",
+        "sha256": "",
+        "md5": "cc9ef91995d78d6d3edd247d659c033a",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "eva",
+        "comment": "",
+        "state": "1",
+        "sha512": "bf6a6e623466d8ddbacd85fb5ebefcae68e628f425aef424dd71815d003505d1284303163e2207378ab1cff882234552bc59cdb73e47d39a4d70e96572a9764f"
+    },
+    {
+        "level": "19",
+        "title": "Unwelcome School(47mix) [6K SHD]",
+        "sha256": "",
+        "md5": "77e5fc838a58a7cb370491fbc40154e0",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "",
+        "url": "",
+        "artist": "remixed by 曺承輝",
+        "comment": "",
+        "state": "1",
+        "sha512": "324765b9b14fe5c3b6da6ba4a94471e82b4a97ebfba3dee0f429b489ab02335949e2c793132b4e026da2558a0cbf2290db0f1d039268b150e1a979e473384374"
+    },
+    {
+        "level": "23",
+        "title": "Vacance of Love (SKMYrmx) [6K UE Swing of Hatred]",
+        "sha256": "",
+        "md5": "8b61cfc337dfb68d8681f9a9c9db6808",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Sakamiya",
+        "comment": "",
+        "state": "1",
+        "sha512": "51724ed427e5a391bc94df50d63888fc1001f8926ff313dfd75befcae9e0cf2823885196e5f2399dd9bcc830598ea722def5c3c53acef359e75e8fb389b3deb7"
+    },
+    {
+        "level": "21",
+        "title": "WE LOVE CCC! [6K UE シュポガキ]",
+        "sha256": "",
+        "md5": "10fafb1c4d880aa14ee37d53abdfe9b7",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "EmoCosine Remixed by nekomimi_STRaw",
+        "comment": "",
+        "state": "1",
+        "sha512": "76a7ce7639017ab199c1433a50045fb1f59276f2b584a81c5846bc755d98589b7c1c10d7ef50e0c222352bda3185eb949bbcb06ac94c7d5db0b5d865f608df3c"
+    },
+    {
+        "level": "23",
+        "title": "Xecus [6K UE EX]",
+        "sha256": "",
+        "md5": "1d67055b1d782e329a5aedcb0bb4ae41",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "obj:Dream / reobj:kindman",
+        "url": "",
+        "artist": "SHIKi",
+        "comment": "",
+        "state": "1",
+        "sha512": "a7935b66a34773d9b60144e6fc18fc498a163ebaeeaa31f5446b63799b79a72875ce07c770ef961f392a87ef1a1ab28aaf636f659dd7865d98efbdc12ed9c4d5"
+    },
+    {
+        "level": "22",
+        "title": "Zenithalize [6K UE Neutralize]",
+        "sha256": "",
+        "md5": "597c99551dbd13b43202d43e9e6a2397",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "姉ヶ崎 寧々",
+        "comment": "",
+        "state": "1",
+        "sha512": "a82ed8133be39cc7093816a8f2dc1188b94a1478cbe780cdd95db37f64e8cc4a3e15027c8c9e7537262dafea9a2b7b7366dcbce1ec0d433790e0c154d2504835"
+    },
+    {
+        "level": "18",
+        "title": "イイコと妖狐 [6K UE 何が好き？]",
+        "sha256": "",
+        "md5": "1d24461ba41d8602e1f43240c4801e3b",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Kikuo",
+        "comment": "",
+        "state": "1",
+        "sha512": "6e372e857286a3c6eb5e2c906c45250c53069d2386eeb563b1df10d624db2115c6ee4f2fa6e02aec4ffef78a9e8becb8afff019951499324653060865d64f3b1"
+    },
+    {
+        "level": "24",
+        "title": "イイコと妖狐 [6K UE チョコミント]",
+        "sha256": "",
+        "md5": "8f609472639fd2f4d7c03a05c5ee7d24",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Kikuo",
+        "comment": "",
+        "state": "1",
+        "sha512": "e4cc12858ed5f5a07b78a29ce07c9de4616c727f755ce27766da904ba02e9fd7c3f1b10e97d5efd9a18248eab74e29c7bc3b1c4e39e2903111cacb75228ad082"
+    },
+    {
+        "level": "11",
+        "title": "イイコと妖狐 [6K UE はーい！]",
+        "sha256": "",
+        "md5": "d07fd01efc00c083b6e3ffc1c1b3f545",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "Kikuo",
+        "comment": "",
+        "state": "1",
+        "sha512": "d7c7d18a73606d4a6b7c2fee3e4a91a055db00dbfa5ac0abedb420bad382f63ee4844687cc098eb50204784335bcf568afb6c544ad9b5b19ec6a3a46192d09a3"
+    },
+    {
+        "level": "22",
+        "title": "キミとボクへの葬送歌 [6K UE HARD2]",
+        "sha256": "",
+        "md5": "b28ff444e0d200791be89eb8ce27c4b5",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "ROKINA",
+        "comment": "",
+        "state": "1",
+        "sha512": "089bbcef9bb1128269e375c62cd8f4c0556eaf082f0ddb5125d9f472f6a229778470348baba43b72ba59c1ae23ee7ba72ac19f3504f557a59a602ff99f0511c7"
+    },
+    {
+        "level": "Ω",
+        "title": "キメラ [6K UE MAYBE END]",
+        "sha256": "",
+        "md5": "cb4e18cfc712513f1ca57dbd07bb270a",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "DignitaS",
+        "url": "",
+        "artist": "BACO",
+        "comment": "",
+        "state": "1",
+        "sha512": "f639b7ff9a2245198e9ee8287c276d7e62428a6d3217d458b38839d130dfeaea514c9a3dfff345554bb34271c5da604031e6111ab2ba4c37b552e8473e17bb15"
+    },
+    {
+        "level": "21",
+        "title": "でじたるふぁじー! -Radio Edit- [6K Hopeless]",
+        "sha256": "",
+        "md5": "ad087a629b39669a8086a4c1867d1275",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "七海",
+        "url": "",
+        "artist": "ねこみりん / 小宮真央",
+        "comment": "",
+        "state": "1",
+        "sha512": "70a6221f2bfbcdb99492364a6e3342be999ba7ece757c7b84407fd26180d0c4d1a8831828f843d7d6f5f635e71815a356dbae4e20ca7e29714ce6f0e8344b854"
+    },
+    {
+        "level": "21",
+        "title": "レシュノルティア [6K UE SHD]",
+        "sha256": "",
+        "md5": "5c079704d88f678890b373a9aa5256b8",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "あとぅす feat.はらもりよしな",
+        "comment": "",
+        "state": "1",
+        "sha512": "766e57e26e6e78f16ea525bcd44275dd24ffc1559a2d881146f0609fc505e39ead2ecea013522568d1d70aad1948f81572e519f6a3928a3acfe4c54a30ad2c2d"
+    },
+    {
+        "level": "23",
+        "title": "ワールド・エンド (Grimoire Bootleg) [6K エンドレス・オブ・ザ・ワールド ]",
+        "sha256": "",
+        "md5": "488a2532d3bcdffb6c75adfab946e7cf",
+        "video1": "",
+        "video2": "",
+        "url_diff": "",
+        "name_diff": "kindman",
+        "url": "",
+        "artist": "しらいし (arrangement: Dj Grimoire)",
+        "comment": "",
+        "state": "1",
+        "sha512": "551390ff140e10a470181720f609f3f4cbf97bb158f4133930f44535bd98d7d47555353d281dca4348ae672457f670b20d14a5333aa53ac9c781bb442f6e469a"
     }
 ]
