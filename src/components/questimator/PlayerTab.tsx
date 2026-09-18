@@ -21,9 +21,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Search, User, Target, Sparkles, TrendingUp, Save, Trash2, Download, Upload } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
+import { cn } from "@/lib/utils";
 import {
   type Chart,
   type PlayerData,
@@ -54,11 +65,11 @@ interface Props {
   chartMaxTheta?: Map<number, number> | null;
 }
 
-const STATUS_LABELS: Record<number, { short: string; color: string }> = {
-  0: { short: "F",  color: "oklch(0.55 0 0)"        },
-  1: { short: "N",  color: "oklch(0.72 0.16 95)"    },
-  2: { short: "H",  color: "oklch(0.70 0.22 25)"    },
-  3: { short: "VH", color: "oklch(0.70 0.22 305)"   },
+const STATUS_LABELS: Record<number, { short: string; color: string; bgClass: string; textClass: string }> = {
+  0: { short: "F",  color: "var(--color-lamp-failed)", bgClass: "bg-lamp-failed", textClass: "text-muted-foreground" },
+  1: { short: "N",  color: "var(--color-lamp-normal)", bgClass: "bg-lamp-normal", textClass: "text-lamp-normal" },
+  2: { short: "H",  color: "var(--color-lamp-hard)",   bgClass: "bg-lamp-hard",   textClass: "text-lamp-hard" },
+  3: { short: "VH", color: "var(--color-lamp-vhard)",  bgClass: "bg-lamp-vhard",  textClass: "text-lamp-vhard" },
 };
 
 const REC_MIN_PROB = 0.30;
@@ -114,6 +125,7 @@ export function PlayerTab({
   const [internalLoadError, setInternalLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const players = propPlayers !== undefined ? propPlayers : internalPlayers;
   const loadingPlayers = propLoadingPlayers !== undefined ? propLoadingPlayers : internalLoadingPlayers;
@@ -397,6 +409,7 @@ export function PlayerTab({
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder={t.playerIdPlaceholder}
+                aria-label={t.playerIdPlaceholder}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -416,7 +429,28 @@ export function PlayerTab({
           </div>
 
           {notFound && (
-            <p className="text-xs text-rose-400 mt-2 font-mono">{t.playerNotFound}</p>
+            <div className="mt-3 p-3 rounded-md border border-border/70 bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-rose-400 font-mono font-medium">{t.playerNotFound}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 font-sans">
+                  {t.lang === "en"
+                    ? "Initialize a local offline profile to record manual clears and calculate your rating."
+                    : "로컬 프로필을 생성하여 수동 클리어 기록 및 실력 수치를 산출할 수 있습니다."}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs font-mono shrink-0"
+                onClick={() => {
+                  setNewProfileName(query.trim());
+                  setIsCreating(true);
+                }}
+              >
+                <Save className="w-3 h-3 mr-1" />
+                {t.newProfile}
+              </Button>
+            </div>
           )}
           {loadError && (
             <p className="text-xs text-rose-400 mt-2 font-mono">
@@ -473,24 +507,24 @@ export function PlayerTab({
               {/* Proportional clear status gauge bar */}
               <div className="w-full h-2 rounded-sm overflow-hidden flex bg-muted/60 border border-border/40 mt-2">
                 <div
-                  style={{ width: `${(analytics.statusCounts[3] / charts.length) * 100}%`, background: "oklch(0.68 0.24 305)" }}
+                  style={{ width: `${(analytics.statusCounts[3] / charts.length) * 100}%` }}
                   title={`V-HARD: ${analytics.statusCounts[3]}`}
-                  className="h-full"
+                  className="h-full bg-lamp-vhard"
                 />
                 <div
-                  style={{ width: `${(analytics.statusCounts[2] / charts.length) * 100}%`, background: "oklch(0.68 0.23 25)" }}
+                  style={{ width: `${(analytics.statusCounts[2] / charts.length) * 100}%` }}
                   title={`HARD: ${analytics.statusCounts[2]}`}
-                  className="h-full"
+                  className="h-full bg-lamp-hard"
                 />
                 <div
-                  style={{ width: `${(analytics.statusCounts[1] / charts.length) * 100}%`, background: "oklch(0.82 0.17 85)" }}
+                  style={{ width: `${(analytics.statusCounts[1] / charts.length) * 100}%` }}
                   title={`NORMAL: ${analytics.statusCounts[1]}`}
-                  className="h-full"
+                  className="h-full bg-lamp-normal"
                 />
                 <div
-                  style={{ width: `${(analytics.statusCounts[0] / charts.length) * 100}%`, background: "oklch(0.40 0 0)" }}
+                  style={{ width: `${(analytics.statusCounts[0] / charts.length) * 100}%` }}
                   title={`FAILED: ${analytics.statusCounts[0]}`}
-                  className="h-full"
+                  className="h-full bg-lamp-failed"
                 />
               </div>
             </div>
@@ -572,17 +606,46 @@ export function PlayerTab({
                   {isCustomProfile && currentPlayer && (
                     <>
                       <Button
-                        size="sm" variant="outline" className="h-8 text-xs font-mono text-rose-400 border-rose-400/30 hover:bg-rose-400/10"
-                        onClick={() => {
-                          if (onDeleteCustomProfile) {
-                            onDeleteCustomProfile(submittedID);
-                            setIsCustomProfile(false);
-                            setSubmittedID("");
-                          }
-                        }}
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs font-mono text-rose-400 border-rose-400/30 hover:bg-rose-400/10"
+                        onClick={() => setDeleteDialogOpen(true)}
                       >
                         <Trash2 className="w-3 h-3 mr-1" /> {t.deleteProfile}
                       </Button>
+
+                      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="font-semibold text-foreground">
+                              {t.lang === "en" ? `Delete profile "${submittedID}"?` : `"${submittedID}" 프로필을 삭제하시겠습니까?`}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-muted-foreground text-xs">
+                              {t.lang === "en"
+                                ? "This action permanently removes this local offline profile and all its recorded clears. This cannot be undone."
+                                : "이 로컬 오프라인 프로필과 기록된 모든 클리어 데이터가 영구적으로 삭제됩니다. 실행 후 되돌릴 수 없습니다."}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel autoFocus className="text-xs font-mono">
+                              {t.cancel}
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              className="text-xs font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => {
+                                if (onDeleteCustomProfile) {
+                                  onDeleteCustomProfile(submittedID);
+                                  setIsCustomProfile(false);
+                                  setSubmittedID("");
+                                }
+                                setDeleteDialogOpen(false);
+                              }}
+                            >
+                              {t.deleteProfile}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                       <Button
                         size="sm" variant="outline" className="h-8 text-xs font-mono"
                         onClick={() => {
@@ -688,11 +751,10 @@ export function PlayerTab({
                       title={`Status ${s}: ${meta.short}`}
                     >
                       <span
-                        className="inline-block w-2 h-2 rounded-full"
-                        style={{ background: meta.color }}
+                        className={cn("inline-block w-2 h-2 rounded-full", meta.bgClass)}
                       />
-                      <span className="font-bold">{meta.short}</span>
-                      <span className="text-foreground">{n}</span>
+                      <span className={cn("font-bold", meta.textClass)}>{meta.short}</span>
+                      <span className="text-foreground tabular-nums">{n}</span>
                     </div>
                   );
                 })}
@@ -764,7 +826,7 @@ export function PlayerTab({
                     onClick={() => setTargetStatus("HARD")}
                     className={`px-2.5 py-1 rounded transition-all font-medium ${
                       targetStatus === "HARD"
-                        ? "bg-card text-foreground shadow-sm border border-border/80"
+                        ? "bg-card text-foreground border border-border/80"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -774,7 +836,7 @@ export function PlayerTab({
                     onClick={() => setTargetStatus("V-HARD")}
                     className={`px-2.5 py-1 rounded transition-all font-medium ${
                       targetStatus === "V-HARD"
-                        ? "bg-card text-foreground shadow-sm border border-border/80"
+                        ? "bg-card text-foreground border border-border/80"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -857,11 +919,12 @@ export function PlayerTab({
                           <ProbabilityBadge p={p} />
                         </TableCell>
                         <TableCell className="text-right font-mono text-xs py-2.5">
-                          <span style={{
-                            color: targetStatus === "HARD"
-                              ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)")
-                              : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)")
-                          }}>
+                          <span className={cn(
+                            "tabular-nums",
+                            targetStatus === "HARD"
+                              ? (chart.n_hard + chart.n_vhard === 0 ? "text-amber-500/80" : "text-lamp-hard font-medium")
+                              : (chart.n_vhard === 0 ? "text-purple-400/80" : "text-lamp-vhard font-medium")
+                          )}>
                             {targetStatus === "HARD"
                               ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : format(chart.b_hard_display))
                               : (chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : format(chart.b_vhard_display))
@@ -918,26 +981,34 @@ function RecommendationCard({
           {chart.artist || "unknown"}
           {chart.name_diff && ` · ${chart.name_diff}`}
         </span>
-        <span className="font-mono font-bold text-xs" style={{ color: targetStatus === "HARD" ? "oklch(0.78 0.20 25)" : "oklch(0.78 0.20 305)" }}>
+        <span
+          className={cn(
+            "font-mono font-bold text-xs tabular-nums",
+            targetStatus === "HARD" ? "text-lamp-hard" : "text-lamp-vhard"
+          )}
+        >
           {fmtPct(p)}
         </span>
       </div>
       <div className="h-1.5 rounded-sm bg-muted/80 overflow-hidden border border-border/40">
         <div
-          className="h-full rounded-sm"
+          className={cn(
+            "h-full rounded-sm",
+            targetStatus === "HARD" ? "bg-lamp-hard" : "bg-lamp-vhard"
+          )}
           style={{
             width: `${Math.min(100, p * 100)}%`,
-            background: targetStatus === "HARD" ? "oklch(0.68 0.23 25)" : "oklch(0.68 0.24 305)",
           }}
         />
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span className="font-semibold" style={{
-            color: targetStatus === "HARD"
-              ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)")
-              : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)")
-          }}>
+          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span className={cn(
+            "font-semibold tabular-nums",
+            targetStatus === "HARD"
+              ? (chart.n_hard + chart.n_vhard === 0 ? "text-amber-500/80" : "text-lamp-hard")
+              : (chart.n_vhard === 0 ? "text-purple-400/80" : "text-lamp-vhard")
+          )}>
             {targetStatus === "HARD"
               ? (chart.n_hard + chart.n_vhard === 0 ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : formatFn(chart.b_hard_display))
               : (chart.n_vhard === 0 ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : formatFn(chart.b_vhard_display))
@@ -951,12 +1022,16 @@ function RecommendationCard({
 }
 
 function ProbabilityBadge({ p }: { p: number }) {
-  let color = "oklch(0.55 0 0)";
-  if (p >= 0.80) color = "oklch(0.75 0.18 145)";
-  else if (p >= 0.50) color = "oklch(0.75 0.16 200)";
-  else if (p >= 0.20) color = "oklch(0.82 0.17 85)";
+  const colorClass =
+    p >= 0.80
+      ? "text-emerald-400"
+      : p >= 0.50
+      ? "text-cyan-400"
+      : p >= 0.20
+      ? "text-lamp-normal"
+      : "text-muted-foreground";
   return (
-    <span className="font-mono font-semibold" style={{ color }}>
+    <span className={cn("font-mono font-semibold tabular-nums", colorClass)}>
       {fmtPct(p)}
     </span>
   );

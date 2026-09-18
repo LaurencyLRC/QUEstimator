@@ -18,6 +18,7 @@ import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import type { Chart, PlayerData, PlayersDict } from "@/lib/questimator-types";
 import { fetchPlayersData } from "@/lib/players-cache";
+import { cn } from "@/lib/utils";
 
 interface Props {
   charts: Chart[];
@@ -199,6 +200,7 @@ export function RankingTab({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder={t.rankingSearchPlaceholder}
+              aria-label={t.rankingSearchPlaceholder}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-9 font-mono text-xs bg-background/50 border-border/80"
@@ -242,8 +244,8 @@ export function RankingTab({
                       <TableHead className="uppercase font-semibold text-muted-foreground">{t.playerCol}</TableHead>
                       <TableHead className="text-right uppercase font-semibold text-cyan-400">{t.thetaCol(mode === "lerp")}</TableHead>
                       <TableHead className="text-right uppercase font-semibold text-muted-foreground">{t.clearsCol}</TableHead>
-                      <TableHead className="text-right uppercase font-semibold" style={{ color: "oklch(0.78 0.18 25)" }}>{t.hardCol}</TableHead>
-                      <TableHead className="text-right uppercase font-semibold" style={{ color: "oklch(0.78 0.18 305)" }}>{t.vhardCol}</TableHead>
+                      <TableHead className="text-right uppercase font-semibold text-lamp-hard">{t.hardCol}</TableHead>
+                      <TableHead className="text-right uppercase font-semibold text-lamp-vhard">{t.vhardCol}</TableHead>
                     </TableRow>
                   </TableHeader>
 
@@ -278,7 +280,7 @@ export function RankingTab({
                               <TableCell className="text-center font-mono py-2.5">
                                 {medalColor ? (
                                   <span
-                                    className="inline-flex items-center justify-center w-6 h-6 rounded text-[11px] font-bold shadow-sm"
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded text-[11px] font-bold"
                                     style={{
                                       background: medalColor,
                                       color: "oklch(0.12 0 0)",
@@ -288,7 +290,7 @@ export function RankingTab({
                                     #{gRank}
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground">#{gRank}</span>
+                                  <span className="text-muted-foreground tabular-nums">#{gRank}</span>
                                 )}
                               </TableCell>
 
@@ -314,25 +316,37 @@ export function RankingTab({
 
                               <TableCell className="text-right font-mono text-sm py-2.5">
                                 <span
-                                  className="font-bold"
-                                  style={r.eligible ? { color: "oklch(0.78 0.18 200)" } : { color: "oklch(0.55 0 0)" }}
+                                  className={cn(
+                                    "font-bold tabular-nums",
+                                    r.eligible ? "text-cyan-400" : "text-muted-foreground"
+                                  )}
                                 >
                                   {format(r.data.t, mode === "lerp" ? 2 : 3)}
                                 </span>
                               </TableCell>
 
-                              <TableCell className="text-right font-mono text-xs text-muted-foreground py-2.5">
+                              <TableCell className="text-right font-mono text-xs text-muted-foreground tabular-nums py-2.5">
                                 {r.nClears}
                               </TableCell>
 
                               <TableCell className="text-right font-mono text-xs py-2.5">
-                                <span style={{ color: r.nHard > 0 ? "oklch(0.78 0.18 25)" : "oklch(0.45 0 0)" }}>
+                                <span
+                                  className={cn(
+                                    "tabular-nums",
+                                    r.nHard > 0 ? "text-lamp-hard font-medium" : "text-muted-foreground/60"
+                                  )}
+                                >
                                   {r.nHard}
                                 </span>
                               </TableCell>
 
                               <TableCell className="text-right font-mono text-xs py-2.5">
-                                <span style={{ color: r.nVhard > 0 ? "oklch(0.78 0.18 305)" : "oklch(0.45 0 0)" }}>
+                                <span
+                                  className={cn(
+                                    "tabular-nums",
+                                    r.nVhard > 0 ? "text-lamp-vhard font-medium" : "text-muted-foreground/60"
+                                  )}
+                                >
                                   {r.nVhard}
                                 </span>
                               </TableCell>

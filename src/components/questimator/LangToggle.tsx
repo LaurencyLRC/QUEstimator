@@ -18,7 +18,7 @@ export function LangToggle() {
           onClick={() => setLang(l.code)}
           className={`px-2 py-1 rounded transition-all font-medium ${
             lang === l.code
-              ? "bg-card text-foreground shadow-sm border border-border/80"
+              ? "bg-card text-foreground border border-border/80"
               : "text-muted-foreground hover:text-foreground"
           }`}
           aria-label={l.code === "en" ? "English" : "한국어"}

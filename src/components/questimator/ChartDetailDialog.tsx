@@ -59,7 +59,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border/80 text-foreground p-6 rounded-lg shadow-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border/80 text-foreground p-6 rounded-lg">
         <DialogHeader className="border-b border-border/60 pb-4">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               href={`https://ez2pattern.kr/bms/chart?md5=${chart.md5}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] font-mono text-telemetry-cyan hover:underline uppercase tracking-wider ml-auto"
+              className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline ml-auto"
             >
               <span>{t.ez2pattern}</span>
               <ExternalLink className="h-3 w-3" />
@@ -107,7 +107,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
 
           {onClearStatusChange && activePlayer && (
             <div className="flex items-center gap-2 pt-3 mt-2 border-t border-border/40">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Status Override:</span>
+              <span className="text-xs font-mono text-muted-foreground">Status Override:</span>
               <ToggleGroup
                 type="single"
                 value={String(activePlayer.data.c?.[chart.id.toString()] ?? -1)}
@@ -129,11 +129,11 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
 
         <div className="space-y-4 mt-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-[10px] font-mono font-semibold uppercase tracking-widest text-muted-foreground">
+            <h4 className="text-xs font-mono font-medium text-muted-foreground">
               {t.irtParams}
             </h4>
-            <span className="text-[10px] font-mono text-muted-foreground/60">
-              GRM LOGISTIC METRICS
+            <span className="text-xs font-mono text-muted-foreground/60">
+              GRM Metrics
             </span>
           </div>
 
@@ -144,7 +144,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               ciCenter={chart.n_hard + chart.n_vhard === 0 ? null : chart.b_hard}
               seValue={chart.n_hard + chart.n_vhard === 0 ? null : chart.se_b_hard}
               fmtCIFn={fmtCI}
-              color="var(--lamp-hard)"
+              color="var(--color-lamp-hard)"
             />
             <ParamCard
               label={t.vhardClear}
@@ -152,7 +152,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               ciCenter={chart.n_vhard === 0 ? null : chart.b_vhard}
               seValue={chart.n_vhard === 0 ? null : chart.se_b_vhard}
               fmtCIFn={fmtCI}
-              color="var(--lamp-vhard)"
+              color="var(--color-lamp-vhard)"
             />
             <ParamCard
               label={t.discrimination}
@@ -170,10 +170,10 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
           {chart.a != null && chart.b_hard != null && chart.b_vhard != null && (
             <div className="rounded-lg border border-border/80 p-4 bg-background/50">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-[10px] font-mono font-semibold text-muted-foreground uppercase tracking-widest">
+                <div className="text-xs font-mono font-medium text-muted-foreground">
                   {t.lang === "en" ? "GRM Cumulative Survival Probabilities" : "GRM 누적 생존 확률 곡선"}
                 </div>
-                <div className="text-[10px] font-mono text-muted-foreground/60">
+                <div className="text-xs font-mono text-muted-foreground/60">
                   P*(θ) Logistic Fit
                 </div>
               </div>
@@ -190,7 +190,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
 
           {chart.comment && (
             <div className="rounded-lg border border-border/80 p-3 bg-background/40 font-mono text-xs text-muted-foreground/90 leading-relaxed">
-              <span className="text-foreground/60 uppercase tracking-wider text-[10px] block mb-1">{t.comment}</span>
+              <span className="text-xs font-mono text-muted-foreground block mb-1">{t.comment}</span>
               {chart.comment}
             </div>
           )}
@@ -224,7 +224,7 @@ function ParamCard({
             style={{ background: color }}
           />
         )}
-        <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground/80 whitespace-nowrap truncate">
+        <span className="text-xs text-muted-foreground whitespace-nowrap truncate">
           {label}
         </span>
       </div>

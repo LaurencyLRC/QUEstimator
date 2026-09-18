@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import { ArrowUpDown, Search } from "lucide-react";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
@@ -49,38 +50,24 @@ function ClearDistBar({
   if (n === 0) return <span className="text-muted-foreground font-mono text-xs">–</span>;
 
   const nLower = nNormal + nFailed;
-  const pct = (v: number) => (v / n) * 100;
+  const vhPct = (nVhard / n) * 100;
+  const hPct = (nHard / n) * 100;
+  const lowerPct = (nLower / n) * 100;
 
   return (
-    <div className="flex flex-col items-end gap-1 font-mono" title={`V-HARD ${nVhard} | HARD ${nHard} | NORMAL+FAILED ${nLower} (n=${n})`}>
-      <span className="text-[10px] leading-none tabular-nums">
-        <span style={{ color: "oklch(0.78 0.20 305)" }}>{pct(nVhard).toFixed(0)}%</span>
-        <span className="text-border mx-0.5">/</span>
-        <span style={{ color: "oklch(0.78 0.20 25)" }}>{pct(nHard).toFixed(0)}%</span>
-        <span className="text-border mx-0.5">/</span>
-        <span className="text-muted-foreground">{pct(nLower).toFixed(0)}%</span>
-      </span>
-      <div className="w-20 h-1.5 rounded-sm overflow-hidden flex bg-muted/60 border border-border/40">
-        <div
-          style={{ width: `${pct(nVhard)}%`, background: "oklch(0.68 0.24 305)" }}
-          className="h-full"
-        />
-        <div
-          style={{ width: `${pct(nHard)}%`, background: "oklch(0.68 0.23 25)" }}
-          className="h-full"
-        />
-        <div
-          style={{ width: `${pct(nLower)}%`, background: "oklch(0.40 0 0)" }}
-          className="h-full"
-        />
+    <div
+      className="flex flex-col items-end gap-1 font-mono"
+      title={`V-HARD ${nVhard} (${vhPct.toFixed(0)}%) | HARD ${nHard} (${hPct.toFixed(0)}%) | NORMAL+FAILED ${nLower} (${lowerPct.toFixed(0)}%) · Total: ${n}`}
+    >
+      <div className="flex items-center gap-1 text-xs tabular-nums font-semibold">
+        <span className="text-lamp-vhard">{vhPct.toFixed(0)}%</span>
+        <span className="text-muted-foreground font-normal text-[10px]">VH</span>
       </div>
-      <span className="text-[10px] text-muted-foreground leading-none tabular-nums">
-        <span style={{ color: "oklch(0.78 0.20 305)" }}>{nVhard}</span>
-        <span className="text-border mx-0.5">/</span>
-        <span style={{ color: "oklch(0.78 0.20 25)" }}>{nHard}</span>
-        <span className="text-border mx-0.5">/</span>
-        <span>{nLower}</span>
-      </span>
+      <div className="w-16 h-1 rounded-sm overflow-hidden flex bg-muted/40 border border-border/40">
+        <div style={{ width: `${vhPct}%` }} className="h-full bg-lamp-vhard" />
+        <div style={{ width: `${hPct}%` }} className="h-full bg-lamp-hard" />
+        <div style={{ width: `${lowerPct}%` }} className="h-full bg-lamp-failed" />
+      </div>
     </div>
   );
 }
@@ -92,18 +79,18 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
   const [showProvisional, setShowProvisional] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const STATUS_ROW_TINT: Record<number, string> = {
-    3: "oklch(0.68 0.24 305 / 0.12)",
-    2: "oklch(0.68 0.23 25 / 0.12)",
-    1: "oklch(0.82 0.17 85 / 0.10)",
-    0: "oklch(0.40 0 0 / 0.15)",
+  const STATUS_ROW_CLASS: Record<number, string> = {
+    3: "bg-lamp-vhard/10",
+    2: "bg-lamp-hard/10",
+    1: "bg-lamp-normal/10",
+    0: "bg-lamp-failed/10",
   };
 
-  const STATUS_BADGE: Record<number, { label: string; bg: string; color: string; border: string }> = {
-    3: { label: "VH", bg: "oklch(0.68 0.24 305 / 0.18)", color: "oklch(0.85 0.18 305)", border: "oklch(0.68 0.24 305 / 0.4)" },
-    2: { label: "H", bg: "oklch(0.68 0.23 25 / 0.18)", color: "oklch(0.85 0.18 25)", border: "oklch(0.68 0.23 25 / 0.4)" },
-    1: { label: "N", bg: "oklch(0.82 0.17 85 / 0.18)", color: "oklch(0.88 0.16 85)", border: "oklch(0.82 0.17 85 / 0.4)" },
-    0: { label: "F", bg: "oklch(0.40 0 0 / 0.2)", color: "oklch(0.75 0 0)", border: "oklch(0.50 0 0 / 0.4)" },
+  const STATUS_BADGE: Record<number, { label: string; className: string }> = {
+    3: { label: "VH", className: "bg-lamp-vhard/15 text-lamp-vhard border-lamp-vhard/40" },
+    2: { label: "H", className: "bg-lamp-hard/15 text-lamp-hard border-lamp-hard/40" },
+    1: { label: "N", className: "bg-lamp-normal/15 text-lamp-normal border-lamp-normal/40" },
+    0: { label: "F", className: "bg-lamp-failed/15 text-lamp-failed border-lamp-failed/40" },
   };
 
   const filtered = useMemo(() => {
@@ -193,6 +180,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder={t.searchPlaceholder}
+            aria-label={t.searchPlaceholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9"
@@ -287,27 +275,24 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     const c = filtered[virtualRow.index];
                     const status = activePlayer?.data.c?.[c.id.toString()];
                     const hasStatus = status != null && status >= 0 && status <= 3;
-                    const rowTint = hasStatus ? STATUS_ROW_TINT[status] : undefined;
+                    const rowClass = hasStatus ? STATUS_ROW_CLASS[status] : undefined;
                     return (
                       <TableRow
                         key={c.md5}
                         data-index={virtualRow.index}
                         ref={rowVirtualizer.measureElement}
                         onClick={() => onSelectChart(c)}
-                        className="cursor-pointer hover:bg-muted/40"
-                        style={rowTint ? { background: rowTint } : undefined}
+                        className={cn("cursor-pointer hover:bg-muted/40", rowClass)}
                       >
                         <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {hasStatus && (
                                 <span
-                                  className="text-[9px] font-mono px-1 py-0.2 rounded font-bold uppercase shrink-0"
-                                  style={{
-                                    background: STATUS_BADGE[status].bg,
-                                    color: STATUS_BADGE[status].color,
-                                    border: `1px solid ${STATUS_BADGE[status].border}`,
-                                  }}
+                                  className={cn(
+                                    "text-[9px] font-mono px-1 py-0.2 rounded font-bold uppercase shrink-0 border",
+                                    STATUS_BADGE[status].className
+                                  )}
                                 >
                                   {STATUS_BADGE[status].label}
                                 </span>
@@ -316,34 +301,33 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                                 {c.title}
                               </span>
                             </div>
-                            <span className="text-[11px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               {c.artist || "unknown"}
                               {c.name_diff && ` · ${c.name_diff}`}
                             </span>
                             {c.provisional && (
                               <Badge
                                 variant="outline"
-                                className="text-[9px] py-0 px-1 text-cyan-400 border-cyan-500/40 w-fit font-mono"
+                                className="text-[9px] py-0 px-1 text-telemetry-cyan border-telemetry-cyan/40 bg-telemetry-cyan/10 w-fit font-mono"
                               >
                                 {t.provisional}
                               </Badge>
                             )}
                           </div>
                         </TableCell>
-                      <TableCell className="text-center font-mono text-sm">
+                      <TableCell className="text-center font-mono text-sm tabular-nums">
                         <span className={isSpecialLevel(c.level) ? "text-amber-400" : "text-muted-foreground"}>
                           {c.level}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
+                      <TableCell className="text-right font-mono text-sm tabular-nums">
                         <div className="flex flex-col items-end leading-tight">
-                          <span style={{ color: (c.n_hard + c.n_vhard === 0) ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)" }}>
+                          <span className={c.n_hard + c.n_vhard === 0 ? "text-lamp-hard/60" : "text-lamp-hard font-semibold"}>
                             {(c.n_hard + c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_hard_display)}?` : format(c.b_hard_display)}
                           </span>
                           {activePlayer && c.a != null && c.b_hard != null && (
                             <span
-                              className="text-[10px] font-semibold tabular-nums"
-                              style={{ color: "oklch(0.70 0.22 25)" }}
+                              className="text-[10px] font-semibold tabular-nums text-lamp-hard"
                               title="Your HARD clear probability"
                             >
                               {(pStar(activePlayer.data.t, c.a, c.b_hard) * 100).toFixed(1)}%
@@ -351,15 +335,14 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
+                      <TableCell className="text-right font-mono text-sm tabular-nums">
                         <div className="flex flex-col items-end leading-tight">
-                          <span style={{ color: (c.n_vhard === 0) ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)" }}>
+                          <span className={c.n_vhard === 0 ? "text-lamp-vhard/60" : "text-lamp-vhard font-semibold"}>
                             {(c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_vhard_display)}?` : format(c.b_vhard_display)}
                           </span>
                           {activePlayer && c.a != null && c.b_vhard != null && (
                             <span
-                              className="text-[10px] font-semibold tabular-nums"
-                              style={{ color: "oklch(0.70 0.22 305)" }}
+                              className="text-[10px] font-semibold tabular-nums text-lamp-vhard"
                               title="Your V-HARD clear probability"
                             >
                               {(pStar(activePlayer.data.t, c.a, c.b_vhard) * 100).toFixed(1)}%
@@ -367,7 +350,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
                         {c.a != null ? c.a.toFixed(2) : "–"}
                       </TableCell>
                       <TableCell className="text-right">

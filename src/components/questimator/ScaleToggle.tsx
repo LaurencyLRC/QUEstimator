@@ -13,7 +13,7 @@ export function ScaleToggle() {
         onClick={() => setMode("lerp")}
         className={`px-2.5 py-1 rounded transition-all font-medium ${
           mode === "lerp"
-            ? "bg-card text-foreground shadow-sm border border-border/80"
+            ? "bg-card text-foreground border border-border/80"
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
@@ -23,7 +23,7 @@ export function ScaleToggle() {
         onClick={() => setMode("raw")}
         className={`px-2.5 py-1 rounded transition-all font-medium ${
           mode === "raw"
-            ? "bg-card text-foreground shadow-sm border border-border/80"
+            ? "bg-card text-foreground border border-border/80"
             : "text-muted-foreground hover:text-foreground"
         }`}
       >

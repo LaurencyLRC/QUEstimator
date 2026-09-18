@@ -295,7 +295,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
       {/* Floating tooltip using the original Raw data, mapped via format() */}
       {hovered && hoveredRawData && tipPos && (
         <div
-          className="fixed z-50 pointer-events-none rounded-lg border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl px-3 py-2.5 text-xs"
+          className="fixed z-50 pointer-events-none rounded-lg border border-border/60 bg-card/95 backdrop-blur-sm px-3 py-2.5 text-xs"
           style={{ left: tipPos.x, top: tipPos.y }}
         >
           <div className="font-semibold text-foreground mb-1.5 font-mono">
@@ -304,7 +304,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
           
           {hoveredRawData.vhard_median != null && (
             <div className="flex items-center gap-2 mb-1">
-              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "oklch(0.62 0.22 305)" }} />
+              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "var(--color-lamp-vhard)" }} />
               <span className="text-muted-foreground w-12">V-HARD</span>
               <span className="font-mono text-foreground">{format(hoveredRawData.vhard_median)}</span>
               <span className="font-mono text-muted-foreground text-[10px]">
@@ -315,7 +315,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
           
           {hoveredRawData.hard_median != null && (
             <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "oklch(0.62 0.22 25)" }} />
+              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "var(--color-lamp-hard)" }} />
               <span className="text-muted-foreground w-12">HARD</span>
               <span className="font-mono text-foreground">{format(hoveredRawData.hard_median)}</span>
               <span className="font-mono text-muted-foreground text-[10px]">
