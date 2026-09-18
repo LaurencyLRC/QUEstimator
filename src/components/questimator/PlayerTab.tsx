@@ -384,7 +384,7 @@ export function PlayerTab({
               <User className="w-4 h-4 text-cyan-400" />
               {t.playerProfile}
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+            <p className="text-xs text-muted-foreground mt-0.5 font-sans">
               {t.playerProfileDesc}
             </p>
           </div>
@@ -422,7 +422,7 @@ export function PlayerTab({
               onClick={() => handleSearch()}
               disabled={loadingPlayers || !query.trim()}
               size="sm"
-              className="text-xs font-mono"
+              className="text-xs font-sans"
             >
               {loadingPlayers ? "…" : t.search}
             </Button>
@@ -431,7 +431,7 @@ export function PlayerTab({
           {notFound && (
             <div className="mt-3 p-3 rounded-md border border-border/70 bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <p className="text-xs text-rose-400 font-mono font-medium">{t.playerNotFound}</p>
+                <p className="text-xs text-rose-400 font-sans font-medium">{t.playerNotFound}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5 font-sans">
                   {t.lang === "en"
                     ? "Initialize a local offline profile to record manual clears and calculate your rating."
@@ -441,7 +441,7 @@ export function PlayerTab({
               <Button
                 size="sm"
                 variant="outline"
-                className="text-xs font-mono shrink-0"
+                className="text-xs font-sans shrink-0"
                 onClick={() => {
                   setNewProfileName(query.trim());
                   setIsCreating(true);
@@ -453,7 +453,7 @@ export function PlayerTab({
             </div>
           )}
           {loadError && (
-            <p className="text-xs text-rose-400 mt-2 font-mono">
+            <p className="text-xs text-rose-400 mt-2 font-sans">
               {t.loadFailed}: {loadError}
             </p>
           )}
@@ -533,7 +533,7 @@ export function PlayerTab({
           {/* Profile Management Sub-Bar */}
           <div className="flex gap-4 mt-4 border-t border-border/40 pt-4 flex-col sm:flex-row items-center justify-between text-xs">
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className="text-muted-foreground font-mono shrink-0">{t.offlineProfiles}:</span>
+              <span className="text-muted-foreground font-sans shrink-0">{t.offlineProfiles}:</span>
               <Select
                 value={isCustomProfile ? submittedID : ""}
                 onValueChange={(v) => {
@@ -576,7 +576,7 @@ export function PlayerTab({
                       }
                     }}
                   />
-                  <Button size="sm" className="h-8 text-xs font-mono" onClick={() => {
+                  <Button size="sm" className="h-8 text-xs font-sans" onClick={() => {
                     if (newProfileName.trim() && onSaveCustomProfile) {
                       const name = newProfileName.trim();
                       onSaveCustomProfile(name, currentPlayer ? { ...currentPlayer, c: { ...currentPlayer.c } } : { t: 0, c: {} });
@@ -588,14 +588,14 @@ export function PlayerTab({
                   }}>
                     {t.save}
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-8 text-xs font-mono" onClick={() => setIsCreating(false)}>
+                  <Button size="sm" variant="ghost" className="h-8 text-xs font-sans" onClick={() => setIsCreating(false)}>
                     {t.cancel}
                   </Button>
                 </div>
               ) : (
                 <div className="flex gap-1.5 flex-wrap">
                   <Button
-                    size="sm" variant="outline" className="h-8 text-xs font-mono"
+                    size="sm" variant="outline" className="h-8 text-xs font-sans"
                     onClick={() => {
                       setIsCreating(true);
                     }}
@@ -608,7 +608,7 @@ export function PlayerTab({
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 text-xs font-mono text-rose-400 border-rose-400/30 hover:bg-rose-400/10"
+                        className="h-8 text-xs font-sans text-rose-400 border-rose-400/30 hover:bg-rose-400/10"
                         onClick={() => setDeleteDialogOpen(true)}
                       >
                         <Trash2 className="w-3 h-3 mr-1" /> {t.deleteProfile}
@@ -627,11 +627,11 @@ export function PlayerTab({
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel autoFocus className="text-xs font-mono">
+                            <AlertDialogCancel autoFocus className="text-xs font-sans">
                               {t.cancel}
                             </AlertDialogCancel>
                             <AlertDialogAction
-                              className="text-xs font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              className="text-xs font-sans bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               onClick={() => {
                                 if (onDeleteCustomProfile) {
                                   onDeleteCustomProfile(submittedID);
@@ -647,7 +647,7 @@ export function PlayerTab({
                         </AlertDialogContent>
                       </AlertDialog>
                       <Button
-                        size="sm" variant="outline" className="h-8 text-xs font-mono"
+                        size="sm" variant="outline" className="h-8 text-xs font-sans"
                         onClick={() => {
                           const blob = new Blob([JSON.stringify(currentPlayer)], { type: "application/json" });
                           const url = URL.createObjectURL(blob);
@@ -664,7 +664,7 @@ export function PlayerTab({
                   )}
 
                   <Button
-                    size="sm" variant="outline" className="h-8 text-xs font-mono relative overflow-hidden"
+                    size="sm" variant="outline" className="h-8 text-xs font-sans relative overflow-hidden"
                   >
                     <Upload className="w-3 h-3 mr-1" /> {t.importProfile}
                     <input
@@ -683,8 +683,13 @@ export function PlayerTab({
                               if (onSaveCustomProfile) onSaveCustomProfile(name, data);
                               setIsCustomProfile(true);
                               setSubmittedID(name);
+                              setInternalLoadError(null);
+                            } else {
+                              setInternalLoadError(t.lang === "en" ? "Invalid profile JSON format: expected 't' and 'c' fields" : "잘못된 프로필 JSON 형식입니다: 't' 및 'c' 필드가 필요합니다");
                             }
-                          } catch (err) {}
+                          } catch (err) {
+                            setInternalLoadError(t.lang === "en" ? "Failed to parse JSON file" : "JSON 파일을 구문 분석하지 못했습니다");
+                          }
                         };
                         reader.readAsText(file);
                         e.target.value = "";
@@ -773,7 +778,7 @@ export function PlayerTab({
               </div>
 
               {analytics.clearedLevels.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-6 text-center font-mono">
+                <p className="text-xs text-muted-foreground py-6 text-center font-sans">
                   {t.lang === "en"
                     ? "No HARD+ clears logged yet."
                     : "HARD 이상 클리어 기록이 없습니다."}
@@ -797,10 +802,12 @@ export function PlayerTab({
                 </ScrollArea>
               )}
 
-              <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/40 font-mono">
-                {t.lang === "en"
-                  ? `Population: μ=${format(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`
-                  : `모집단: μ=${format(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`}
+              <p className="text-xs text-muted-foreground pt-2 border-t border-border/40 font-sans">
+                {t.lang === "en" ? (
+                  <>Population: <span className="font-mono tabular-nums">μ={format(playerThetaMean)}, σ={playerThetaStd.toFixed(3)}</span> (n=<span className="font-mono tabular-nums">{samplePlayers?.n_players ?? 0}</span>).</>
+                ) : (
+                  <>모집단: <span className="font-mono tabular-nums">μ={format(playerThetaMean)}, σ={playerThetaStd.toFixed(3)}</span> (n=<span className="font-mono tabular-nums">{samplePlayers?.n_players ?? 0}</span>).</>
+                )}
               </p>
             </div>
           </div>
@@ -812,7 +819,7 @@ export function PlayerTab({
                   <Sparkles className="w-4 h-4 text-amber-400" />
                   {t.recommendedCharts}
                 </h4>
-                <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                <p className="text-xs text-muted-foreground mt-0.5 font-sans">
                   {t.lang === "en"
                     ? `Charts where P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] — prime target horizon. Top ${REC_LIMIT} shown.`
                     : `P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] 적정 성장 구간 채보. 상위 ${REC_LIMIT}개.`}
@@ -827,7 +834,7 @@ export function PlayerTab({
                     className={`px-2.5 py-1 rounded transition-all font-medium ${
                       targetStatus === "HARD"
                         ? "bg-card text-foreground border border-border/80"
-                        : "text-muted-foreground hover:text-foreground"
+                        : "text-muted-foreground hover:text-foreground border border-transparent"
                     }`}
                   >
                     HARD
@@ -837,7 +844,7 @@ export function PlayerTab({
                     className={`px-2.5 py-1 rounded transition-all font-medium ${
                       targetStatus === "V-HARD"
                         ? "bg-card text-foreground border border-border/80"
-                        : "text-muted-foreground hover:text-foreground"
+                        : "text-muted-foreground hover:text-foreground border border-transparent"
                     }`}
                   >
                     V-HARD
@@ -876,7 +883,7 @@ export function PlayerTab({
                 <Target className={`w-4 h-4 ${targetStatus === "HARD" ? "text-rose-400" : "text-purple-400"}`} />
                 {t.yourProbabilities}
               </h4>
-              <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+              <p className="text-xs text-muted-foreground mt-0.5 font-sans">
                 {t.lang === "en"
                   ? `All uncompleted charts with P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
                   : `P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
@@ -898,8 +905,17 @@ export function PlayerTab({
                     {analytics.allProbabilities.map(({ chart, p }) => (
                       <TableRow
                         key={chart.md5}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View chart details for ${chart.title}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSelectChart(chart);
+                          }
+                        }}
                         onClick={() => onSelectChart(chart)}
-                        className="hover:bg-muted/40 cursor-pointer transition-colors"
+                        className="hover:bg-muted/40 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-telemetry-cyan"
                       >
                         <TableCell className="font-medium font-jp py-2.5">
                           <div className="flex flex-col">
@@ -966,7 +982,7 @@ function RecommendationCard({
   return (
     <button
       onClick={onClick}
-      className="text-left rounded-lg border border-border/70 hover:border-border bg-muted/20 hover:bg-muted/40 transition-all p-3 flex flex-col gap-2 group cursor-pointer"
+      className="text-left rounded-lg border border-border/70 hover:border-border bg-muted/20 hover:bg-muted/40 transition-all p-3 flex flex-col gap-2 group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan"
     >
       <div className="flex items-start justify-between gap-2">
         <span className="text-sm font-medium font-jp line-clamp-2 leading-snug group-hover:text-foreground">

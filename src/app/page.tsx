@@ -325,7 +325,7 @@ export default function Home() {
                   <div className="text-xs text-muted-foreground font-medium">
                     {t.lang === "en" ? "IRT Model" : "IRT 모델"}
                   </div>
-                  <div className="text-sm font-bold font-mono text-telemetry-cyan mt-2">
+                  <div className="text-sm font-bold text-telemetry-cyan mt-2">
                     Graded Response (GRM)
                   </div>
                 </div>
@@ -348,11 +348,11 @@ export default function Home() {
                   <div className="flex items-center gap-2 text-xs">
                     <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-muted/40 border border-border/60">
                       <span className="w-2.5 h-2.5 rounded-sm bg-lamp-hard" />
-                      <span className="text-foreground font-mono text-[11px]">HARD (b_hard)</span>
+                      <span className="text-foreground text-xs font-mono">HARD (b_hard)</span>
                     </span>
                     <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-muted/40 border border-border/60">
                       <span className="w-2.5 h-2.5 rounded-sm bg-lamp-vhard" />
-                      <span className="text-foreground font-mono text-[11px]">V-HARD (b_vhard)</span>
+                      <span className="text-foreground text-xs font-mono">V-HARD (b_vhard)</span>
                     </span>
                   </div>
                 </div>
@@ -384,7 +384,7 @@ export default function Home() {
                 <div className="h-fit md:sticky md:top-[74px] rounded-lg border border-border/80 bg-card p-3">
                   <div className="px-2 py-1.5 mb-2 border-b border-border/40 flex items-center justify-between">
                     <span className="text-xs font-semibold text-muted-foreground">{t.levels}</span>
-                    <span className="text-xs text-muted-foreground font-mono tabular-nums">{sortedLevels.length} folders</span>
+                    <span className="text-xs text-muted-foreground"><span className="font-mono tabular-nums font-semibold text-foreground">{sortedLevels.length}</span> folders</span>
                   </div>
                   <ScrollArea className="h-[65vh] pr-2">
                     <div className="space-y-1">
@@ -396,8 +396,8 @@ export default function Home() {
                             : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                         }`}
                       >
-                        <span>{t.allCharts}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-background/80 border border-border/40">
+                        <span className="font-sans">{t.allCharts}</span>
+                        <span className="text-xs px-1.5 py-0.2 rounded bg-background/80 border border-border/40 tabular-nums">
                           {charts.length}
                         </span>
                       </button>
@@ -413,11 +413,11 @@ export default function Home() {
                         >
                           <span className="flex items-center gap-1.5">
                             {isSpecialLevel(l.level) && (
-                              <span className="text-amber-400 text-[10px]">●</span>
+                              <span className="text-amber-400 text-xs">●</span>
                             )}
                             <span>{l.level}</span>
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-background/80 border border-border/40">
+                          <span className="text-xs px-1.5 py-0.2 rounded bg-background/80 border border-border/40 tabular-nums">
                             {levelCounts.get(l.level) ?? 0}
                           </span>
                         </button>
@@ -429,13 +429,13 @@ export default function Home() {
                 <div>
                   <div className="mb-4 flex items-center justify-between flex-wrap gap-2 p-3 rounded-lg border border-border/80 bg-card">
                     <div>
-                      <h2 className="text-base font-bold font-mono tracking-tight text-foreground flex items-center gap-2">
+                      <h2 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
                         <span>{selectedLevel === "all" ? t.allChartsTitle : `${levelLabel(selectedLevel)}`}</span>
-                        <span className="text-xs px-2 py-0.5 rounded font-mono bg-muted border border-border/60 text-muted-foreground">
+                        <span className="text-xs px-2 py-0.5 rounded font-mono bg-muted border border-border/60 text-muted-foreground tabular-nums">
                           {t.chartsCount(filteredCharts.length)}
                         </span>
                       </h2>
-                      <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {t.sortBy(t.sortKeys[sortKey], t.sortDirs[sortDir])}
                       </p>
                     </div>
@@ -536,8 +536,17 @@ function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[
           {levels.map((l) => (
             <tr
               key={l.level}
-              className="hover:bg-muted/40 transition-colors cursor-pointer"
+              className="hover:bg-muted/40 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan focus-visible:bg-muted/30"
               onClick={() => onSelectLevel(l.level)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelectLevel(l.level);
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label={`Filter to level ${l.level}`}
             >
               <td className="px-3 py-2.5 font-semibold">
                 <span className={isSpecialLevel(l.level) ? "text-amber-400" : "text-foreground"}>
@@ -574,9 +583,9 @@ function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[
 function AboutTab({ meta }: { meta: Meta | null }) {
   const { t } = useLang();
   return (
-    <div className="max-w-4xl space-y-6">
-      {/* Overview panel */}
-      <div className="rounded-lg border border-border/80 bg-card p-5 sm:p-6">
+    <div className="max-w-4xl rounded-lg border border-border/80 bg-card divide-y divide-border/40 overflow-hidden">
+      {/* Overview section */}
+      <div className="p-5 sm:p-6 space-y-3">
         <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
           <Sigma className="w-4 h-4 text-telemetry-cyan" />
           {t.projectOverview}
@@ -590,7 +599,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
               <p>
                 Qwilight is uniquely suited for IRT estimation due to its <strong className="text-foreground">Gauge Auto-Shift (GAS)</strong> system: a failed V-HARD play automatically continues on the HARD gauge. The clear status recorded on the IR therefore represents a player&apos;s genuine organic peak survival threshold without requiring artificial gauge conversion guesses.
               </p>
-              <p className="text-xs pt-1 font-mono">
+              <p className="text-xs pt-1">
                 Inspired by{" "}
                 <a
                   href="https://github.com/HorieYuuka"
@@ -611,7 +620,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
               <p>
                 Qwilight 특유의 <strong className="text-foreground">Gauge Auto-Shift(GAS)</strong> 시스템(V-HARD 폭사 시 HARD 게이지 자동 승계) 덕분에, IR에 기록된 클리어 상태는 별도의 추정 없이 유저의 유기적인 최고 게이지 생존 역치를 나타냅니다.
               </p>
-              <p className="text-xs pt-1 font-mono">
+              <p className="text-xs pt-1">
                 Inspired by{" "}
                 <a
                   href="https://github.com/HorieYuuka"
@@ -629,7 +638,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
       </div>
 
       {/* Math & Model Architecture */}
-      <div className="rounded-lg border border-border/80 bg-card p-5 sm:p-6">
+      <div className="p-5 sm:p-6 space-y-4">
         <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
           <Layers className="w-4 h-4 text-emerald-400" />
           {t.methodology}
@@ -639,7 +648,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
             <div className="text-foreground font-semibold text-sm mb-2 font-mono">
               P*(θ, k) = 1 / (1 + exp(-a_i · (θ - b_ik)))
             </div>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed font-sans text-xs">
               {t.lang === "en"
                 ? "Samejima's Graded Response Model parameterizes the cumulative survival probability P* that a player with latent skill ability θ clears chart i on gauge tier k or higher."
                 : "Samejima의 Graded Response Model(GRM)을 채택하여, 잠재 실력 θ인 플레이어가 문항 i를 게이지 단계 k 이상으로 클리어할 누적 생존 확률 P*를 추정합니다."}
@@ -648,16 +657,16 @@ function AboutTab({ meta }: { meta: Meta | null }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="p-3 rounded border border-border/60 bg-muted/20">
-              <div className="text-foreground font-semibold mb-1">a_i (Discrimination)</div>
-              <div className="text-muted-foreground text-xs">
+              <div className="text-foreground font-semibold mb-1 font-mono">a_i (Discrimination)</div>
+              <div className="text-muted-foreground text-xs font-sans">
                 {t.lang === "en"
                   ? "Indicates how strictly the chart tests pure skill vs randomness."
                   : "패턴이 순수 실력을 얼마나 예리하게 판별하는지 나타냅니다."}
               </div>
             </div>
             <div className="p-3 rounded border border-border/60 bg-muted/20">
-              <div className="text-foreground font-semibold mb-1">b_k (Difficulty)</div>
-              <div className="text-muted-foreground text-xs">
+              <div className="text-foreground font-semibold mb-1 font-mono">b_k (Difficulty)</div>
+              <div className="text-muted-foreground text-xs font-sans">
                 {t.lang === "en"
                   ? "Point where survival probability reaches 50%."
                   : "생존 확률이 50%에 도달하는 임계 난이도."}
@@ -668,37 +677,37 @@ function AboutTab({ meta }: { meta: Meta | null }) {
       </div>
 
       {/* Pipeline & Diagnostics panel */}
-      <div className="rounded-lg border border-border/80 bg-card p-5 sm:p-6">
+      <div className="p-5 sm:p-6 space-y-3">
         <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
           <Trophy className="w-4 h-4 text-amber-400" />
           {t.pipelineState}
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div className="rounded border border-border/60 p-3 bg-muted/20">
             <div className="text-muted-foreground text-xs">{t.model}</div>
-            <div className="text-foreground font-semibold mt-1">{meta?.model}</div>
+            <div className="text-foreground font-semibold mt-1 font-mono">{meta?.model}</div>
           </div>
           <div className="rounded border border-border/60 p-3 bg-muted/20">
             <div className="text-muted-foreground text-xs">{t.categories}</div>
-            <div className="text-foreground font-semibold mt-1">{meta?.categories.join(" → ")}</div>
+            <div className="text-foreground font-semibold mt-1 font-mono text-[11px]">{meta?.categories.join(" → ")}</div>
           </div>
           <div className="rounded border border-border/60 p-3 bg-muted/20">
             <div className="text-muted-foreground text-xs">{t.provisionalRule}</div>
-            <div className="text-foreground font-semibold mt-1">{meta?.provisional_rule}</div>
+            <div className="text-foreground font-semibold mt-1 font-mono text-[11px]">{meta?.provisional_rule}</div>
           </div>
           <div className="rounded border border-border/60 p-3 bg-muted/20">
             <div className="text-muted-foreground text-xs">{t.runtimeLabel}</div>
-            <div className="text-foreground font-semibold mt-1 tabular-nums">{meta?.runtime_sec}s</div>
+            <div className="text-foreground font-semibold mt-1 font-mono tabular-nums">{meta?.runtime_sec}s</div>
           </div>
         </div>
       </div>
 
       {/* Tech Stack */}
-      <div className="rounded-lg border border-border/80 bg-card p-5 sm:p-6">
+      <div className="p-5 sm:p-6 space-y-2">
         <h3 className="text-base font-bold text-foreground mb-2">
           {t.techStack}
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-muted-foreground">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
           <div><span className="text-foreground font-semibold">Inference Engine:</span> NumPyro NUTS MCMC · JAX</div>
           <div><span className="text-foreground font-semibold">Quadrature:</span> 101-node Gauss–Hermite integration</div>
           <div><span className="text-foreground font-semibold">Frontend:</span> Next.js 16 · React 19 · Tailwind CSS</div>

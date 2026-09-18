@@ -39,10 +39,10 @@ function seColorClass(se: number | null): string {
 }
 
 function getClearBadge(status?: number) {
-  if (status === 3) return <Badge variant="outline" className="text-[9px] py-0 px-1.5 font-mono border-lamp-vhard/40 bg-lamp-vhard/10 text-lamp-vhard ml-2">V-HARD</Badge>;
-  if (status === 2) return <Badge variant="outline" className="text-[9px] py-0 px-1.5 font-mono border-lamp-hard/40 bg-lamp-hard/10 text-lamp-hard ml-2">HARD</Badge>;
-  if (status === 1) return <Badge variant="outline" className="text-[9px] py-0 px-1.5 font-mono border-lamp-normal/40 bg-lamp-normal/10 text-lamp-normal ml-2">NORMAL</Badge>;
-  if (status === 0) return <Badge variant="outline" className="text-[9px] py-0 px-1.5 font-mono border-lamp-failed/40 bg-lamp-failed/10 text-lamp-failed ml-2">FAILED</Badge>;
+  if (status === 3) return <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono border-lamp-vhard/40 bg-lamp-vhard/10 text-lamp-vhard ml-2">V-HARD</Badge>;
+  if (status === 2) return <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono border-lamp-hard/40 bg-lamp-hard/10 text-lamp-hard ml-2">HARD</Badge>;
+  if (status === 1) return <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono border-lamp-normal/40 bg-lamp-normal/10 text-lamp-normal ml-2">NORMAL</Badge>;
+  if (status === 0) return <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono border-lamp-failed/40 bg-lamp-failed/10 text-lamp-failed ml-2">FAILED</Badge>;
   return null;
 }
 
@@ -97,17 +97,17 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
             <span>{t.by} <strong className="text-foreground/90 font-medium">{chart.artist || "unknown"}</strong></span>
             {chart.name_diff && (
               <>
-                <span className="text-border">·</span>
+                <span className="text-muted-foreground/60">·</span>
                 <span>{t.notemaker}: <strong className="text-foreground/90 font-medium">{chart.name_diff}</strong></span>
               </>
             )}
-            <span className="text-border">·</span>
-            <span className="font-mono text-[10px] text-muted-foreground/60">MD5: {chart.md5.slice(0, 8)}...</span>
+            <span className="text-muted-foreground/60">·</span>
+            <span className="font-mono text-xs text-muted-foreground/80">MD5: {chart.md5.slice(0, 8)}...</span>
           </DialogDescription>
 
           {onClearStatusChange && activePlayer && (
             <div className="flex items-center gap-2 pt-3 mt-2 border-t border-border/40">
-              <span className="text-xs font-mono text-muted-foreground">Status Override:</span>
+              <span className="text-xs font-sans text-muted-foreground">Status Override:</span>
               <ToggleGroup
                 type="single"
                 value={String(activePlayer.data.c?.[chart.id.toString()] ?? -1)}
@@ -129,10 +129,10 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
 
         <div className="space-y-4 mt-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-mono font-medium text-muted-foreground">
+            <h4 className="text-xs font-sans font-medium text-muted-foreground">
               {t.irtParams}
             </h4>
-            <span className="text-xs font-mono text-muted-foreground/60">
+            <span className="text-xs font-mono text-muted-foreground/80">
               GRM Metrics
             </span>
           </div>
@@ -170,10 +170,10 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
           {chart.a != null && chart.b_hard != null && chart.b_vhard != null && (
             <div className="rounded-lg border border-border/80 p-4 bg-background/50">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-mono font-medium text-muted-foreground">
+                <div className="text-xs font-sans font-medium text-muted-foreground">
                   {t.lang === "en" ? "GRM Cumulative Survival Probabilities" : "GRM 누적 생존 확률 곡선"}
                 </div>
-                <div className="text-xs font-mono text-muted-foreground/60">
+                <div className="text-xs font-mono text-muted-foreground/80">
                   P*(θ) Logistic Fit
                 </div>
               </div>
@@ -190,7 +190,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
 
           {chart.comment && (
             <div className="rounded-lg border border-border/80 p-3 bg-background/40 font-mono text-xs text-muted-foreground/90 leading-relaxed">
-              <span className="text-xs font-mono text-muted-foreground block mb-1">{t.comment}</span>
+              <span className="text-xs font-sans text-muted-foreground block mb-1">{t.comment}</span>
               {chart.comment}
             </div>
           )}
@@ -230,7 +230,7 @@ function ParamCard({
       </div>
       <div className="font-mono text-base font-bold tabular-nums text-foreground mt-1">{value}</div>
       {seValue != null && ciCenter != null && fmtCIFn && !Number.isNaN(ciCenter) && !Number.isNaN(seValue) && (
-        <div className={`text-[9px] font-mono tabular-nums ${seColorClass(seValue)} mt-0.5`}>
+        <div className={`text-[10px] font-mono tabular-nums ${seColorClass(seValue)} mt-0.5`}>
           95% CI {fmtCIFn(ciCenter, seValue)}
         </div>
       )}

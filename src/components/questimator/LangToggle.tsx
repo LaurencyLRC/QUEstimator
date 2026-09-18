@@ -11,15 +11,15 @@ const LANGS: { code: Lang; label: string }[] = [
 export function LangToggle() {
   const { lang, setLang } = useLang();
   return (
-    <div className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80 font-mono text-[11px]">
+    <div className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80 text-xs">
       {LANGS.map((l) => (
         <button
           key={l.code}
           onClick={() => setLang(l.code)}
-          className={`px-2 py-1 rounded transition-all font-medium ${
+          className={`px-2 py-1 rounded transition-all font-medium border ${
             lang === l.code
-              ? "bg-card text-foreground border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-card text-foreground border-border/80"
+              : "text-muted-foreground hover:text-foreground border-transparent"
           }`}
           aria-label={l.code === "en" ? "English" : "한국어"}
         >

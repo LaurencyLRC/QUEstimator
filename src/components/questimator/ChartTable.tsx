@@ -282,7 +282,19 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                         data-index={virtualRow.index}
                         ref={rowVirtualizer.measureElement}
                         onClick={() => onSelectChart(c)}
-                        className={cn("cursor-pointer hover:bg-muted/40", rowClass)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSelectChart(c);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View chart details for ${c.title}`}
+                        className={cn(
+                          "cursor-pointer hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan focus-visible:bg-muted/30",
+                          rowClass
+                        )}
                       >
                         <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
                           <div className="flex flex-col gap-0.5">
@@ -290,7 +302,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                               {hasStatus && (
                                 <span
                                   className={cn(
-                                    "text-[9px] font-mono px-1 py-0.2 rounded font-bold uppercase shrink-0 border",
+                                    "text-[10px] font-mono px-1.5 py-0.5 rounded font-bold uppercase shrink-0 border",
                                     STATUS_BADGE[status].className
                                   )}
                                 >
@@ -308,7 +320,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                             {c.provisional && (
                               <Badge
                                 variant="outline"
-                                className="text-[9px] py-0 px-1 text-telemetry-cyan border-telemetry-cyan/40 bg-telemetry-cyan/10 w-fit font-mono"
+                                className="text-[10px] py-0 px-1.5 text-telemetry-cyan border-telemetry-cyan/40 bg-telemetry-cyan/10 w-fit font-mono"
                               >
                                 {t.provisional}
                               </Badge>

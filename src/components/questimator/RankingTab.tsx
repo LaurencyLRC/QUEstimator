@@ -188,7 +188,7 @@ export function RankingTab({
               </span>
             )}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {t.rankingDesc}
           </p>
         </div>
@@ -230,7 +230,7 @@ export function RankingTab({
         {!loading && !error && (
           <>
             {unrankedCount > 0 && (
-              <div className="mb-3 rounded-md border border-border/60 bg-muted/20 p-2.5 text-[11px] text-muted-foreground font-mono leading-relaxed">
+              <div className="mb-3 rounded-md border border-border/60 bg-muted/20 p-2.5 text-xs text-muted-foreground leading-relaxed">
                 {t.unrankedNote(unrankedCount)}
               </div>
             )}
@@ -266,7 +266,7 @@ export function RankingTab({
 
                         {virtualItems.map((virtualRow) => {
                           const r = filtered[virtualRow.index];
-                          const gRank = globalRankById.get(r.id) ?? 0;
+                          const gRank = ranked.indexOf(r) + 1;
                           const medalColor = rankBadgeColor(gRank);
 
                           return (
@@ -275,12 +275,21 @@ export function RankingTab({
                               data-index={virtualRow.index}
                               ref={rowVirtualizer.measureElement}
                               onClick={() => onSelectPlayer(r.id, r.data)}
-                              className="cursor-pointer hover:bg-muted/40 transition-colors"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  onSelectPlayer(r.id, r.data);
+                                }
+                              }}
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`View profile for ${r.data.n || r.id}`}
+                              className="cursor-pointer hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan focus-visible:bg-muted/30"
                             >
                               <TableCell className="text-center font-mono py-2.5">
                                 {medalColor ? (
                                   <span
-                                    className="inline-flex items-center justify-center w-6 h-6 rounded text-[11px] font-bold"
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold"
                                     style={{
                                       background: medalColor,
                                       color: "oklch(0.12 0 0)",
@@ -306,7 +315,7 @@ export function RankingTab({
                                   )}
                                   {!r.eligible && (
                                     <span
-                                      className="text-[9px] py-0.2 px-1 rounded font-mono text-muted-foreground border border-border/60 bg-muted/40 shrink-0"
+                                      className="text-[10px] py-0.2 px-1 rounded font-mono text-muted-foreground border border-border/60 bg-muted/40 shrink-0"
                                     >
                                       {t.lang === "en" ? "ineligible" : "비대상"}
                                     </span>
@@ -333,7 +342,7 @@ export function RankingTab({
                                 <span
                                   className={cn(
                                     "tabular-nums",
-                                    r.nHard > 0 ? "text-lamp-hard font-medium" : "text-muted-foreground/60"
+                                    r.nHard > 0 ? "text-lamp-hard font-medium" : "text-muted-foreground/80"
                                   )}
                                 >
                                   {r.nHard}
@@ -344,7 +353,7 @@ export function RankingTab({
                                 <span
                                   className={cn(
                                     "tabular-nums",
-                                    r.nVhard > 0 ? "text-lamp-vhard font-medium" : "text-muted-foreground/60"
+                                    r.nVhard > 0 ? "text-lamp-vhard font-medium" : "text-muted-foreground/80"
                                   )}
                                 >
                                   {r.nVhard}
