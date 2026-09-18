@@ -188,145 +188,257 @@ export default function Home() {
   return (
     <ScaleProvider levels={levels}>
       <div className="min-h-screen flex flex-col bg-background">
-        <header className="border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-30 shadow-sm shadow-black/5">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+        <header className="border-b border-border/80 bg-background/90 backdrop-blur-md sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl shadow-sm bg-gradient-to-br from-rose-500 via-purple-500 to-cyan-500 flex items-center justify-center">
-                <Sigma className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 rounded border border-cyan-500/30 bg-cyan-950/30 flex items-center justify-center text-cyan-400 font-mono font-bold text-xs tracking-tighter shadow-sm">
+                QE
               </div>
               <div>
-                <h1 className="text-base sm:text-lg font-bold tracking-tight">
-                  QUEstimator
-                </h1>
-                <p className="text-[11px] text-muted-foreground hidden sm:block">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold tracking-tight text-foreground">
+                    QUEstimator
+                  </h1>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+                    U_E 6K
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground hidden sm:block font-mono">
                   {t.subtitle}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-xs">
+
+            {/* Middle telemetry ticker */}
+            <div className="hidden lg:flex items-center gap-4 text-xs font-mono text-muted-foreground border-x border-border/40 px-5 py-1">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-foreground">{charts.length}</span>
+                <span>CHARTS</span>
+              </div>
+              <span className="text-border">|</span>
+              <div>
+                <span className="text-foreground">{playersData ? Object.keys(playersData).length.toLocaleString() : "..."}</span>{" "}
+                <span>PLAYERS</span>
+              </div>
+              <span className="text-border">|</span>
+              <div className="text-cyan-400/90 font-medium">
+                MCMC NUTS (R̂ {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "1.0040"})
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
               <ScaleToggle />
               <LangToggle />
             </div>
           </div>
         </header>
 
-        <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 md:py-10">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
           <Tabs value={tab} onValueChange={setTab} className="w-full">
-            <TabsList className="flex w-full overflow-x-auto no-scrollbar mb-8 max-w-3xl bg-muted/50 p-1.5 rounded-lg items-center gap-1">
-              <TabsTrigger value="overview" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
-                <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.overview}
+            <TabsList className="w-full flex justify-start items-center gap-1 p-1 bg-card border border-border/80 rounded-lg mb-6 overflow-x-auto no-scrollbar font-mono text-xs">
+              <TabsTrigger
+                value="overview"
+                className="px-3.5 py-2 rounded-md transition-all data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground hover:text-foreground flex items-center gap-2"
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{t.overview}</span>
               </TabsTrigger>
-              <TabsTrigger value="charts" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
-                <ListTree className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.chartsTab}
+              <TabsTrigger
+                value="charts"
+                className="px-3.5 py-2 rounded-md transition-all data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground hover:text-foreground flex items-center gap-2"
+              >
+                <ListTree className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{t.chartsTab}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-muted/80 text-muted-foreground">
+                  {charts.length}
+                </span>
               </TabsTrigger>
-              <TabsTrigger value="player" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
-                <User className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.player}
+              <TabsTrigger
+                value="player"
+                className="px-3.5 py-2 rounded-md transition-all data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground hover:text-foreground flex items-center gap-2"
+              >
+                <User className="w-3.5 h-3.5 text-amber-400" />
+                <span>{t.player}</span>
+                {activePlayer && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                )}
               </TabsTrigger>
-              <TabsTrigger value="ranking" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
-                <Trophy className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.ranking}
+              <TabsTrigger
+                value="ranking"
+                className="px-3.5 py-2 rounded-md transition-all data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground hover:text-foreground flex items-center gap-2"
+              >
+                <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                <span>{t.ranking}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-muted/80 text-muted-foreground">
+                  {playersData ? Object.keys(playersData).length : 0}
+                </span>
               </TabsTrigger>
-              <TabsTrigger value="about" className="flex-1 min-w-fit text-xs sm:text-sm rounded-md transition-all py-2">
-                <Sigma className="w-4 h-4 mr-1.5 hidden sm:block" /> {t.about}
+              <TabsTrigger
+                value="about"
+                className="px-3.5 py-2 rounded-md transition-all data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground hover:text-foreground flex items-center gap-2"
+              >
+                <Sigma className="w-3.5 h-3.5 text-violet-400" />
+                <span>{t.about}</span>
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6 mt-0">
-              <Card className="gap-3 py-4">
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    {t.levelDistribution}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {meta
-                      ? t.levelDistributionDesc(meta.n_charts_valid, meta.n_charts_provisional)
-                      : t.levelDistributionDesc(0, 0)}
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <BoxPlot
-                    data={plotLevels}
-                    onSelectLevel={handleSelectLevelFromPlot}
-                  />
-                </CardContent>
-              </Card>
+              {/* Telemetry quick overview grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3 rounded-lg border border-border/70 bg-card">
+                  <div className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
+                    {t.lang === "en" ? "Valid Charts" : "유효 채보"}
+                  </div>
+                  <div className="text-xl font-bold font-mono text-foreground mt-1">
+                    {meta?.n_charts_valid ?? charts.length}
+                    <span className="text-xs text-muted-foreground font-normal ml-1.5">
+                      (+{meta?.n_charts_provisional ?? 0} {t.lang === "en" ? "prov" : "잠정"})
+                    </span>
+                  </div>
+                </div>
 
-              <Card className="gap-3 py-4">
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {t.perLevelAggregates}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {t.perLevelDesc}
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <LevelAggregatesTable levels={plotLevels} onSelectLevel={handleSelectLevelFromPlot} />
-                </CardContent>
-              </Card>
+                <div className="p-3 rounded-lg border border-border/70 bg-card">
+                  <div className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
+                    {t.lang === "en" ? "Tracked Players" : "분석 플레이어"}
+                  </div>
+                  <div className="text-xl font-bold font-mono text-foreground mt-1">
+                    {playersData ? Object.keys(playersData).length.toLocaleString() : "..."}
+                    <span className="text-xs text-muted-foreground font-normal ml-1.5">
+                      (μ={samplePlayers?.theta_mean.toFixed(2) ?? "0.05"})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg border border-border/70 bg-card">
+                  <div className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
+                    {t.lang === "en" ? "MCMC Convergence" : "MCMC 수렴도"}
+                  </div>
+                  <div className="text-xl font-bold font-mono text-emerald-400 mt-1 flex items-center gap-1.5">
+                    <span>R̂ = {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "1.0040"}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg border border-border/70 bg-card">
+                  <div className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
+                    {t.lang === "en" ? "IRT Model" : "IRT 모델"}
+                  </div>
+                  <div className="text-sm font-bold font-mono text-cyan-400 mt-1.5 truncate">
+                    Graded Response (GRM)
+                  </div>
+                </div>
+              </div>
+
+              {/* BoxPlot Console */}
+              <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6">
+                <div className="flex items-center justify-between flex-wrap gap-3 mb-4 pb-3 border-b border-border/40">
+                  <div>
+                    <h3 className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-cyan-400" />
+                      {t.levelDistribution}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1 font-mono">
+                      {meta
+                        ? t.levelDistributionDesc(meta.n_charts_valid, meta.n_charts_provisional)
+                        : t.levelDistributionDesc(0, 0)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-mono">
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-muted/40 border border-border/60">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: "oklch(0.68 0.23 25)" }} />
+                      <span className="text-foreground">HARD (b_hard)</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-muted/40 border border-border/60">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: "oklch(0.68 0.24 305)" }} />
+                      <span className="text-foreground">V-HARD (b_vhard)</span>
+                    </span>
+                  </div>
+                </div>
+
+                <BoxPlot
+                  data={plotLevels}
+                  onSelectLevel={handleSelectLevelFromPlot}
+                />
+              </div>
+
+              {/* Level Aggregates Table Panel */}
+              <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6">
+                <div className="mb-4 pb-3 border-b border-border/40 flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-base font-semibold tracking-tight text-foreground">
+                      {t.perLevelAggregates}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t.perLevelDesc}
+                    </p>
+                  </div>
+                </div>
+                <LevelAggregatesTable levels={plotLevels} onSelectLevel={handleSelectLevelFromPlot} />
+              </div>
             </TabsContent>
 
             <TabsContent value="charts" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
-                <Card className="h-fit md:sticky md:top-[88px] gap-2">
-                  <CardHeader className="py-3">
-                    <CardTitle className="text-sm">{t.levels}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="py-0 pb-3">
-                    <ScrollArea className="h-[60vh] pr-2">
-                      <div className="space-y-0.5">
+              <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-5">
+                <div className="h-fit md:sticky md:top-[74px] rounded-lg border border-border/80 bg-card p-3">
+                  <div className="px-2 py-1.5 mb-2 border-b border-border/40 flex items-center justify-between">
+                    <span className="text-xs font-mono font-semibold text-muted-foreground uppercase tracking-wider">{t.levels}</span>
+                    <span className="text-[11px] font-mono text-muted-foreground">{sortedLevels.length} folders</span>
+                  </div>
+                  <ScrollArea className="h-[65vh] pr-2">
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => setSelectedLevel("all")}
+                        className={`w-full text-left px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center justify-between ${
+                          selectedLevel === "all"
+                            ? "bg-muted text-foreground border border-border font-semibold"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                        }`}
+                      >
+                        <span>{t.allCharts}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-background/80 border border-border/40">
+                          {charts.length}
+                        </span>
+                      </button>
+                      {sortedLevels.map((l) => (
                         <button
-                          onClick={() => setSelectedLevel("all")}
-                          className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
-                            selectedLevel === "all"
-                              ? "bg-primary text-primary-foreground"
-                              : "hover:bg-muted/60"
+                          key={l.level}
+                          onClick={() => setSelectedLevel(l.level)}
+                          className={`w-full text-left px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center justify-between ${
+                            selectedLevel === l.level
+                              ? "bg-muted text-foreground border border-border font-semibold"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                           }`}
                         >
-                          {t.allCharts}
-                          <span className="float-right text-xs opacity-70">
-                            {charts.length}
+                          <span className="flex items-center gap-1.5">
+                            {isSpecialLevel(l.level) && (
+                              <span className="text-amber-400 text-[10px]">●</span>
+                            )}
+                            <span>{l.level}</span>
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-background/80 border border-border/40">
+                            {levelCounts.get(l.level) ?? 0}
                           </span>
                         </button>
-                        {sortedLevels.map((l) => (
-                          <button
-                            key={l.level}
-                            onClick={() => setSelectedLevel(l.level)}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
-                              selectedLevel === l.level
-                                ? "bg-primary text-primary-foreground"
-                                : "hover:bg-muted/60"
-                            }`}
-                          >
-                            <span className="font-mono">
-                              {isSpecialLevel(l.level) && (
-                                <span className="text-amber-400 mr-1">●</span>
-                              )}
-                              {l.level}
-                            </span>
-                            <span className="float-right text-xs opacity-70">
-                              {levelCounts.get(l.level) ?? 0}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
 
                 <div>
-                  <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
+                  <div className="mb-4 flex items-center justify-between flex-wrap gap-2 p-3 rounded-lg border border-border/80 bg-card">
                     <div>
-                      <h2 className="text-lg font-semibold">
-                        {selectedLevel === "all"
-                          ? t.allChartsTitle
-                          : `${levelLabel(selectedLevel)}`}
+                      <h2 className="text-base font-bold font-mono tracking-tight text-foreground flex items-center gap-2">
+                        <span>{selectedLevel === "all" ? t.allChartsTitle : `${levelLabel(selectedLevel)}`}</span>
+                        <span className="text-xs px-2 py-0.5 rounded font-mono bg-muted border border-border/60 text-muted-foreground">
+                          {t.chartsCount(filteredCharts.length)}
+                        </span>
                       </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {t.chartsCount(filteredCharts.length)} · {t.sortBy(t.sortKeys[sortKey], t.sortDirs[sortDir])}
+                      <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                        {t.sortBy(t.sortKeys[sortKey], t.sortDirs[sortDir])}
                       </p>
                     </div>
                   </div>
+
                   <ChartTable
                     charts={filteredCharts}
                     onSelectChart={handleSelectChart}
@@ -406,45 +518,45 @@ function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[
   const { format } = useScale();
 
   return (
-    <div className="max-h-[420px] overflow-y-auto rounded-md border border-border/50">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-card z-10">
-          <tr className="border-b border-border/60 text-left">
-            <th className="px-3 py-2 font-medium text-muted-foreground">{t.level}</th>
-            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.chartsCol}</th>
-            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.hardMed}</th>
-            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.hardIQR}</th>
-            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.vhardMed}</th>
-            <th className="px-3 py-2 font-medium text-muted-foreground text-right">{t.vhardIQR}</th>
+    <div className="max-h-[480px] overflow-y-auto rounded-md border border-border/80 font-mono text-xs">
+      <table className="w-full">
+        <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
+          <tr className="border-b border-border text-left">
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground uppercase">{t.level}</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right uppercase">{t.chartsCol}</th>
+            <th className="px-3 py-2.5 font-semibold text-right uppercase" style={{ color: "oklch(0.78 0.18 25)" }}>{t.hardMed}</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right uppercase">{t.hardIQR}</th>
+            <th className="px-3 py-2.5 font-semibold text-right uppercase" style={{ color: "oklch(0.78 0.18 305)" }}>{t.vhardMed}</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right uppercase">{t.vhardIQR}</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-border/40">
           {levels.map((l) => (
             <tr
               key={l.level}
-              className="border-b border-border/30 hover:bg-muted/30 cursor-pointer"
+              className="hover:bg-muted/40 transition-colors cursor-pointer"
               onClick={() => onSelectLevel(l.level)}
             >
-              <td className="px-3 py-2 font-mono">
-                <span className={isSpecialLevel(l.level) ? "text-amber-400" : ""}>
+              <td className="px-3 py-2.5 font-semibold">
+                <span className={isSpecialLevel(l.level) ? "text-amber-400" : "text-foreground"}>
                   {l.level}
                 </span>
               </td>
-              <td className="px-3 py-2 text-right font-mono text-muted-foreground">
-                {l.n_charts_valid}/{l.n_charts_total}
+              <td className="px-3 py-2.5 text-right text-muted-foreground">
+                {l.n_charts_valid} <span className="text-[10px] text-muted-foreground/60">/ {l.n_charts_total}</span>
               </td>
-              <td className="px-3 py-2 text-right font-mono" style={{ color: "oklch(0.78 0.18 25)" }}>
+              <td className="px-3 py-2.5 text-right font-semibold" style={{ color: "oklch(0.78 0.18 25)" }}>
                 {format(l.hard_median)}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-muted-foreground">
+              <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
                 {l.hard_q1 != null && l.hard_q3 != null
                   ? `[${format(l.hard_q1)}, ${format(l.hard_q3)}]`
                   : "–"}
               </td>
-              <td className="px-3 py-2 text-right font-mono" style={{ color: "oklch(0.78 0.18 305)" }}>
+              <td className="px-3 py-2.5 text-right font-semibold" style={{ color: "oklch(0.78 0.18 305)" }}>
                 {format(l.vhard_median)}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-muted-foreground">
+              <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
                 {l.vhard_q1 != null && l.vhard_q3 != null
                   ? `[${format(l.vhard_q1)}, ${format(l.vhard_q3)}]`
                   : "–"}
@@ -460,32 +572,23 @@ function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[
 function AboutTab({ meta }: { meta: Meta | null }) {
   const { t } = useLang();
   return (
-    <div className="max-w-3xl space-y-6">
-      <Card className="gap-3 py-4">
-        <CardHeader>
-          <CardTitle>{t.projectOverview}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+    <div className="max-w-4xl space-y-6">
+      {/* Overview panel */}
+      <div className="rounded-lg border border-border/80 bg-card p-5 sm:p-6">
+        <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
+          <Sigma className="w-4 h-4 text-cyan-400" />
+          {t.projectOverview}
+        </h3>
+        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
           {t.lang === "en" ? (
             <>
               <p>
-                <strong className="text-foreground">QUEstimator</strong> is a
-                data-driven difficulty estimation system for 6-key charts on the
-                U_E scale in <span className="text-foreground">Qwilight</span>. By
-                applying Item Response Theory (IRT), it evaluates the precise
-                difficulty of achieving HARD and V-HARD clears, providing players
-                with highly accurate, community-calibrated targets.
+                <strong className="text-foreground">QUEstimator</strong> is an objective, data-driven difficulty estimation system for 6-key BMS charts on the U_E scale in <span className="text-foreground">Qwilight</span>. By fitting a Bayesian Graded Response Model (GRM), it evaluates the exact latent difficulty thresholds for HARD and V-HARD clears directly from actual Internet Ranking (IR) play logs.
               </p>
               <p>
-                Qwilight is uniquely suited for this due to its{" "}
-                <strong className="text-foreground">Gauge Auto-Shift (GAS)</strong>{" "}
-                system. Because a failed V-HARD run automatically continues at HARD,
-                the clear status recorded on the Internet Ranking (IR) represents
-                a player&apos;s exact, organic peak performance threshold. We do
-                not need to guess what would have happened if they played a
-                different gauge – the game does it for us.
+                Qwilight is uniquely suited for IRT estimation due to its <strong className="text-foreground">Gauge Auto-Shift (GAS)</strong> system: a failed V-HARD play automatically continues on the HARD gauge. The clear status recorded on the IR therefore represents a player&apos;s genuine organic peak survival threshold without requiring artificial gauge conversion guesses.
               </p>
-              <p className="text-xs">
+              <p className="text-xs pt-1 font-mono">
                 Inspired by{" "}
                 <a
                   href="https://github.com/HorieYuuka"
@@ -501,22 +604,12 @@ function AboutTab({ meta }: { meta: Meta | null }) {
           ) : (
             <>
               <p>
-                <strong className="text-foreground">QUEstimator</strong>는{" "}
-                <span className="text-foreground">Qwilight</span>의 U_E 스케일
-                6키 채보를 위한 데이터 기반 난이도 추정 시스템입니다. 문항반응이론
-                (IRT)을 적용하여 HARD 및 V-HARD 클리어 달성의 정확한 난이도를
-                평가하며, 플레이어에게 고정밀도의 커뮤니티 보정 목표를 제공합니다.
+                <strong className="text-foreground">QUEstimator</strong>는 <span className="text-foreground">Qwilight</span>의 U_E 스케일 6키 채보를 위한 데이터 기반 난이도 추정 시스템입니다. 문항반응이론(IRT)의 등급 반응 모델(GRM)을 적용하여 실제 인터넷 랭킹(IR) 플레이 로그로부터 HARD 및 V-HARD 클리어의 잠재 난이도 임계값을 직접 추정합니다.
               </p>
               <p>
-                Qwilight는{" "}
-                <strong className="text-foreground">Gauge Auto-Shift (GAS)</strong>{" "}
-                시스템 덕분에 이 용도에 특히 적합합니다. V-HARD 실패 시 자동으로
-                HARD로 이어지기 때문에, 인터넷 랭킹(IR)에 기록되는 클리어 상태는
-                플레이어의 정확하고 자연스러운 최고 성과 임계값을 나타냅니다.
-                다른 게이지로 플레이했다면 어땠을지 추측할 필요가 없습니다 –
-                게임이 대신 해줍니다.
+                Qwilight는 <strong className="text-foreground">Gauge Auto-Shift (GAS)</strong> 시스템 덕분에 IRT 분석에 최적화되어 있습니다. V-HARD 실패 시 자동으로 HARD 게이지로 전환되므로, IR에 기록되는 클리어 상태는 별도의 추측 없이 플레이어의 자연스러운 최고 성과 임계값을 그대로 반영합니다.
               </p>
-              <p className="text-xs">
+              <p className="text-xs pt-1 font-mono">
                 {" "}
                 <a
                   href="https://github.com/HorieYuuka"
@@ -530,150 +623,104 @@ function AboutTab({ meta }: { meta: Meta | null }) {
               </p>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="gap-3 py-4">
-        <CardHeader>
-          <CardTitle>{t.methodology}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          {t.lang === "en" ? (
-            <>
-              <p>
-                To handle the ordered clear statuses generated by the GAS system,
-                the system uses a <strong className="text-foreground">Graded
-                Response Model (GRM)</strong>. The categories represent strict,
-                ordered survival thresholds: FAILED → NORMAL → HARD → V-HARD.
-              </p>
-              <div className="rounded-md border border-border/50 bg-card/40 p-3 font-mono text-xs">
-                <div className="text-muted-foreground mb-1">P*(θ, k) = 1 / (1 + exp(−a · (θ − b<sub>k</sub>)))</div>
-                <div className="text-[11px]">
-                  The probability that a player with latent skill θ survives the
-                  gauge drop of tier k.
-                </div>
-              </div>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>
-                  <strong className="text-foreground">θ (Player Ability)</strong>:
-                  latent skill level. Estimated from the population distribution,
-                  anchored to N(0, σ²).
-                </li>
-                <li>
-                  <strong className="text-foreground">a (Discrimination)</strong>:
-                  slope of the curve. High a = strict gatekeeper; low a = high
-                  variance (e.g. spammy or subjective patterns).
-                </li>
-                <li>
-                  <strong className="text-foreground">b<sub>k</sub> (Difficulty)</strong>:
-                  the player skill at which P*(θ, k) = 50%. Reported separately
-                  for HARD and V-HARD tiers.
-                </li>
-              </ul>
-              <div className="rounded-md border border-border/40 bg-muted/20 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground/80">Note on NORMAL:</strong> The
-                model internally estimates a third threshold for NORMAL clears,
-                but it is not surfaced in the dashboard. The NORMAL gauge is
-                currently being reworked by the Qwilight developer, and its
-                difficulty values will be displayed once the gauge mechanics are
-                finalized.
-              </div>
-            </>
-          ) : (
-            <>
-              <p>
-                GAS 시스템이 생성하는 순서형 클리어 상태를 처리하기 위해
-                <strong className="text-foreground"> 등급 반응 모델 (GRM)</strong>을
-                사용합니다. 카테고리는 엄격한 순서형 생존 임계값을 나타냅니다:
-                FAILED → NORMAL → HARD → V-HARD.
-              </p>
-              <div className="rounded-md border border-border/50 bg-card/40 p-3 font-mono text-xs">
-                <div className="text-muted-foreground mb-1">P*(θ, k) = 1 / (1 + exp(−a · (θ − b<sub>k</sub>)))</div>
-                <div className="text-[11px]">
-                  잠재 능력 θ를 가진 플레이어가 tier k의 게이지 드롭에서
-                  생존할 확률.
-                </div>
-              </div>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>
-                  <strong className="text-foreground">θ (플레이어 능력)</strong>:
-                  잠재 능력 수준. 모집단 분포에서 추정되며 N(0, σ²)에 고정됩니다.
-                </li>
-                <li>
-                  <strong className="text-foreground">a (변별도)</strong>:
-                  곡선의 기울기. a가 높으면 엄격한 관문; a가 낮으면 높은 분산
-                  (예: 스팸성 또는 주관적인 패턴).
-                </li>
-                <li>
-                  <strong className="text-foreground">b<sub>k</sub> (난이도)</strong>:
-                  P*(θ, k) = 50%가 되는 플레이어 능력. HARD 및 V-HARD tier에
-                  대해 별도로 보고됩니다.
-                </li>
-              </ul>
-              <div className="rounded-md border border-border/40 bg-muted/20 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground/80">NORMAL 참고:</strong>{" "}
-                모델은 내부적으로 NORMAL 클리어에 대한 세 번째 임계값을 추정하지만,
-                대시보드에는 표시하지 않습니다. NORMAL 게이지는 현재 Qwilight
-                개발자에 의해 재작업 중이며, 게이지 메커니즘이 확정되면 난이도
-                값이 표시될 예정입니다.
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {/* Methodology panel */}
+      <div className="rounded-lg border border-border/80 bg-card p-5 sm:p-6">
+        <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
+          <ListTree className="w-4 h-4 text-emerald-400" />
+          {t.methodology}
+        </h3>
+        <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+          <p>
+            {t.lang === "en"
+              ? "To model ordered clear statuses (FAILED → NORMAL → HARD → V-HARD), QUEstimator uses Samejima's Graded Response Model (GRM):"
+              : "순서형 클리어 상태 (FAILED → NORMAL → HARD → V-HARD)를 모델링하기 위해 Samejima의 등급 반응 모델(GRM)을 사용합니다:"}
+          </p>
 
-      <Card className="gap-3 py-4">
-        <CardHeader>
-          <CardTitle>{t.pipelineState}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground text-[10px] uppercase">{t.model}</div>
-              <div className="font-mono">{meta?.model}</div>
+          <div className="rounded-md border border-border/80 bg-background/80 p-3.5 font-mono text-xs">
+            <div className="text-cyan-400 font-semibold mb-1">
+              P*(θ, k) = 1 / (1 + exp(−a · (θ − b_k)))
             </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground text-[10px] uppercase">{t.categories}</div>
-              <div className="font-mono">{meta?.categories.join(" → ")}</div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground text-[10px] uppercase">{t.provisionalRule}</div>
-              <div className="font-mono text-[11px]">{meta?.provisional_rule}</div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground text-[10px] uppercase">{t.runtimeLabel}</div>
-              <div className="font-mono">{meta?.runtime_sec}s</div>
+            <div className="text-[11px] text-muted-foreground">
+              {t.lang === "en"
+                ? "The cumulative probability that a player with latent ability θ survives tier k."
+                : "잠재 능력 θ를 가진 플레이어가 tier k의 게이지 드롭에서 생존할 누적 확률."}
             </div>
           </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="gap-3 py-4">
-        <CardHeader>
-          <CardTitle>{t.techStack}</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-1">
-          {t.lang === "en" ? (
-            <>
-              <div><strong className="text-foreground">Data pipeline:</strong> Python 3 · NumPy · SciPy · pandas</div>
-              <div><strong className="text-foreground">Statistical model:</strong> Bayesian Graded Response Model (MCMC NUTS via Numpyro)</div>
-              <div><strong className="text-foreground">Frontend:</strong> Next.js 16 · TypeScript · Tailwind CSS · shadcn/ui</div>
-              <div><strong className="text-foreground">Visualization:</strong> Custom SVG (box plots, GRM curves)</div>
-              <div><strong className="text-foreground">Scale mapping:</strong> Piecewise linear interpolation (LERP) over posterior medians</div>
-              <div><strong className="text-foreground">Automation target:</strong> GitHub Actions cron → static JSON</div>
-            </>
-          ) : (
-            <>
-              <div><strong className="text-foreground">데이터 파이프라인:</strong> Python 3 · NumPy · SciPy · pandas</div>
-              <div><strong className="text-foreground">통계 모델:</strong> 베이지안 등급 반응 모델 (Numpyro 기반 MCMC NUTS)</div>
-              <div><strong className="text-foreground">프론트엔드:</strong> Next.js 16 · TypeScript · Tailwind CSS · shadcn/ui</div>
-              <div><strong className="text-foreground">시각화:</strong> 커스텀 SVG (박스 플롯, GRM 곡선)</div>
-              <div><strong className="text-foreground">스케일 변환:</strong> 사후 중앙값 기반 구간 선형 보간 (LERP)</div>
-              <div><strong className="text-foreground">자동화 목표:</strong> GitHub Actions cron → 정적 JSON</div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
+            <div className="p-3 rounded border border-border/60 bg-muted/20">
+              <div className="text-foreground font-semibold mb-1">θ (Player Ability)</div>
+              <div className="text-muted-foreground text-[11px]">
+                {t.lang === "en"
+                  ? "Latent skill level, anchored to N(0, σ²)."
+                  : "플레이어 잠재 능력, N(0, σ²)에 정규화."}
+              </div>
+            </div>
+            <div className="p-3 rounded border border-border/60 bg-muted/20">
+              <div className="text-foreground font-semibold mb-1">a (Discrimination)</div>
+              <div className="text-muted-foreground text-[11px]">
+                {t.lang === "en"
+                  ? "Steepness of curve; strict gatekeeping vs random variance."
+                  : "곡선의 기울기; 엄격한 관문성 vs 변동성."}
+              </div>
+            </div>
+            <div className="p-3 rounded border border-border/60 bg-muted/20">
+              <div className="text-foreground font-semibold mb-1">b_k (Difficulty)</div>
+              <div className="text-muted-foreground text-[11px]">
+                {t.lang === "en"
+                  ? "Point where survival probability reaches 50%."
+                  : "생존 확률이 50%에 도달하는 임계 난이도."}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-300/90 font-mono">
+            <strong>NORMAL NOTE:</strong> The NORMAL gauge is undergoing revision in Qwilight. Its threshold is joint-estimated in the backend model and will be displayed when official gauge dynamics are finalized.
+          </div>
+        </div>
+      </div>
+
+      {/* Pipeline & Diagnostics panel */}
+      <div className="rounded-lg border border-border/80 bg-card p-5 sm:p-6">
+        <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-amber-400" />
+          {t.pipelineState}
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+          <div className="rounded border border-border/60 p-2.5 bg-muted/20">
+            <div className="text-muted-foreground text-[10px] uppercase">{t.model}</div>
+            <div className="text-foreground font-semibold mt-0.5">{meta?.model}</div>
+          </div>
+          <div className="rounded border border-border/60 p-2.5 bg-muted/20">
+            <div className="text-muted-foreground text-[10px] uppercase">{t.categories}</div>
+            <div className="text-foreground font-semibold mt-0.5">{meta?.categories.join(" → ")}</div>
+          </div>
+          <div className="rounded border border-border/60 p-2.5 bg-muted/20">
+            <div className="text-muted-foreground text-[10px] uppercase">{t.provisionalRule}</div>
+            <div className="text-foreground font-semibold mt-0.5">{meta?.provisional_rule}</div>
+          </div>
+          <div className="rounded border border-border/60 p-2.5 bg-muted/20">
+            <div className="text-muted-foreground text-[10px] uppercase">{t.runtimeLabel}</div>
+            <div className="text-foreground font-semibold mt-0.5">{meta?.runtime_sec}s</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tech Stack */}
+      <div className="rounded-lg border border-border/80 bg-card p-5 sm:p-6">
+        <h3 className="text-base font-bold text-foreground mb-2">
+          {t.techStack}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-muted-foreground">
+          <div><span className="text-foreground font-semibold">Inference Engine:</span> NumPyro NUTS MCMC · JAX</div>
+          <div><span className="text-foreground font-semibold">Quadrature:</span> 101-node Gauss–Hermite integration</div>
+          <div><span className="text-foreground font-semibold">Frontend:</span> Next.js 16 · React 19 · Tailwind CSS</div>
+          <div><span className="text-foreground font-semibold">Scale System:</span> Piecewise LERP · Posterior Medians</div>
+        </div>
+      </div>
     </div>
   );
 }

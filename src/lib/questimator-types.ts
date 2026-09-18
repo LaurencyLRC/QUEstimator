@@ -65,6 +65,18 @@ export interface Meta {
   player_theta_mean: number;
   player_theta_std: number;
   runtime_sec: number;
+  mcmc_chains?: number;
+  mcmc_warmup?: number;
+  mcmc_samples_per_chain?: number;
+  convergence?: {
+    r_hat_max?: number;
+    ess_min?: number;
+    convergence_ok?: boolean;
+    n_params_bad_rhat?: number;
+    n_params_low_ess?: number;
+    r_hat_threshold?: number;
+    ess_threshold?: number;
+  };
 }
 
 export interface SamplePlayers {

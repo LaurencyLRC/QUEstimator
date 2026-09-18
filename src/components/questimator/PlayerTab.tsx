@@ -364,17 +364,34 @@ export function PlayerTab({
 
   return (
     <div className="space-y-6">
-      <Card className="gap-3 py-4">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <User className="w-4 h-4" />
-            {t.playerProfile}
-          </CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t.playerProfileDesc}
-          </p>
-        </CardHeader>
-        <CardContent>
+      {/* Player Identity & Search Console */}
+      <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-border/40">
+          <div>
+            <h3 className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
+              <User className="w-4 h-4 text-cyan-400" />
+              {t.playerProfile}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+              {t.playerProfileDesc}
+            </p>
+          </div>
+          {currentPlayer && (
+            <div className="flex items-center gap-2">
+              {isCustomProfile ? (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                  OFFLINE LOCAL
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  ONLINE IR
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -383,7 +400,7 @@ export function PlayerTab({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="pl-9"
+                className="pl-9 font-mono text-xs bg-background/50 border-border/80"
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -392,20 +409,23 @@ export function PlayerTab({
               onClick={() => handleSearch()}
               disabled={loadingPlayers || !query.trim()}
               size="sm"
+              className="text-xs font-mono"
             >
               {loadingPlayers ? "…" : t.search}
             </Button>
           </div>
+
           {notFound && (
-            <p className="text-xs text-rose-400 mt-2">{t.playerNotFound}</p>
+            <p className="text-xs text-rose-400 mt-2 font-mono">{t.playerNotFound}</p>
           )}
           {loadError && (
-            <p className="text-xs text-rose-400 mt-2">
+            <p className="text-xs text-rose-400 mt-2 font-mono">
               {t.loadFailed}: {loadError}
             </p>
           )}
+
           {searchResults && searchResults.length > 1 && (
-            <div className="mt-2 max-h-60 overflow-y-auto rounded-md border border-border/50">
+            <div className="mt-3 max-h-60 overflow-y-auto rounded-md border border-border/80 bg-background/95">
               {searchResults.map((r) => (
                 <button
                   key={r.id}
@@ -415,9 +435,9 @@ export function PlayerTab({
                     setSearchResults(null);
                     setQuery(r.id);
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-muted/40 flex items-center justify-between border-b border-border/30 last:border-0"
+                  className="w-full text-left px-3 py-2 hover:bg-muted/40 flex items-center justify-between border-b border-border/30 last:border-0 transition-colors"
                 >
-                  <span className="font-medium">{r.name}</span>
+                  <span className="font-medium font-jp text-sm">{r.name}</span>
                   <span className="text-xs text-muted-foreground font-mono ml-2">
                     {r.id} · {r.clears} clears
                   </span>
@@ -425,28 +445,61 @@ export function PlayerTab({
               ))}
             </div>
           )}
-          {currentPlayer && (
-            <div className="mt-2 text-xs text-muted-foreground">
-              <span className="font-mono text-foreground">{activePlayerExternal?.id ?? submittedID}</span>
-              {currentPlayer.n && (
-                <span className="ml-1.5">· {currentPlayer.n}</span>
-              )}
-              <span className="mx-1.5">·</span>
-              {t.clearsCount(analytics?.totalClears ?? 0)}
-              {percentile != null && (
-                <>
-                  <span className="mx-1.5">·</span>
-                  <span className="font-mono">Top {((1 - percentile) * 100).toFixed(1)}%</span>
-                </>
-              )}
-              {isCustomProfile && <Badge variant="outline" className="ml-2 text-[9px] py-0 border-blue-500/40 text-blue-400">OFFLINE PROFILE</Badge>}
-              {isCustomProfile && <span className="ml-2">Click any chart to edit its clear status (use the Charts tab to search all charts).</span>}
+
+          {/* Active Player Status Banner */}
+          {currentPlayer && analytics && (
+            <div className="mt-4 pt-4 border-t border-border/40">
+              <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground font-semibold text-sm">
+                    {currentPlayer.n ?? activePlayerExternal?.id ?? submittedID}
+                  </span>
+                  {currentPlayer.n && (
+                    <span className="text-muted-foreground text-xs font-mono">
+                      ({activePlayerExternal?.id ?? submittedID})
+                    </span>
+                  )}
+                  {percentile != null && (
+                    <span className="px-1.5 py-0.2 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                      Top {((1 - percentile) * 100).toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+                <div className="text-muted-foreground">
+                  <span className="text-foreground font-semibold">{analytics.totalClears}</span> / {charts.length} clears ({((analytics.totalClears / charts.length) * 100).toFixed(1)}%)
+                </div>
+              </div>
+
+              {/* Proportional clear status gauge bar */}
+              <div className="w-full h-2 rounded-sm overflow-hidden flex bg-muted/60 border border-border/40 mt-2">
+                <div
+                  style={{ width: `${(analytics.statusCounts[3] / charts.length) * 100}%`, background: "oklch(0.68 0.24 305)" }}
+                  title={`V-HARD: ${analytics.statusCounts[3]}`}
+                  className="h-full"
+                />
+                <div
+                  style={{ width: `${(analytics.statusCounts[2] / charts.length) * 100}%`, background: "oklch(0.68 0.23 25)" }}
+                  title={`HARD: ${analytics.statusCounts[2]}`}
+                  className="h-full"
+                />
+                <div
+                  style={{ width: `${(analytics.statusCounts[1] / charts.length) * 100}%`, background: "oklch(0.82 0.17 85)" }}
+                  title={`NORMAL: ${analytics.statusCounts[1]}`}
+                  className="h-full"
+                />
+                <div
+                  style={{ width: `${(analytics.statusCounts[0] / charts.length) * 100}%`, background: "oklch(0.40 0 0)" }}
+                  title={`FAILED: ${analytics.statusCounts[0]}`}
+                  className="h-full"
+                />
+              </div>
             </div>
           )}
 
-          <div className="flex gap-6 mt-6 border-t border-border/40 pt-5 flex-col sm:flex-row">
-            <div className="flex-1 space-y-3">
-              <div className="text-sm font-medium">{t.offlineProfiles}</div>
+          {/* Profile Management Sub-Bar */}
+          <div className="flex gap-4 mt-4 border-t border-border/40 pt-4 flex-col sm:flex-row items-center justify-between text-xs">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="text-muted-foreground font-mono shrink-0">{t.offlineProfiles}:</span>
               <Select
                 value={isCustomProfile ? submittedID : ""}
                 onValueChange={(v) => {
@@ -456,27 +509,25 @@ export function PlayerTab({
                   }
                 }}
               >
-                <SelectTrigger className="w-full text-xs">
+                <SelectTrigger className="w-full sm:w-[180px] h-8 text-xs font-mono">
                   <SelectValue placeholder={t.selectOfflineProfile} />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.keys(customProfiles).map((id) => (
-                    <SelectItem key={id} value={id}>{id}</SelectItem>
+                    <SelectItem key={id} value={id} className="font-mono text-xs">{id}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex-1 space-y-3">
-              <div className="text-sm font-medium">{t.manage}</div>
-
+            <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-end">
               {isCreating ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Input
                     placeholder={t.profileName}
                     value={newProfileName}
                     onChange={e => setNewProfileName(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs font-mono w-36"
                     autoFocus
                     onKeyDown={e => {
                       if (e.key === "Enter" && newProfileName.trim() && onSaveCustomProfile) {
@@ -491,7 +542,7 @@ export function PlayerTab({
                       }
                     }}
                   />
-                  <Button size="sm" className="h-8 text-xs" onClick={() => {
+                  <Button size="sm" className="h-8 text-xs font-mono" onClick={() => {
                     if (newProfileName.trim() && onSaveCustomProfile) {
                       const name = newProfileName.trim();
                       onSaveCustomProfile(name, currentPlayer ? { ...currentPlayer, c: { ...currentPlayer.c } } : { t: 0, c: {} });
@@ -503,14 +554,14 @@ export function PlayerTab({
                   }}>
                     {t.save}
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setIsCreating(false)}>
+                  <Button size="sm" variant="ghost" className="h-8 text-xs font-mono" onClick={() => setIsCreating(false)}>
                     {t.cancel}
                   </Button>
                 </div>
               ) : (
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-1.5 flex-wrap">
                   <Button
-                    size="sm" variant="outline" className="text-xs"
+                    size="sm" variant="outline" className="h-8 text-xs font-mono"
                     onClick={() => {
                       setIsCreating(true);
                     }}
@@ -521,7 +572,7 @@ export function PlayerTab({
                   {isCustomProfile && currentPlayer && (
                     <>
                       <Button
-                        size="sm" variant="outline" className="text-xs text-rose-400 border-rose-400/30 hover:bg-rose-400/10"
+                        size="sm" variant="outline" className="h-8 text-xs font-mono text-rose-400 border-rose-400/30 hover:bg-rose-400/10"
                         onClick={() => {
                           if (onDeleteCustomProfile) {
                             onDeleteCustomProfile(submittedID);
@@ -533,7 +584,7 @@ export function PlayerTab({
                         <Trash2 className="w-3 h-3 mr-1" /> {t.deleteProfile}
                       </Button>
                       <Button
-                        size="sm" variant="outline" className="text-xs"
+                        size="sm" variant="outline" className="h-8 text-xs font-mono"
                         onClick={() => {
                           const blob = new Blob([JSON.stringify(currentPlayer)], { type: "application/json" });
                           const url = URL.createObjectURL(blob);
@@ -550,7 +601,7 @@ export function PlayerTab({
                   )}
 
                   <Button
-                    size="sm" variant="outline" className="text-xs relative overflow-hidden"
+                    size="sm" variant="outline" className="h-8 text-xs font-mono relative overflow-hidden"
                   >
                     <Upload className="w-3 h-3 mr-1" /> {t.importProfile}
                     <input
@@ -581,223 +632,249 @@ export function PlayerTab({
               )}
             </div>
           </div>
-
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {currentPlayer && analytics && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            <Card className="gap-3 py-4">
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" />
+          {/* Twin Telemetry Panels */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            {/* Left: Skill Distribution Engine */}
+            <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border/40">
+                <h4 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-cyan-400" />
                   {t.estimatedSkill}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <div className="font-mono text-3xl font-bold">
-                    <span className="text-cyan-400">{format(currentPlayer.t, mode === "lerp" ? 2 : 3)}</span>
-                  </div>
-                  {percentile != null && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {t.lang === "en"
-                        ? `Top ${(100 - percentile * 100).toFixed(1)}% of tracked players`
-                        : `추적 대상 플레이어 중 상위 ${(100 - percentile * 100).toFixed(1)}%`}
-                    </div>
-                  )}
+                </h4>
+                {percentile != null && (
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    {t.lang === "en"
+                      ? `Top ${(100 - percentile * 100).toFixed(1)}%`
+                      : `상위 ${(100 - percentile * 100).toFixed(1)}%`}
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <div className="font-mono text-3xl font-black text-cyan-400 tracking-tight">
+                  {format(currentPlayer.t, mode === "lerp" ? 2 : 3)}
+                  <span className="text-xs font-normal text-muted-foreground ml-2">
+                    {mode === "lerp" ? "Level" : "θ ability"}
+                  </span>
                 </div>
-                {samplePlayers && (
-                  <div>
+              </div>
+
+              {samplePlayers && (
+                <div>
                   <PlayerSkillHistogram
                     data={samplePlayers}
                     playerTheta={currentPlayer.t}
                   />
-                  <div className="text-[10px] text-muted-foreground text-center mt-1">
+                  <div className="text-[10px] font-mono text-muted-foreground text-center mt-1">
                     {t.histogramXAxis(mode === 'lerp')}
                   </div>
-                  </div>
-                )}
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {([3, 2, 1, 0] as const).map((s) => {
-                    const meta = STATUS_LABELS[s];
-                    const n = analytics.statusCounts[s];
-                    return (
-                      <div
-                        key={s}
-                        className="flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs"
-                        title={`Status ${s}: ${meta.short}`}
-                      >
-                        <span
-                          className="inline-block w-2 h-2 rounded-full"
-                          style={{ background: meta.color }}
-                        />
-                        <span className="font-mono">{meta.short}</span>
-                        <span className="text-muted-foreground">{n}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="gap-3 py-4">
-              <CardHeader>
-                <CardTitle className="text-sm">
-                  {t.lang === "en" ? "HARD+ Clears by Level" : "레벨별 HARD+ 클리어"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {analytics.clearedLevels.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    {t.lang === "en"
-                      ? "No HARD+ clears logged yet."
-                      : "HARD 이상 클리어 기록이 없습니다."}
-                  </p>
-                ) : (
-                  <ScrollArea className="max-h-[220px] pr-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      {analytics.clearedLevels.map(([lvl, n]) => (
-                        <Badge
-                          key={lvl}
-                          variant="outline"
-                          className="font-mono text-xs"
-                        >
-                          <span className={isSpecialLevel(lvl) ? "text-amber-400 mr-1" : "text-muted-foreground mr-1"}>
-                            {lvl}
-                          </span>
-                          <span className="text-foreground">{n}</span>
-                        </Badge>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-                <p className="text-[11px] text-muted-foreground mt-3">
-                  {t.lang === "en"
-                    ? `Population: μ=${format(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`
-                    : `모집단: μ=${format(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="gap-3 py-4">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  {t.recommendedCharts}
-                </CardTitle>
-                <Select value={targetStatus} onValueChange={(v: any) => setTargetStatus(v)}>
-                  <SelectTrigger className="w-[110px] h-8 text-xs font-mono">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HARD">HARD</SelectItem>
-                    <SelectItem value="V-HARD">V-HARD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t.lang === "en"
-                  ? `Charts you haven't ${targetStatus} cleared where P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] — challenging but achievable. Top ${REC_LIMIT} shown.`
-                  : `${targetStatus} 미클리어 채보 중 P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}]인 도전 가능한 채보. 상위 ${REC_LIMIT}개.`}
-              </p>
-            </CardHeader>
-            <CardContent>
-              {analytics.recommendations.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  {t.noRecommendations}
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {analytics.recommendations.map(({ chart, p }) => (
-                    <RecommendationCard
-                      key={chart.md5}
-                      chart={chart}
-                      p={p}
-                      onClick={() => onSelectChart(chart)}
-                      formatFn={format}
-                      t={t}
-                      mode={mode}
-                      targetStatus={targetStatus}
-                      chartMaxTheta={chartMaxTheta}
-                    />
-                  ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
 
-          <Card className="gap-3 py-4">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              {/* Status pills */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {([3, 2, 1, 0] as const).map((s) => {
+                  const meta = STATUS_LABELS[s];
+                  const n = analytics.statusCounts[s];
+                  return (
+                    <div
+                      key={s}
+                      className="flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1 text-xs font-mono"
+                      title={`Status ${s}: ${meta.short}`}
+                    >
+                      <span
+                        className="inline-block w-2 h-2 rounded-full"
+                        style={{ background: meta.color }}
+                      />
+                      <span className="font-bold">{meta.short}</span>
+                      <span className="text-foreground">{n}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right: Folder Clears Matrix */}
+            <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border/40">
+                <h4 className="text-sm font-semibold tracking-tight text-foreground">
+                  {t.lang === "en" ? "HARD+ Clears by Level Folder" : "레벨 폴더별 HARD+ 클리어"}
+                </h4>
+                <span className="text-xs font-mono text-muted-foreground">
+                  {analytics.clearedLevels.length} active
+                </span>
+              </div>
+
+              {analytics.clearedLevels.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-6 text-center font-mono">
+                  {t.lang === "en"
+                    ? "No HARD+ clears logged yet."
+                    : "HARD 이상 클리어 기록이 없습니다."}
+                </p>
+              ) : (
+                <ScrollArea className="max-h-[240px] pr-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {analytics.clearedLevels.map(([lvl, n]) => (
+                      <div
+                        key={lvl}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-border/60 bg-muted/20 font-mono text-xs"
+                      >
+                        <span className={isSpecialLevel(lvl) ? "text-amber-400 font-bold" : "text-muted-foreground"}>
+                          {lvl}
+                        </span>
+                        <span className="text-border">|</span>
+                        <span className="text-foreground font-semibold">{n}</span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+
+              <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/40 font-mono">
+                {t.lang === "en"
+                  ? `Population: μ=${format(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`
+                  : `모집단: μ=${format(playerThetaMean)}, σ=${playerThetaStd.toFixed(3)} (n=${samplePlayers?.n_players ?? 0}).`}
+              </p>
+            </div>
+          </div>
+          {/* Training Horizon: Recommended Charts */}
+          <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-border/40">
+              <div>
+                <h4 className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  {t.recommendedCharts}
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                  {t.lang === "en"
+                    ? `Charts where P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] — prime target horizon. Top ${REC_LIMIT} shown.`
+                    : `P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] 적정 성장 구간 채보. 상위 ${REC_LIMIT}개.`}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1.5 font-mono text-xs">
+                <span className="text-muted-foreground">Target:</span>
+                <div className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80">
+                  <button
+                    onClick={() => setTargetStatus("HARD")}
+                    className={`px-2.5 py-1 rounded transition-all font-medium ${
+                      targetStatus === "HARD"
+                        ? "bg-card text-foreground shadow-sm border border-border/80"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    HARD
+                  </button>
+                  <button
+                    onClick={() => setTargetStatus("V-HARD")}
+                    className={`px-2.5 py-1 rounded transition-all font-medium ${
+                      targetStatus === "V-HARD"
+                        ? "bg-card text-foreground shadow-sm border border-border/80"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    V-HARD
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {analytics.recommendations.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center font-mono">
+                {t.noRecommendations}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {analytics.recommendations.map(({ chart, p }) => (
+                  <RecommendationCard
+                    key={chart.md5}
+                    chart={chart}
+                    p={p}
+                    onClick={() => onSelectChart(chart)}
+                    formatFn={format}
+                    t={t}
+                    mode={mode}
+                    targetStatus={targetStatus}
+                    chartMaxTheta={chartMaxTheta}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Probability Horizon Table Panel */}
+          <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-4">
+            <div className="pb-3 border-b border-border/40">
+              <h4 className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
                 <Target className={`w-4 h-4 ${targetStatus === "HARD" ? "text-rose-400" : "text-purple-400"}`} />
                 {t.yourProbabilities}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5 font-mono">
                 {t.lang === "en"
                   ? `All uncompleted charts with P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
                   : `P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
               </p>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border border-border/60 overflow-hidden">
-                <ScrollArea className="max-h-[480px]">
-                  <Table className="w-full text-sm">
-                    <TableHeader className="sticky top-0 bg-card z-10">
-                      <TableRow className="border-b border-border/60 text-left">
-                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs">{t.chart}</TableHead>
-                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-center w-[60px]">{t.level}</TableHead>
-                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">P({targetStatus})</TableHead>
-                        <TableHead className="px-3 py-2 font-medium text-muted-foreground text-xs text-right w-[80px]">b_{targetStatus === "HARD" ? "hard" : "vhard"}</TableHead>
+            </div>
+
+            <div className="rounded-md border border-border/80 overflow-hidden font-mono text-xs">
+              <ScrollArea className="max-h-[480px]">
+                <Table className="w-full">
+                  <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
+                    <TableRow className="border-b border-border text-left">
+                      <TableHead className="px-3 py-2.5 font-semibold text-muted-foreground text-xs uppercase">{t.chart}</TableHead>
+                      <TableHead className="px-3 py-2.5 font-semibold text-muted-foreground text-xs text-center w-[70px] uppercase">{t.level}</TableHead>
+                      <TableHead className="px-3 py-2.5 font-semibold text-muted-foreground text-xs text-right w-[90px] uppercase">P({targetStatus})</TableHead>
+                      <TableHead className="px-3 py-2.5 font-semibold text-muted-foreground text-xs text-right w-[90px] uppercase">b_{targetStatus === "HARD" ? "hard" : "vhard"}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-border/30">
+                    {analytics.allProbabilities.map(({ chart, p }) => (
+                      <TableRow
+                        key={chart.md5}
+                        onClick={() => onSelectChart(chart)}
+                        className="hover:bg-muted/40 cursor-pointer transition-colors"
+                      >
+                        <TableCell className="font-medium font-jp py-2.5">
+                          <div className="flex flex-col">
+                            <span className="text-sm leading-snug line-clamp-1 text-foreground">{chart.title}</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {chart.artist || "unknown"}
+                              {chart.name_diff && ` · ${chart.name_diff}`}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-mono text-xs py-2.5">
+                          <span className={isSpecialLevel(chart.level) ? "text-amber-400 font-bold" : "text-muted-foreground"}>
+                            {chart.level}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs py-2.5">
+                          <ProbabilityBadge p={p} />
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs py-2.5">
+                          <span style={{
+                            color: targetStatus === "HARD"
+                              ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)")
+                              : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)")
+                          }}>
+                            {targetStatus === "HARD"
+                              ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : format(chart.b_hard_display))
+                              : (chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : format(chart.b_vhard_display))
+                            }
+                          </span>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {analytics.allProbabilities.map(({ chart, p }) => (
-                        <TableRow
-                          key={chart.md5}
-                          onClick={() => onSelectChart(chart)}
-                          className="border-b border-border/30 hover:bg-muted/40 cursor-pointer"
-                        >
-                          <TableCell className="font-medium font-jp">
-                            <div className="flex flex-col">
-                              <span className="text-sm leading-snug line-clamp-1">{chart.title}</span>
-                              <span className="text-[11px] text-muted-foreground">
-                                {chart.artist || "unknown"}
-                                {chart.name_diff && ` · ${chart.name_diff}`}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center font-mono text-sm">
-                            <span className={isSpecialLevel(chart.level) ? "text-amber-400" : "text-muted-foreground"}>
-                              {chart.level}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            <ProbabilityBadge p={p} />
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            <span style={{
-                              color: targetStatus === "HARD"
-                                ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)")
-                                : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)")
-                            }}>
-                              {targetStatus === "HARD"
-                                ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : format(chart.b_hard_display))
-                                : (chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : format(chart.b_vhard_display))
-                              }
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </div>
-            </CardContent>
-          </Card>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -823,41 +900,40 @@ function RecommendationCard({
   targetStatus: "HARD" | "V-HARD";
   chartMaxTheta?: Map<number, number> | null;
 }) {
-  const bVal = targetStatus === "HARD" ? chart.b_hard_display : chart.b_vhard_display;
   return (
     <button
       onClick={onClick}
-      className="text-left rounded-md border border-border/60 hover:border-border hover:bg-muted/30 transition-colors p-2.5 flex flex-col gap-1.5"
+      className="text-left rounded-lg border border-border/70 hover:border-border bg-muted/20 hover:bg-muted/40 transition-all p-3 flex flex-col gap-2 group cursor-pointer"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-medium font-jp line-clamp-2 leading-snug">
+        <span className="text-sm font-medium font-jp line-clamp-2 leading-snug group-hover:text-foreground">
           {chart.title}
         </span>
-        <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-background border border-border/60 shrink-0">
           {levelLabel(chart.level)}
-        </Badge>
+        </span>
       </div>
-      <div className="flex items-center justify-between gap-2 text-[11px]">
-        <span className="text-muted-foreground font-jp line-clamp-1">
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="text-muted-foreground font-jp text-[11px] line-clamp-1">
           {chart.artist || "unknown"}
           {chart.name_diff && ` · ${chart.name_diff}`}
         </span>
-        <span className="font-mono font-semibold" style={{ color: targetStatus === "HARD" ? "oklch(0.78 0.18 25)" : "oklch(0.78 0.18 305)" }}>
+        <span className="font-mono font-bold text-xs" style={{ color: targetStatus === "HARD" ? "oklch(0.78 0.20 25)" : "oklch(0.78 0.20 305)" }}>
           {fmtPct(p)}
         </span>
       </div>
-      <div className="h-1 rounded-full bg-muted overflow-hidden">
+      <div className="h-1.5 rounded-sm bg-muted/80 overflow-hidden border border-border/40">
         <div
-          className="h-full"
+          className="h-full rounded-sm"
           style={{
             width: `${Math.min(100, p * 100)}%`,
-            background: targetStatus === "HARD" ? "oklch(0.70 0.22 25)" : "oklch(0.70 0.22 305)",
+            background: targetStatus === "HARD" ? "oklch(0.68 0.23 25)" : "oklch(0.68 0.24 305)",
           }}
         />
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span style={{
+          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span className="font-semibold" style={{
             color: targetStatus === "HARD"
               ? (chart.n_hard + chart.n_vhard === 0 ? "oklch(0.60 0.15 25)" : "oklch(0.78 0.18 25)")
               : (chart.n_vhard === 0 ? "oklch(0.60 0.15 305)" : "oklch(0.78 0.18 305)")
@@ -876,9 +952,9 @@ function RecommendationCard({
 
 function ProbabilityBadge({ p }: { p: number }) {
   let color = "oklch(0.55 0 0)";
-  if (p >= 0.80) color = "oklch(0.70 0.18 145)";
-  else if (p >= 0.50) color = "oklch(0.70 0.18 200)";
-  else if (p >= 0.20) color = "oklch(0.70 0.18 75)";
+  if (p >= 0.80) color = "oklch(0.75 0.18 145)";
+  else if (p >= 0.50) color = "oklch(0.75 0.16 200)";
+  else if (p >= 0.20) color = "oklch(0.82 0.17 85)";
   return (
     <span className="font-mono font-semibold" style={{ color }}>
       {fmtPct(p)}

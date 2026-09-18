@@ -46,40 +46,40 @@ function ClearDistBar({
   nHard: number;
   nVhard: number;
 }) {
-  if (n === 0) return <span className="text-muted-foreground">–</span>;
+  if (n === 0) return <span className="text-muted-foreground font-mono text-xs">–</span>;
 
   const nLower = nNormal + nFailed;
   const pct = (v: number) => (v / n) * 100;
 
   return (
-    <div className="flex flex-col items-end gap-1" title={`V-HARD ${nVhard} | HARD ${nHard} | NORMAL+FAILED ${nLower} (n=${n})`}>
-      <span className="text-[10px] font-mono leading-none tabular-nums">
-        <span style={{ color: "oklch(0.70 0.22 305)" }}>{pct(nVhard).toFixed(1)}%</span>
+    <div className="flex flex-col items-end gap-1 font-mono" title={`V-HARD ${nVhard} | HARD ${nHard} | NORMAL+FAILED ${nLower} (n=${n})`}>
+      <span className="text-[10px] leading-none tabular-nums">
+        <span style={{ color: "oklch(0.78 0.20 305)" }}>{pct(nVhard).toFixed(0)}%</span>
         <span className="text-border mx-0.5">/</span>
-        <span style={{ color: "oklch(0.70 0.22 25)" }}>{pct(nHard).toFixed(1)}%</span>
+        <span style={{ color: "oklch(0.78 0.20 25)" }}>{pct(nHard).toFixed(0)}%</span>
         <span className="text-border mx-0.5">/</span>
-        <span className="text-muted-foreground">{pct(nLower).toFixed(1)}%</span>
+        <span className="text-muted-foreground">{pct(nLower).toFixed(0)}%</span>
       </span>
-      <div className="w-20 h-2 rounded-sm overflow-hidden flex bg-muted">
+      <div className="w-20 h-1.5 rounded-sm overflow-hidden flex bg-muted/60 border border-border/40">
         <div
-          style={{ width: `${pct(nVhard)}%`, background: "oklch(0.62 0.22 305)" }}
+          style={{ width: `${pct(nVhard)}%`, background: "oklch(0.68 0.24 305)" }}
           className="h-full"
         />
         <div
-          style={{ width: `${pct(nHard)}%`, background: "oklch(0.62 0.22 25)" }}
+          style={{ width: `${pct(nHard)}%`, background: "oklch(0.68 0.23 25)" }}
           className="h-full"
         />
         <div
-          style={{ width: `${pct(nLower)}%`, background: "oklch(0.55 0 0)" }}
+          style={{ width: `${pct(nLower)}%`, background: "oklch(0.40 0 0)" }}
           className="h-full"
         />
       </div>
-      <span className="text-[10px] font-mono text-muted-foreground leading-none tabular-nums">
-        <span style={{ color: "oklch(0.70 0.22 305)" }}>{nVhard}</span>
+      <span className="text-[10px] text-muted-foreground leading-none tabular-nums">
+        <span style={{ color: "oklch(0.78 0.20 305)" }}>{nVhard}</span>
         <span className="text-border mx-0.5">/</span>
-        <span style={{ color: "oklch(0.70 0.22 25)" }}>{nHard}</span>
+        <span style={{ color: "oklch(0.78 0.20 25)" }}>{nHard}</span>
         <span className="text-border mx-0.5">/</span>
-        <span className="text-muted-foreground">{nLower}</span>
+        <span>{nLower}</span>
       </span>
     </div>
   );
@@ -93,10 +93,17 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const STATUS_ROW_TINT: Record<number, string> = {
-    3: "oklch(0.28 0.10 305 / 0.18)",
-    2: "oklch(0.28 0.12 25 / 0.18)",
-    1: "oklch(0.28 0.10 95 / 0.15)",
-    0: "oklch(0.25 0 0 / 0.18)",
+    3: "oklch(0.68 0.24 305 / 0.12)",
+    2: "oklch(0.68 0.23 25 / 0.12)",
+    1: "oklch(0.82 0.17 85 / 0.10)",
+    0: "oklch(0.40 0 0 / 0.15)",
+  };
+
+  const STATUS_BADGE: Record<number, { label: string; bg: string; color: string; border: string }> = {
+    3: { label: "VH", bg: "oklch(0.68 0.24 305 / 0.18)", color: "oklch(0.85 0.18 305)", border: "oklch(0.68 0.24 305 / 0.4)" },
+    2: { label: "H", bg: "oklch(0.68 0.23 25 / 0.18)", color: "oklch(0.85 0.18 25)", border: "oklch(0.68 0.23 25 / 0.4)" },
+    1: { label: "N", bg: "oklch(0.82 0.17 85 / 0.18)", color: "oklch(0.88 0.16 85)", border: "oklch(0.82 0.17 85 / 0.4)" },
+    0: { label: "F", bg: "oklch(0.40 0 0 / 0.2)", color: "oklch(0.75 0 0)", border: "oklch(0.50 0 0 / 0.4)" },
   };
 
   const filtered = useMemo(() => {
@@ -292,9 +299,23 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                       >
                         <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-sm leading-snug line-clamp-3">
-                              {c.title}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {hasStatus && (
+                                <span
+                                  className="text-[9px] font-mono px-1 py-0.2 rounded font-bold uppercase shrink-0"
+                                  style={{
+                                    background: STATUS_BADGE[status].bg,
+                                    color: STATUS_BADGE[status].color,
+                                    border: `1px solid ${STATUS_BADGE[status].border}`,
+                                  }}
+                                >
+                                  {STATUS_BADGE[status].label}
+                                </span>
+                              )}
+                              <span className="text-sm leading-snug line-clamp-2">
+                                {c.title}
+                              </span>
+                            </div>
                             <span className="text-[11px] text-muted-foreground">
                               {c.artist || "unknown"}
                               {c.name_diff && ` · ${c.name_diff}`}
@@ -302,7 +323,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                             {c.provisional && (
                               <Badge
                                 variant="outline"
-                                className="text-[9px] py-0 px-1 text-blue-400 border-blue-500/40 w-fit"
+                                className="text-[9px] py-0 px-1 text-cyan-400 border-cyan-500/40 w-fit font-mono"
                               >
                                 {t.provisional}
                               </Badge>
