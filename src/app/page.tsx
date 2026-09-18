@@ -23,9 +23,11 @@ import type {
   LevelSummary,
   Meta,
   PlayerData,
-  PlayersDict
+  PlayersDict,
+  SamplePlayers
 } from "@/lib/questimator-types";
 import {
+  computeSamplePlayers,
   levelSortKey,
   levelLabel,
   isSpecialLevel
@@ -86,6 +88,11 @@ export default function Home() {
       }
     }
     return max;
+  }, [playersData]);
+
+  const samplePlayers = useMemo<SamplePlayers | null>(() => {
+    if (!playersData) return null;
+    return computeSamplePlayers(playersData);
   }, [playersData]);
 
   const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
@@ -336,9 +343,9 @@ export default function Home() {
             <TabsContent value="player" className="mt-0 space-y-6">
               <PlayerTab
                 charts={charts}
-                samplePlayers={null} 
-                playerThetaMean={meta?.player_theta_mean ?? 0}
-                playerThetaStd={meta?.player_theta_std ?? 1}
+                samplePlayers={samplePlayers}
+                playerThetaMean={samplePlayers?.theta_mean ?? meta?.player_theta_mean ?? 0}
+                playerThetaStd={samplePlayers?.theta_std ?? meta?.player_theta_std ?? 1}
                 onSelectChart={handleSelectChart}
                 activePlayerExternal={activePlayer}
                 customProfiles={customProfiles}

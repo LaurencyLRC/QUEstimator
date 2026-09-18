@@ -5,6 +5,7 @@ import { useScale } from "@/lib/value-scale";
 
 interface Props {
   data: SamplePlayers;
+  playerTheta?: number | null;
   width?: number;
   height?: number;
 }
@@ -15,6 +16,7 @@ interface Props {
  */
 export function PlayerSkillHistogram({
   data,
+  playerTheta,
   width = 460,
   height = 180,
 }: Props) {
@@ -35,6 +37,11 @@ export function PlayerSkillHistogram({
     PAD.left + ((t - edges[0]) / (edges[edges.length - 1] - edges[0])) * innerW;
 
   const meanX = xScale(data.theta_mean);
+  const hasPlayer = playerTheta != null && Number.isFinite(playerTheta);
+  const playerClamped = hasPlayer ? Math.max(edges[0], Math.min(edges[edges.length - 1], playerTheta!)) : 0;
+  const playerX = hasPlayer ? xScale(playerClamped) : 0;
+  const isLabelNear = hasPlayer && Math.abs(meanX - playerX) < 45;
+  const meanLabelY = isLabelNear ? PAD.top + 10 : PAD.top - 2;
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
@@ -69,6 +76,8 @@ export function PlayerSkillHistogram({
           />
         );
       })}
+
+      {/* Population mean line (dashed gold) */}
       <line
         x1={meanX}
         y1={PAD.top}
@@ -80,7 +89,7 @@ export function PlayerSkillHistogram({
       />
       <text
         x={meanX}
-        y={PAD.top - 2}
+        y={meanLabelY}
         textAnchor="middle"
         fontSize={9}
         className="fill-muted-foreground"
@@ -88,6 +97,31 @@ export function PlayerSkillHistogram({
       >
         {mode === "lerp" ? `μ=${format(data.theta_mean, 2)}` : `μ=${data.theta_mean.toFixed(2)}`}
       </text>
+
+      {/* Active player needle (solid cyan) */}
+      {hasPlayer && (
+        <g>
+          <line
+            x1={playerX}
+            y1={PAD.top}
+            x2={playerX}
+            y2={PAD.top + innerH}
+            stroke="oklch(0.68 0.15 200)"
+            strokeWidth={2}
+          />
+          <text
+            x={playerX}
+            y={PAD.top - 2}
+            textAnchor="middle"
+            fontSize={9}
+            fill="oklch(0.68 0.15 200)"
+            fontWeight="bold"
+            fontFamily="var(--font-geist-mono)"
+          >
+            {mode === "lerp" ? `θ=${format(playerTheta!, 2)}` : `θ=${format(playerTheta!, 3)}`}
+          </text>
+        </g>
+      )}
 
       {xTicks.map((t) => (
         <text

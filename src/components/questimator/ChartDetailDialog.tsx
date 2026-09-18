@@ -13,6 +13,7 @@ import type { Chart, PlayerData } from "@/lib/questimator-types";
 import { levelLabel } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
+import { GrmCurveChart } from "@/components/questimator/GrmCurveChart";
 
 interface Props {
   chart: Chart | null;
@@ -78,7 +79,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
                   type="single"
                   value={String(activePlayer.data.c?.[chart.id.toString()] ?? -1)}
                   onValueChange={(v) => {
-                    if (v) onClearStatusChange(chart.id, parseInt(v, 10));
+                    onClearStatusChange(chart.id, v ? parseInt(v, 10) : -1);
                   }}
                   size="sm"
                   className="gap-0.5 h-6"
@@ -148,6 +149,22 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               value={chart.n.toString()}
             />
           </div>
+
+          {chart.a != null && chart.b_hard != null && chart.b_vhard != null && (
+            <div className="rounded-md border border-border/40 p-3 bg-card/30">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                {t.lang === "en" ? "GRM Cumulative Survival Probabilities" : "GRM 누적 생존 확률 곡선"}
+              </div>
+              <GrmCurveChart
+                a={chart.a}
+                b_hard={chart.b_hard}
+                b_vhard={chart.b_vhard}
+                playerTheta={activePlayer?.data.t}
+                width={560}
+                height={260}
+              />
+            </div>
+          )}
 
           {chart.comment && (
             <div className="mt-2 rounded-md border border-border/40 p-3 text-xs">

@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-18T17:15:00Z",
+  "title": "Design System: QUEstimator",
+  "extensions": {
+    "colorMeta": {
+      "bg-canvas": {
+        "role": "neutral",
+        "displayName": "Obsidian Canvas",
+        "canonical": "oklch(0.13 0 0)",
+        "tonalRamp": [
+          "oklch(0.08 0 0)",
+          "oklch(0.13 0 0)",
+          "oklch(0.20 0 0)",
+          "oklch(0.30 0 0)",
+          "oklch(0.50 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.98 0 0)"
+        ]
+      },
+      "bg-card": {
+        "role": "neutral",
+        "displayName": "Surface Elevation",
+        "canonical": "oklch(0.16 0 0)",
+        "tonalRamp": [
+          "oklch(0.10 0 0)",
+          "oklch(0.16 0 0)",
+          "oklch(0.24 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.55 0 0)",
+          "oklch(0.75 0 0)",
+          "oklch(0.90 0 0)",
+          "oklch(0.98 0 0)"
+        ]
+      },
+      "lamp-failed": {
+        "role": "neutral",
+        "displayName": "Signal Gray (Failed)",
+        "canonical": "oklch(0.55 0 0)",
+        "tonalRamp": [
+          "oklch(0.20 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.55 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.75 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "lamp-normal": {
+        "role": "tertiary",
+        "displayName": "Amber Gold (Normal)",
+        "canonical": "oklch(0.72 0.16 95)",
+        "tonalRamp": [
+          "oklch(0.30 0.16 95)",
+          "oklch(0.45 0.16 95)",
+          "oklch(0.60 0.16 95)",
+          "oklch(0.72 0.16 95)",
+          "oklch(0.80 0.14 95)",
+          "oklch(0.88 0.10 95)",
+          "oklch(0.93 0.06 95)",
+          "oklch(0.97 0.02 95)"
+        ]
+      },
+      "lamp-hard": {
+        "role": "primary",
+        "displayName": "Crimson Coral (Hard)",
+        "canonical": "oklch(0.70 0.22 25)",
+        "tonalRamp": [
+          "oklch(0.25 0.22 25)",
+          "oklch(0.40 0.22 25)",
+          "oklch(0.55 0.22 25)",
+          "oklch(0.70 0.22 25)",
+          "oklch(0.78 0.18 25)",
+          "oklch(0.85 0.14 25)",
+          "oklch(0.92 0.08 25)",
+          "oklch(0.96 0.04 25)"
+        ]
+      },
+      "lamp-vhard": {
+        "role": "secondary",
+        "displayName": "Violet Magenta (V-Hard)",
+        "canonical": "oklch(0.70 0.22 305)",
+        "tonalRamp": [
+          "oklch(0.25 0.22 305)",
+          "oklch(0.40 0.22 305)",
+          "oklch(0.55 0.22 305)",
+          "oklch(0.70 0.22 305)",
+          "oklch(0.78 0.18 305)",
+          "oklch(0.85 0.14 305)",
+          "oklch(0.92 0.08 305)",
+          "oklch(0.96 0.04 305)"
+        ]
+      },
+      "cyan-theta": {
+        "role": "secondary",
+        "displayName": "Cyan Theta Marker",
+        "canonical": "oklch(0.68 0.15 200)",
+        "tonalRamp": [
+          "oklch(0.25 0.15 200)",
+          "oklch(0.40 0.15 200)",
+          "oklch(0.55 0.15 200)",
+          "oklch(0.68 0.15 200)",
+          "oklch(0.78 0.12 200)",
+          "oklch(0.85 0.09 200)",
+          "oklch(0.92 0.05 200)",
+          "oklch(0.96 0.02 200)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Header title and hero telemetry markers."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Card titles and major section anchors."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Table headers and parameter cards."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Standard explanatory copy."
+      },
+      "label": {
+        "displayName": "Mono Label",
+        "purpose": "All numeric parameters, tables, probabilities, and timestamps."
+      }
+    },
+    "shadows": [
+      {
+        "name": "none",
+        "value": "none",
+        "purpose": "Coplanar flat surface design; zero elevation drop shadows."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Standard duration-150 transition for hover states."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Status Badge (HARD)",
+      "kind": "chip",
+      "refersTo": "badge-lamp",
+      "description": "Clear lamp badge for HARD clears.",
+      "html": "<span class=\"ds-badge-hard\">HARD</span>",
+      "css": ".ds-badge-hard { display: inline-flex; align-items: center; font-family: var(--font-geist-mono), monospace; font-size: 11px; padding: 2px 8px; border-radius: 9999px; border: 1px solid oklch(0.70 0.22 25 / 0.5); background: oklch(0.70 0.22 25 / 0.15); color: oklch(0.95 0.10 25); }"
+    },
+    {
+      "name": "Status Badge (V-HARD)",
+      "kind": "chip",
+      "refersTo": "badge-lamp",
+      "description": "Clear lamp badge for V-HARD clears.",
+      "html": "<span class=\"ds-badge-vhard\">V-HARD</span>",
+      "css": ".ds-badge-vhard { display: inline-flex; align-items: center; font-family: var(--font-geist-mono), monospace; font-size: 11px; padding: 2px 8px; border-radius: 9999px; border: 1px solid oklch(0.70 0.22 305 / 0.5); background: oklch(0.70 0.22 305 / 0.15); color: oklch(0.95 0.10 305); }"
+    },
+    {
+      "name": "Telemetry Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Bordered dark container for IRT metrics and tabular views.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">IRT PARAMETERS</div><div class=\"ds-card-body\">b_hard: +2.140</div></div>",
+      "css": ".ds-card { background: oklch(0.16 0 0); border: 1px solid oklch(1 0 0 / 0.1); border-radius: 10px; padding: 16px; font-family: var(--font-geist-sans), sans-serif; } .ds-card-title { font-size: 12px; font-weight: 600; color: oklch(0.708 0 0); letter-spacing: 0.05em; margin-bottom: 8px; } .ds-card-body { font-family: var(--font-geist-mono), monospace; font-size: 14px; color: oklch(0.98 0 0); }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Compact monospace search input for charts or players.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search chart title, artist, or MD5...\" />",
+      "css": ".ds-input { background: oklch(0.13 0 0); border: 1px solid oklch(1 0 0 / 0.15); border-radius: 8px; padding: 8px 12px; color: oklch(0.98 0 0); font-family: var(--font-geist-mono), monospace; font-size: 13px; width: 100%; outline: none; transition: border-color 0.15s; } .ds-input:focus { border-color: oklch(0.68 0.15 200); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Cybernetic Archive",
+    "overview": "QUEstimator is an understated, minimalist data terminal built for high-speed scanning, mathematical precision, and rapid telemetry consumption. Inspired by Japanese arcade rhythm-game telemetry displays and statistical research tools, it eschews flashy gamification in favor of clinical clarity, tight information density, and instant legibility.",
+    "keyCharacteristics": [
+      "Zero-Distraction Density: High data-per-pixel ratio with compact row heights and no oversized decorative whitespace.",
+      "Strictly Semantic Neon Accents: Saturated color is exclusively functional, reserved for rhythm-game clear lamps and player rating reference lines.",
+      "Dual Typographic Discipline: High-contrast sans-serif for UI labels, tabular monospace for all numbers, and dedicated Japanese font glyph pinning for BMS metadata.",
+      "Flat Coplanar Depth: Border-delineated grid system with zero drop shadows or simulated physical elevation."
+    ],
+    "rules": [
+      {
+        "name": "The Gauge Truth Rule",
+        "body": "Gauge colors (Amber Gold, Crimson Coral, Violet Magenta) are strictly semantic indicators reserved for clear status and IRT parameters. They must never be diluted for decorative UI elements, generic buttons, or arbitrary visual accents.",
+        "section": "colors"
+      },
+      {
+        "name": "The Background Contrast Rule",
+        "body": "The canvas must remain native dark (.dark). Pure white cards or light-mode flashes break the rhythm-game arcade continuity and are forbidden.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Precision Rule",
+        "body": "All numerical ratings (latent ability θ, item discrimination a, thresholds b_hard / b_vhard, confidence intervals, percentages, and level numbers) must strictly render in Geist Mono (font-mono) with tabular figures.",
+        "section": "typography"
+      },
+      {
+        "name": "The CJK Unification Rule",
+        "body": "BMS chart titles, artist credits, and notemaker names must strictly include the .font-jp class (Noto Sans JP). This guarantees authentic Japanese glyph shaping for CJK ideographs and prevents Han-unification rendering glitches in Korean/English browser environments.",
+        "section": "typography"
+      },
+      {
+        "name": "The Pure Plane Rule",
+        "body": "Surfaces remain strictly coplanar without drop shadows. State changes are communicated via hairline border highlight, background tone shift, or gauge glow—never by lifting elements in physical z-space.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use Geist Mono (font-mono) for all scores, skill ratings, difficulty metrics, percentages, and timestamps.",
+      "Do wrap BMS chart titles and artist credits in .font-jp to guarantee correct Japanese font rendering.",
+      "Do keep the interface compact, glancable, and information-dense.",
+      "Do use exact gauge lamp colors (lamp-failed, lamp-normal, lamp-hard, lamp-vhard) when displaying clear statuses.",
+      "Do maintain bilingual parity (English and Korean) for all UI labels and tooltips."
+    ],
+    "donts": [
+      "Don't use gauge lamp colors (Amber, Crimson, Violet) for generic UI decorations, generic buttons, or unrelated status states.",
+      "Don't add heavy drop shadows, bubbly card skeuomorphism, or floating elevation effects.",
+      "Don't increase card or table padding to create airy, low-density marketing-style layouts.",
+      "Don't introduce light mode or bright white content cards.",
+      "Don't allow CJK chart titles to fallback to generic system fonts that render Japanese kanji with Chinese or Korean glyph variants."
+    ]
+  }
+}

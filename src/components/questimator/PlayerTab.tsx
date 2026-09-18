@@ -107,7 +107,7 @@ export function PlayerTab({
   const [isCreating, setIsCreating] = useState(false);
   const [internalPlayers, setInternalPlayers] = useState<PlayersDict | null>(null);
   const [searchResults, setSearchResults] = useState<
-    { id: string; name: string; clears: number }[] | null
+    { id: string; name: string; clears: number; isCustom?: boolean }[] | null
   >(null);
 
   const [internalLoadingPlayers, setInternalLoadingPlayers] = useState(false);
@@ -181,35 +181,65 @@ export function PlayerTab({
   const handleSearch = async () => {
     const q = query.trim();
     if (!q) return;
+    const ql = q.toLowerCase();
+
+    // 1. Exact match in custom/offline profiles
+    const customEntries = Object.entries(customProfiles ?? {});
+    const exactCustom = customEntries.find(([id, p]) => id.toLowerCase() === ql || (p.n && p.n.toLowerCase() === ql));
+    if (exactCustom) {
+      setSubmittedID(exactCustom[0]);
+      setIsCustomProfile(true);
+      setNotFound(false);
+      setSearchResults(null);
+      return;
+    }
+
     const data = players ?? (await fetchPlayers.current?.());
-    if (!data) {
+    if (!data && customEntries.length === 0) {
       setSubmittedID("");
       setNotFound(false);
       setSearchResults(null);
       return;
     }
 
-    const ql = q.toLowerCase();
-
-    // 1. Exact avatar ID → go straight there.
-    const exact = Object.keys(data).find((k) => k.toLowerCase() === ql);
-    if (exact) {
-      setSubmittedID(exact);
-      setNotFound(false);
-      setSearchResults(null);
-      return;
+    // 2. Exact match in online player avatar IDs
+    if (data) {
+      const exact = Object.keys(data).find((k) => k.toLowerCase() === ql);
+      if (exact) {
+        setSubmittedID(exact);
+        setIsCustomProfile(false);
+        setNotFound(false);
+        setSearchResults(null);
+        return;
+      }
     }
 
-    // 2. Fuzzy match by display name (n) or partial avatar ID.
-    const matches: { id: string; name: string; clears: number }[] = [];
-    for (const [pid, p] of Object.entries(data)) {
-      const dname = (p.n ?? pid).toLowerCase();
-      if (dname.includes(ql) || pid.toLowerCase().includes(ql)) {
+    // 3. Fuzzy match across both custom profiles and online players
+    const matches: { id: string; name: string; clears: number; isCustom?: boolean }[] = [];
+
+    for (const [cid, cp] of customEntries) {
+      const dname = (cp.n ?? cid).toLowerCase();
+      if (dname.includes(ql) || cid.toLowerCase().includes(ql)) {
         matches.push({
-          id: pid,
-          name: p.n ?? pid,
-          clears: Object.keys(p.c ?? {}).length,
+          id: cid,
+          name: `${cp.n ?? cid} [${t.lang === "en" ? "Local" : "로컬"}]`,
+          clears: Object.keys(cp.c ?? {}).length,
+          isCustom: true,
         });
+      }
+    }
+
+    if (data) {
+      for (const [pid, p] of Object.entries(data)) {
+        const dname = (p.n ?? pid).toLowerCase();
+        if (dname.includes(ql) || pid.toLowerCase().includes(ql)) {
+          matches.push({
+            id: pid,
+            name: p.n ?? pid,
+            clears: Object.keys(p.c ?? {}).length,
+            isCustom: false,
+          });
+        }
       }
     }
 
@@ -219,10 +249,11 @@ export function PlayerTab({
       setSearchResults(null);
     } else if (matches.length === 1) {
       setSubmittedID(matches[0].id);
+      setIsCustomProfile(!!matches[0].isCustom);
       setNotFound(false);
       setSearchResults(null);
     } else {
-      // Multiple matches — show disambiguation list, sorted by activity.
+      // Multiple matches — show disambiguation list, sorted by activity
       matches.sort((a, b) => b.clears - a.clears);
       setSearchResults(matches);
       setSubmittedID("");
@@ -233,7 +264,6 @@ export function PlayerTab({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      setIsCustomProfile(false);
       handleSearch();
     }
   };
@@ -359,7 +389,7 @@ export function PlayerTab({
               />
             </div>
             <Button
-              onClick={() => { setIsCustomProfile(false); handleSearch(); }}
+              onClick={() => handleSearch()}
               disabled={loadingPlayers || !query.trim()}
               size="sm"
             >
@@ -381,6 +411,7 @@ export function PlayerTab({
                   key={r.id}
                   onClick={() => {
                     setSubmittedID(r.id);
+                    setIsCustomProfile(!!r.isCustom);
                     setSearchResults(null);
                     setQuery(r.id);
                   }}
@@ -580,10 +611,8 @@ export function PlayerTab({
                 {samplePlayers && (
                   <div>
                   <PlayerSkillHistogram
-                    data={{
-                      ...samplePlayers,
-                      theta_mean: currentPlayer.t,
-                    }}
+                    data={samplePlayers}
+                    playerTheta={currentPlayer.t}
                   />
                   <div className="text-[10px] text-muted-foreground text-center mt-1">
                     {t.histogramXAxis(mode === 'lerp')}

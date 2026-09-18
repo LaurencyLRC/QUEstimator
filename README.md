@@ -4,7 +4,7 @@ Item Response Theory (IRT) difficulty estimation and player skill tracking for t
 
 QUEstimator scrapes clear lamps from the [Qwilight Internet Ranking](https://taehui.net), maps hashes via [EZ2PATTERN](https://ez2pattern.kr), and fits a Bayesian Graded Response Model (GRM) using NumPyro (NUTS) with latent player skill ($\theta$) marginalized out. The resulting continuous difficulty parameters ($b_{\text{hard}}$, $b_{\text{vhard}}$) and discrimination values ($a$) power the static dashboard.
 
-**[Live Dashboard](https://www.google.com/search?q=https://your-username.github.io/QUEstimator)**
+**[Live Dashboard](https://laurencylrc.github.io/QUEstimator)**
 
 ---
 

@@ -75,6 +75,63 @@ export interface SamplePlayers {
   n_players: number;
 }
 
+export function computeSamplePlayers(players: PlayersDict): SamplePlayers {
+  const thetas: number[] = [];
+  for (const p of Object.values(players)) {
+    if (typeof p.t === "number" && Number.isFinite(p.t)) {
+      thetas.push(p.t);
+    }
+  }
+  const n = thetas.length;
+  if (n === 0) {
+    return {
+      theta_histogram: [],
+      theta_edges: [],
+      theta_mean: 0,
+      theta_std: 1,
+      n_players: 0,
+    };
+  }
+
+  const binMin = -4.0;
+  const binMax = 4.0;
+  const numBins = 40;
+  const step = (binMax - binMin) / numBins;
+  const edges: number[] = [];
+  for (let i = 0; i <= numBins; i++) {
+    edges.push(Number((binMin + i * step).toFixed(2)));
+  }
+
+  const histogram = new Array(numBins).fill(0);
+  let sum = 0;
+  for (const t of thetas) {
+    sum += t;
+    if (t < binMin) {
+      histogram[0]++;
+    } else if (t >= binMax) {
+      histogram[numBins - 1]++;
+    } else {
+      const idx = Math.min(numBins - 1, Math.max(0, Math.floor((t - binMin) / step)));
+      histogram[idx]++;
+    }
+  }
+
+  const mean = sum / n;
+  let varianceSum = 0;
+  for (const t of thetas) {
+    varianceSum += (t - mean) ** 2;
+  }
+  const std = Math.sqrt(varianceSum / n);
+
+  return {
+    theta_histogram: histogram,
+    theta_edges: edges,
+    theta_mean: mean,
+    theta_std: std,
+    n_players: n,
+  };
+}
+
 // Special-folder ordering helper.
 const SPECIAL_ORDER: Record<string, number> = {
   "Ω": 100,
