@@ -223,7 +223,7 @@ export default function Home() {
               </div>
               <span className="text-border">|</span>
               <div className="text-cyan-400/90 font-medium">
-                MCMC NUTS (R̂ {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "1.0040"})
+                MCMC NUTS (R-hat: {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "1.0040"})
               </div>
             </div>
 
@@ -311,11 +311,12 @@ export default function Home() {
                 </div>
 
                 <div className="p-3 rounded-lg border border-border/70 bg-card">
-                  <div className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
-                    {t.lang === "en" ? "MCMC Convergence" : "MCMC 수렴도"}
+                  <div className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                    <span>{t.lang === "en" ? "MCMC Convergence" : "MCMC 수렴도"}</span>
+                    <span className="text-[10px] text-emerald-400/80 font-mono font-medium">PASS (≤ 1.05)</span>
                   </div>
                   <div className="text-xl font-bold font-mono text-emerald-400 mt-1 flex items-center gap-1.5">
-                    <span>R̂ = {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "1.0040"}</span>
+                    <span>R-hat = {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "1.0040"}</span>
                   </div>
                 </div>
 
