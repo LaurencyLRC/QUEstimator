@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -13,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trophy, Search } from "lucide-react";
+import { Trophy, Search, X } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import type { Chart, PlayerData, PlayersDict } from "@/lib/questimator-types";
@@ -203,10 +204,20 @@ export function RankingTab({
               aria-label={t.rankingSearchPlaceholder}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="pl-9 font-mono text-xs bg-background/50 border-border/80"
+              className="pl-9 pr-8 font-mono text-xs bg-background/50 border-border/80"
               autoComplete="off"
               spellCheck={false}
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <span className="text-xs text-muted-foreground font-mono">
             {t.ofCharts(filtered.length, ranked.length)}
@@ -252,8 +263,18 @@ export function RankingTab({
                   <TableBody className="divide-y divide-border/30">
                     {filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-10 font-mono">
-                          {t.noMatch}
+                        <TableCell colSpan={6} className="text-center py-12">
+                          <p className="text-sm font-sans text-muted-foreground">{t.noMatch}</p>
+                          {query && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setQuery("")}
+                              className="mt-3 text-xs font-sans"
+                            >
+                              {t.lang === "en" ? "Reset Search" : "검색 초기화"}
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ) : (

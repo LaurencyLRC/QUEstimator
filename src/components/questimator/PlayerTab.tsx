@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, User, Target, Sparkles, TrendingUp, Save, Trash2, Download, Upload } from "lucide-react";
+import { Search, User, Target, Sparkles, TrendingUp, Save, Trash2, Download, Upload, Check, X } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import { cn } from "@/lib/utils";
@@ -126,6 +126,8 @@ export function PlayerTab({
   const [notFound, setNotFound] = useState(false);
   const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [exported, setExported] = useState(false);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
 
   const players = propPlayers !== undefined ? propPlayers : internalPlayers;
   const loadingPlayers = propLoadingPlayers !== undefined ? propLoadingPlayers : internalLoadingPlayers;
@@ -413,10 +415,23 @@ export function PlayerTab({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="pl-9 font-mono text-xs bg-background/50 border-border/80"
+                className="pl-9 pr-8 font-mono text-xs bg-background/50 border-border/80"
                 autoComplete="off"
                 spellCheck={false}
               />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setNotFound(false);
+                  }}
+                  aria-label="Clear player ID search"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
             <Button
               onClick={() => handleSearch()}
@@ -656,9 +671,20 @@ export function PlayerTab({
                           a.download = `profile-${submittedID}.json`;
                           a.click();
                           URL.revokeObjectURL(url);
+                          setExported(true);
+                          setTimeout(() => setExported(false), 2000);
                         }}
                       >
-                        <Download className="w-3 h-3 mr-1" /> {t.exportProfile}
+                        {exported ? (
+                          <>
+                            <Check className="w-3 h-3 mr-1 text-emerald-400" />
+                            <span className="text-emerald-400 font-medium">{t.lang === "en" ? "Exported!" : "내보냄!"}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3 h-3 mr-1" /> {t.exportProfile}
+                          </>
+                        )}
                       </Button>
                     </>
                   )}
@@ -684,6 +710,8 @@ export function PlayerTab({
                               setIsCustomProfile(true);
                               setSubmittedID(name);
                               setInternalLoadError(null);
+                              setImportSuccess(name);
+                              setTimeout(() => setImportSuccess(null), 3000);
                             } else {
                               setInternalLoadError(t.lang === "en" ? "Invalid profile JSON format: expected 't' and 'c' fields" : "잘못된 프로필 JSON 형식입니다: 't' 및 'c' 필드가 필요합니다");
                             }
@@ -700,6 +728,12 @@ export function PlayerTab({
               )}
             </div>
           </div>
+          {importSuccess && (
+            <div className="mt-2 text-xs text-emerald-400 font-sans flex items-center gap-1.5 justify-end">
+              <Check className="w-3.5 h-3.5" />
+              <span>{t.lang === "en" ? `Profile "${importSuccess}" imported successfully` : `"${importSuccess}" 프로필을 성공적으로 불러왔습니다`}</span>
+            </div>
+          )}
         </div>
       </div>
 

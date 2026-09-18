@@ -10,6 +10,7 @@ target_fingerprint: "sha256:47cea14038cef799e487ea018b27b7578c78b4ef5f4e96407b1d
 target_path: "C:\\Users\\adam.WIN-PFVD0LK8FPA\\Documents\\GitHub\\QUEstimator\\src\\app\\page.tsx"
 timestamp: 2026-09-18T19-29-20Z
 slug: src-app-page-tsx
+closed: true
 ---
 Method: dual-agent (A: 766c3917-c31e-4156-b63d-5218f305dc73 · B: 014760bc-e450-43b2-9b03-43b95aae65ea)
 

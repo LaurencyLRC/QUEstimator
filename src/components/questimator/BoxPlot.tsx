@@ -152,16 +152,28 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
           
           return (
             <g key={`lvl-${d.level}`}>
-              {/* Transparent click target covering the whole column slot */}
+              {/* Accessible click & focus target covering the whole column slot */}
               <rect
                 x={PAD.left + i * slotW}
                 y={PAD.top}
                 width={slotW}
                 height={innerH + 50}
                 fill="transparent"
+                tabIndex={0}
+                role="button"
+                aria-label={`Select level ${d.level}`}
                 style={{ cursor: "pointer" }}
                 onClick={() => onSelectLevel?.(d.level)}
                 onMouseEnter={() => handleEnter(d.level)}
+                onFocus={() => handleEnter(d.level)}
+                onBlur={() => setHovered(null)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelectLevel?.(d.level);
+                  }
+                }}
+                className="focus-visible:outline-none focus-visible:stroke-telemetry-cyan focus-visible:stroke-[1.5]"
               />
               
               {/* V-HARD box (purple) */}

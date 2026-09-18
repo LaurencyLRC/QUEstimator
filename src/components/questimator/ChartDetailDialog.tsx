@@ -1,5 +1,5 @@
 "use client";
-
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import { levelLabel } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import { GrmCurveChart } from "@/components/questimator/GrmCurveChart";
-import { ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
 
 interface Props {
   chart: Chart | null;
@@ -49,6 +49,7 @@ function getClearBadge(status?: number) {
 export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onClearStatusChange, chartMaxTheta }: Props) {
   const { t } = useLang();
   const { format, mode } = useScale();
+  const [copiedMd5, setCopiedMd5] = useState(false);
   if (!chart) return null;
 
   const fmtCI = (center: number, se: number, digits = 2) => {
@@ -102,7 +103,23 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               </>
             )}
             <span className="text-muted-foreground/60">·</span>
-            <span className="font-mono text-xs text-muted-foreground/80">MD5: {chart.md5.slice(0, 8)}...</span>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(chart.md5);
+                setCopiedMd5(true);
+                setTimeout(() => setCopiedMd5(false), 1500);
+              }}
+              title="Click to copy full MD5 hash to clipboard"
+              className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground/80 hover:text-foreground transition-colors group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan rounded px-1 -mx-1"
+            >
+              <span>MD5: {chart.md5.slice(0, 8)}…</span>
+              {copiedMd5 ? (
+                <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+              ) : (
+                <Copy className="w-3 h-3 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+              )}
+            </button>
           </DialogDescription>
 
           {onClearStatusChange && activePlayer && (
@@ -145,6 +162,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               seValue={chart.n_hard + chart.n_vhard === 0 ? null : chart.se_b_hard}
               fmtCIFn={fmtCI}
               color="var(--color-lamp-hard)"
+              title="Difficulty threshold b_hard (50% HARD clear probability)"
             />
             <ParamCard
               label={t.vhardClear}
@@ -153,6 +171,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               seValue={chart.n_vhard === 0 ? null : chart.se_b_vhard}
               fmtCIFn={fmtCI}
               color="var(--color-lamp-vhard)"
+              title="Difficulty threshold b_vhard (50% V-HARD clear probability)"
             />
             <ParamCard
               label={t.discrimination}
@@ -160,10 +179,12 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               ciCenter={chart.a}
               seValue={chart.se_a}
               fmtCIFn={(c, se) => `[${fmtRaw(c - 1.96 * se, 2)}, ${fmtRaw(c + 1.96 * se, 2)}]`}
+              title="Item discrimination parameter (a-parameter / slope) — indicates how sharply the chart separates player skill levels"
             />
             <ParamCard
               label={t.sampleSize}
               value={chart.n.toLocaleString()}
+              title="Total play submissions analyzed in the IRT dataset for this chart"
             />
           </div>
 
@@ -207,6 +228,7 @@ function ParamCard({
   seValue,
   fmtCIFn,
   color,
+  title,
 }: {
   label: string;
   value: string;
@@ -214,9 +236,13 @@ function ParamCard({
   seValue?: number | null;
   fmtCIFn?: (center: number, se: number) => string;
   color?: string;
+  title?: string;
 }) {
   return (
-    <div className="rounded-lg border border-border/80 bg-background/50 px-3 py-2.5 flex flex-col justify-between">
+    <div
+      title={title}
+      className="rounded-lg border border-border/80 bg-background/50 px-3 py-2.5 flex flex-col justify-between"
+    >
       <div className="flex items-center gap-1.5">
         {color && (
           <span

@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { ArrowUpDown, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
 import { levelLabel, levelSortKey, isSpecialLevel, pStar } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
@@ -32,6 +32,49 @@ interface Props {
   onSortChange: (key: SortKey, dir: SortDir) => void;
   activePlayer?: { id: string; data: PlayerData } | null;
   chartMaxTheta?: Map<number, number> | null;
+}
+
+function SortHeaderBtn({
+  columnKey,
+  currentKey,
+  currentDir,
+  onSort,
+  children,
+  title,
+  align = "left",
+}: {
+  columnKey: SortKey;
+  currentKey: SortKey;
+  currentDir: SortDir;
+  onSort: (key: SortKey) => void;
+  children: React.ReactNode;
+  title?: string;
+  align?: "left" | "center" | "right";
+}) {
+  const isActive = currentKey === columnKey;
+  return (
+    <button
+      onClick={() => onSort(columnKey)}
+      title={title}
+      className={cn(
+        "inline-flex items-center gap-1 transition-colors hover:text-foreground group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan rounded px-1 -mx-1",
+        isActive ? "text-foreground font-semibold" : "text-muted-foreground",
+        align === "right" && "justify-end",
+        align === "center" && "justify-center"
+      )}
+    >
+      <span>{children}</span>
+      {isActive ? (
+        currentDir === "asc" ? (
+          <ArrowUp className="w-3 h-3 text-telemetry-cyan shrink-0" />
+        ) : (
+          <ArrowDown className="w-3 h-3 text-telemetry-cyan shrink-0" />
+        )
+      ) : (
+        <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-80 transition-opacity shrink-0" />
+      )}
+    </button>
+  );
 }
 
 function ClearDistBar({
@@ -183,8 +226,18 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
             aria-label={t.searchPlaceholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="pl-9"
+            className="pl-9 pr-8"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
         
         <Button
@@ -206,60 +259,96 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow>
                 <TableHead className="w-[32%]">
-                  <button
-                    onClick={() => toggleSort("title")}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  <SortHeaderBtn
+                    columnKey="title"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onSort={toggleSort}
+                    title="Sort by chart title"
                   >
-                    {t.chart} <ArrowUpDown className="w-3 h-3" />
-                  </button>
+                    {t.chart}
+                  </SortHeaderBtn>
                 </TableHead>
                 <TableHead className="text-center w-[60px]">
-                  <button
-                    onClick={() => toggleSort("level")}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  <SortHeaderBtn
+                    columnKey="level"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onSort={toggleSort}
+                    title="Sort by difficulty folder level"
+                    align="center"
                   >
-                    {t.level} <ArrowUpDown className="w-3 h-3" />
-                  </button>
+                    {t.level}
+                  </SortHeaderBtn>
                 </TableHead>
                 <TableHead className="text-right">
-                  <button
-                    onClick={() => toggleSort("b_hard")}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  <SortHeaderBtn
+                    columnKey="b_hard"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onSort={toggleSort}
+                    title="Sort by HARD clear difficulty threshold (b_hard)"
+                    align="right"
                   >
-                    {t.bHard(mode === "lerp")} <ArrowUpDown className="w-3 h-3" />
-                  </button>
+                    {t.bHard(mode === "lerp")}
+                  </SortHeaderBtn>
                 </TableHead>
                 <TableHead className="text-right">
-                  <button
-                    onClick={() => toggleSort("b_vhard")}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  <SortHeaderBtn
+                    columnKey="b_vhard"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onSort={toggleSort}
+                    title="Sort by V-HARD clear difficulty threshold (b_vhard)"
+                    align="right"
                   >
-                    {t.bVhard(mode === "lerp")} <ArrowUpDown className="w-3 h-3" />
-                  </button>
+                    {t.bVhard(mode === "lerp")}
+                  </SortHeaderBtn>
                 </TableHead>
                 <TableHead className="text-right">
-                  <button
-                    onClick={() => toggleSort("a")}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  <SortHeaderBtn
+                    columnKey="a"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onSort={toggleSort}
+                    title="Sort by IRT discrimination parameter (slope / sharpness)"
+                    align="right"
                   >
-                    {t.disc} <ArrowUpDown className="w-3 h-3" />
-                  </button>
+                    {t.disc}
+                  </SortHeaderBtn>
                 </TableHead>
                 <TableHead className="text-right w-[100px]">
-                  <button
-                    onClick={() => toggleSort("n")}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  <SortHeaderBtn
+                    columnKey="n"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onSort={toggleSort}
+                    title="Sort by sample size (total submissions)"
+                    align="right"
                   >
-                    n <ArrowUpDown className="w-3 h-3" />
-                  </button>
+                    n
+                  </SortHeaderBtn>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    {t.noMatch}
+                  <TableCell colSpan={6} className="text-center py-12">
+                    <p className="text-sm font-sans text-muted-foreground">{t.noMatch}</p>
+                    {(query || !showProvisional) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setQuery("");
+                          setShowProvisional(true);
+                        }}
+                        className="mt-3 text-xs font-sans"
+                      >
+                        {t.lang === "en" ? "Reset Search & Filters" : "검색 및 필터 초기화"}
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               )}
