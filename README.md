@@ -56,7 +56,8 @@ python scripts/load_ir_clears.py
 
 ### 3. Fit IRT model
 
-Fits the Graded Response Model across all charts and players. Player ability ($\theta$) is marginalized out using Gauss-Hermite quadrature to sample chart parameters efficiently:
+Fits the Graded Response Model across all charts and players.  
+Player ability ($\theta$) is marginalized out using Gauss-Hermite quadrature to sample chart parameters efficiently:
 
 ```bash
 python scripts/pipeline.py
@@ -95,4 +96,4 @@ bun run build
 
 Pushes to `main` trigger a GitHub Actions workflow that builds the Next.js export and publishes it to GitHub Pages.
 
-Because MCMC fitting is compute-heavy, model inference runs locally. The generated JSON files in `public/data/` are committed directly to the repository.
+Because MCMC fitting is compute-heavy, model inference runs locally. The generated JSON files in `public/data/` are committed directly.
