@@ -2,9 +2,10 @@
 
 Item Response Theory (IRT) difficulty estimation and player skill tracking for the [U_E 6-key BMS table](https://classmaterma.github.io/UE/table.html).
 
-QUEstimator scrapes clear lamps from the [Qwilight Internet Ranking](https://taehui.net), maps hashes via [EZ2PATTERN](https://ez2pattern.kr), and fits a Bayesian Graded Response Model (GRM) using NumPyro (NUTS) with latent player skill ($\theta$) marginalized out. The resulting continuous difficulty parameters ($b_{\text{hard}}$, $b_{\text{vhard}}$) and discrimination values ($a$) power the static dashboard.
+QUEstimator scrapes clear lamps from the [Qwilight Internet Ranking](https://taehui.net), maps hashes via [EZ2PATTERN](https://ez2pattern.kr), and fits a Bayesian Graded Response Model (GRM) using NumPyro (NUTS) with latent player skill ($\theta$) marginalized out.
+The resulting continuous difficulty parameters ($b_{\text{hard}}$, $b_{\text{vhard}}$) and discrimination values ($a$) power the static dashboard.
 
-**[Live Dashboard](https://laurencylrc.github.io/QUEstimator)**
+**[Live dashboard](https://laurencylrc.github.io/QUEstimator)**
 
 ---
 
@@ -26,7 +27,7 @@ public/data/*.json    ◄── NumPyro / JAX (Bayesian GRM) ◄─────�
 
 Python 3.11+ with JAX and NumPyro installed is required.
 
-### 1. Scrape & Sync
+### 1. Scrape & sync
 
 `refresh_data.py` checks upstream `score.json`, resolves unmapped MD5s through EZ2PATTERN, and fetches missing comment JSONs from the Qwilight API (`[https://taehui.net/qwilight/www/comment?noteID=](https://taehui.net/qwilight/www/comment?noteID=){sha512}:0`):
 
@@ -44,16 +45,16 @@ Sub-scripts can be run manually if needed:
 * `scripts/UE6Kmd5tosha512.py`: Resolves new MD5 hashes against EZ2PATTERN.
 * `scripts/6keyLBcrawler.py`: Async crawler (`httpx` + `asyncio`) targeting the Qwilight IR endpoint.
 
-### 2. Validate Clears
+### 2. Validate clears
 
-Parse raw IR dumps, filter invalid scores, and verify lamp distributions across clear tiers (FAILED, NORMAL, HARD, V-HARD):
+Parse raw IR dumps, filter invalid scores, and verify lamp distributions across clear tiers:
 
 ```bash
 python scripts/load_ir_clears.py
 
 ```
 
-### 3. Fit IRT Model
+### 3. Fit IRT model
 
 Fits the Graded Response Model across all charts and players. Player ability ($\theta$) is marginalized out using Gauss-Hermite quadrature to sample chart parameters efficiently:
 
@@ -62,8 +63,7 @@ python scripts/pipeline.py
 
 ```
 
-> **Runtime:** Full MCMC sampling (~1,500 charts, ~2,800 players) takes ~1.5 to 3 hours on a modern multi-core CPU.
-
+Full MCMC sampling (~1,500 charts, ~2,800 players) takes ~1.5 to 3 hours on a modern multi-core CPU.
 Output artifacts written to `public/data/`:
 
 * `charts.json`: Discrimination ($a$), thresholds ($b_{\text{hard}}$, $b_{\text{vhard}}$), standard errors, play counts.
