@@ -96,4 +96,5 @@ bun run build
 
 Pushes to `main` trigger a GitHub Actions workflow that builds the Next.js export and publishes it to GitHub Pages.
 
-Because MCMC fitting is compute-heavy, model inference runs locally. The generated JSON files in `public/data/` are committed directly.
+Because MCMC fitting is compute-heavy, model inference runs locally.  
+The generated JSON files in `public/data/` are committed directly to the repository.
