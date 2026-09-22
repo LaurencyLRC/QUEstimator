@@ -2,7 +2,7 @@
 
 Item Response Theory (IRT) difficulty estimation and player skill tracking for the [U_E 6-key BMS table](https://classmaterma.github.io/UE/table.html).
 
-QUEstimator scrapes clear lamps from the [Qwilight Internet Ranking](https://taehui.net), maps hashes via [EZ2PATTERN](https://ez2pattern.kr), and fits a Bayesian Graded Response Model (GRM) using NumPyro (NUTS) with latent player skill ($\theta$) marginalized out.
+QUEstimator scrapes clear lamps from the [Qwilight Internet Ranking](https://taehui.net), maps hashes via [EZ2PATTERN](https://ez2pattern.kr), and fits a Bayesian Graded Response Model (GRM) using NumPyro (NUTS) with latent player skill ($\theta$) marginalized out.  
 The resulting continuous difficulty parameters ($b_{\text{hard}}$, $b_{\text{vhard}}$) and discrimination values ($a$) power the static dashboard.
 
 **[Live dashboard](https://laurencylrc.github.io/QUEstimator)**
@@ -63,7 +63,7 @@ python scripts/pipeline.py
 
 ```
 
-Full MCMC sampling (~1,500 charts, ~2,800 players) takes ~1.5 to 3 hours on a modern multi-core CPU.
+Full MCMC sampling (~1,500 charts, ~2,800 players) takes ~1.5 to 3 hours on a modern multi-core CPU.  
 Output artifacts written to `public/data/`:
 
 * `charts.json`: Discrimination ($a$), thresholds ($b_{\text{hard}}$, $b_{\text{vhard}}$), standard errors, play counts.
