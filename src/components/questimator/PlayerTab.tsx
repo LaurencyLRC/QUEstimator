@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search,
   User,
@@ -45,6 +46,7 @@ import {
   Check,
   X,
   SlidersHorizontal,
+  Layers,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
@@ -114,6 +116,34 @@ function pVHard(theta: number, c: Chart): number | null {
   return pStar(theta, c.a, c.b_vhard);
 }
 
+function matchesLevel(
+  level: string,
+  minLevel: number,
+  maxLevel: number,
+  showMinus: boolean,
+  showExclamation: boolean,
+  showDiamond: boolean
+): boolean {
+  if (level === "-_-") return showMinus;
+  if (level === "?!") return showExclamation;
+  if (level === "◆") return showDiamond;
+
+  let num: number | null = null;
+  if (level === "Ω") {
+    num = 31;
+  } else if (/^\d+$/.test(level)) {
+    num = parseInt(level, 10);
+  }
+
+  if (num != null) {
+    const lo = Math.min(minLevel, maxLevel);
+    const hi = Math.max(minLevel, maxLevel);
+    return num >= lo && num <= hi;
+  }
+
+  return false;
+}
+
 export function PlayerTab({
   charts,
   samplePlayers,
@@ -149,25 +179,17 @@ export function PlayerTab({
   const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
   const [minProb, setMinProb] = useState(30);
   const [maxProb, setMaxProb] = useState(80);
+  const [minLevel, setMinLevel] = useState(1);
+  const [maxLevel, setMaxLevel] = useState(31);
+  const [showMinus, setShowMinus] = useState(false);
+  const [showExclamation, setShowExclamation] = useState(false);
+  const [showDiamond, setShowDiamond] = useState(false);
   const [horizonSearch, setHorizonSearch] = useState("");
-  const [horizonLevel, setHorizonLevel] = useState("ALL");
   const [horizonSortKey, setHorizonSortKey] = useState<"p" | "b" | "a" | "level" | "title" | "lamp">("p");
   const [horizonSortDir, setHorizonSortDir] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exported, setExported] = useState(false);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
-
-  const availableLevels = useMemo(() => {
-    const set = new Set<string>();
-    for (const c of charts) {
-      if (!c.provisional) set.add(c.level);
-    }
-    return Array.from(set).sort((a, b) => {
-      const [ax, ay] = levelSortKey(a);
-      const [bx, by] = levelSortKey(b);
-      return ax - bx || ay - by;
-    });
-  }, [charts]);
 
   const applyPreset = (min: number, max: number) => {
     setMinProb(min);
@@ -177,8 +199,12 @@ export function PlayerTab({
   const resetHorizonFilters = () => {
     setMinProb(30);
     setMaxProb(80);
+    setMinLevel(1);
+    setMaxLevel(31);
+    setShowMinus(false);
+    setShowExclamation(false);
+    setShowDiamond(false);
     setHorizonSearch("");
-    setHorizonLevel("ALL");
     setHorizonSortKey("p");
     setHorizonSortDir("desc");
   };
@@ -383,16 +409,25 @@ export function PlayerTab({
 
     const totalUncompleted = allCandidates.length;
 
-    // Filter by probability bounds [minProb/100, maxProb/100]
+    // Filter by probability bounds [minProb/100, maxProb/100] AND level span / special checkboxes
     const pLo = Math.min(minProb, maxProb) / 100;
     const pHi = Math.max(minProb, maxProb) / 100;
 
-    const inRangeCandidates = allCandidates.filter((c) => c.p >= pLo && c.p <= pHi);
+    const inRangeCandidates = allCandidates.filter((c) => {
+      if (c.p < pLo || c.p > pHi) return false;
+      return matchesLevel(
+        c.chart.level,
+        minLevel,
+        maxLevel,
+        showMinus,
+        showExclamation,
+        showDiamond
+      );
+    });
 
-    // Search and level filtering for the explorer table
+    // Search filtering for the explorer table
     const searchClean = horizonSearch.trim().toLowerCase();
     const filteredCandidates = inRangeCandidates.filter((c) => {
-      if (horizonLevel !== "ALL" && c.chart.level !== horizonLevel) return false;
       if (!searchClean) return true;
       return (
         c.chart.title.toLowerCase().includes(searchClean) ||
@@ -478,8 +513,12 @@ export function PlayerTab({
     targetStatus,
     minProb,
     maxProb,
+    minLevel,
+    maxLevel,
+    showMinus,
+    showExclamation,
+    showDiamond,
     horizonSearch,
-    horizonLevel,
     horizonSortKey,
     horizonSortDir,
     chartMaxTheta,
@@ -1119,47 +1158,154 @@ export function PlayerTab({
                 </div>
               </div>
 
-              {/* Secondary toolbar: Keyword search + Level folder dropdown + Live match counter */}
-              <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-border/40">
-                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
-                  {/* Search input */}
-                  <div className="relative flex-1 min-w-[180px]">
-                    <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              {/* Row 2: Level Span & Special Level Checkboxes */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-2.5 border-t border-border/40">
+                {/* Level span inputs and dual-thumb slider */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                    {t.levelSpan}:
+                  </span>
+
+                  <div className="flex items-center gap-1.5 font-mono text-xs">
+                    <span className="text-muted-foreground">Lv.</span>
                     <Input
-                      type="text"
-                      placeholder={t.horizonSearchPlaceholder}
-                      value={horizonSearch}
-                      onChange={(e) => setHorizonSearch(e.target.value)}
-                      className="pl-8 pr-7 h-7 text-xs border-border/70 bg-background"
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={minLevel}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (!isNaN(val)) setMinLevel(Math.max(1, Math.min(31, val)));
+                      }}
+                      className="w-12 h-7 text-xs font-mono tabular-nums text-center px-1 border-border/70"
                     />
-                    {horizonSearch && (
-                      <button
-                        onClick={() => setHorizonSearch("")}
-                        className="absolute right-2 top-1.5 p-0.5 rounded text-muted-foreground hover:text-foreground"
-                        aria-label="Clear search"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                    {minLevel === 31 && (
+                      <span className="text-xs font-mono text-amber-400 font-bold" title="Ω = Level 31">Ω</span>
+                    )}
+                    <span className="text-muted-foreground font-mono">–</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={maxLevel}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (!isNaN(val)) setMaxLevel(Math.max(1, Math.min(31, val)));
+                      }}
+                      className="w-12 h-7 text-xs font-mono tabular-nums text-center px-1 border-border/70"
+                    />
+                    {maxLevel === 31 && (
+                      <span className="text-xs font-mono text-amber-400 font-bold" title="Ω = Level 31">Ω</span>
                     )}
                   </div>
 
-                  {/* Level folder dropdown */}
-                  <Select value={horizonLevel} onValueChange={setHorizonLevel}>
-                    <SelectTrigger className="w-[110px] h-7 text-xs font-mono border-border/70 bg-background">
-                      <SelectValue placeholder={t.allLevels} />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <SelectItem value="ALL" className="text-xs font-mono">{t.allLevels}</SelectItem>
-                      {availableLevels.map((lvl) => (
-                        <SelectItem key={lvl} value={lvl} className="text-xs font-mono">
-                          {lvl}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="px-2 w-32 sm:w-44">
+                    <Slider
+                      min={1}
+                      max={31}
+                      step={1}
+                      value={[Math.min(minLevel, maxLevel), Math.max(minLevel, maxLevel)]}
+                      onValueChange={([min, max]) => {
+                        setMinLevel(min);
+                        setMaxLevel(max);
+                      }}
+                      className="cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Level Quick Preset Pills */}
+                  <div className="hidden sm:flex items-center gap-1 font-mono text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => { setMinLevel(1); setMaxLevel(31); }}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded border transition-colors",
+                        minLevel === 1 && maxLevel === 31
+                          ? "bg-card text-cyan-400 border-cyan-500/40 font-semibold"
+                          : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      1–Ω
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setMinLevel(20); setMaxLevel(31); }}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded border transition-colors",
+                        minLevel === 20 && maxLevel === 31
+                          ? "bg-card text-cyan-400 border-cyan-500/40 font-semibold"
+                          : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      20–Ω
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setMinLevel(25); setMaxLevel(31); }}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded border transition-colors",
+                        minLevel === 25 && maxLevel === 31
+                          ? "bg-card text-cyan-400 border-cyan-500/40 font-semibold"
+                          : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      25–Ω
+                    </button>
+                  </div>
                 </div>
 
-                {/* Live match counter */}
+                {/* Special Level Checkboxes (-_-, ?!, ◆) */}
+                <div className="flex items-center gap-3 font-mono text-xs">
+                  <span className="text-muted-foreground text-[11px] font-sans">
+                    {t.specialLevels}:
+                  </span>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-mono select-none hover:text-foreground transition-colors">
+                    <Checkbox
+                      checked={showMinus}
+                      onCheckedChange={(checked) => setShowMinus(!!checked)}
+                    />
+                    <span className="text-amber-400 font-bold">-_-</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-mono select-none hover:text-foreground transition-colors">
+                    <Checkbox
+                      checked={showExclamation}
+                      onCheckedChange={(checked) => setShowExclamation(!!checked)}
+                    />
+                    <span className="text-amber-400 font-bold">?!</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-mono select-none hover:text-foreground transition-colors">
+                    <Checkbox
+                      checked={showDiamond}
+                      onCheckedChange={(checked) => setShowDiamond(!!checked)}
+                    />
+                    <span className="text-amber-400 font-bold">◆</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Row 3: Search input + Live match counter */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-border/40">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder={t.horizonSearchPlaceholder}
+                    value={horizonSearch}
+                    onChange={(e) => setHorizonSearch(e.target.value)}
+                    className="pl-8 pr-7 h-7 text-xs border-border/70 bg-background"
+                  />
+                  {horizonSearch && (
+                    <button
+                      onClick={() => setHorizonSearch("")}
+                      className="absolute right-2 top-1.5 p-0.5 rounded text-muted-foreground hover:text-foreground"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
                 <div className="text-xs font-mono text-muted-foreground shrink-0 tabular-nums">
                   {t.matchingCount(analytics.filteredCandidates.length, analytics.totalUncompleted)}
                 </div>
@@ -1202,8 +1348,8 @@ export function PlayerTab({
               </h5>
 
               <div className="rounded-md border border-border/80 overflow-hidden font-mono text-xs">
-                <ScrollArea className="max-h-[480px]">
-                  <Table className="w-full">
+                <div className="max-h-[500px] overflow-auto">
+                  <Table className="w-full min-w-[620px]">
                     <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 border-b border-border">
                       <TableRow className="border-b border-border hover:bg-transparent">
                         <HorizonSortHead
@@ -1367,7 +1513,7 @@ export function PlayerTab({
                       )}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </div>
             </div>
           </div>
