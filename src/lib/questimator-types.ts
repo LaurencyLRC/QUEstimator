@@ -105,9 +105,9 @@ export function computeSamplePlayers(players: PlayersDict): SamplePlayers {
     };
   }
 
-  const binMin = -4.0;
-  const binMax = 4.0;
-  const numBins = 40;
+  const binMin = -6.0;
+  const binMax = 8.0;
+  const numBins = 35;
   const step = (binMax - binMin) / numBins;
   const edges: number[] = [];
   for (let i = 0; i <= numBins; i++) {
@@ -142,6 +142,158 @@ export function computeSamplePlayers(players: PlayersDict): SamplePlayers {
     theta_std: std,
     n_players: n,
   };
+}
+
+export interface RankRow {
+  id: string;
+  data: PlayerData;
+  nClears: number;
+  nVhard: number;
+  nHard: number;
+  eligible: boolean;
+}
+
+export const MIN_RANKING_PLAYS = 10;
+export const MIN_RANKING_HARD_OR_BETTER = 1;
+export const EXCLUDED_RANKING_LEVELS = new Set(["-_-", "?!", "◆"]);
+
+export function isValidRankingChart(c: Chart): boolean {
+  if (c.provisional) return false;
+  if (EXCLUDED_RANKING_LEVELS.has(c.level)) return false;
+  if (/^\d+$/.test(c.level)) return parseInt(c.level, 10) >= 20;
+  return c.level === "Ω";
+}
+
+export interface LeaderboardResult {
+  ranked: RankRow[];
+  rankMap: Map<string, number>;
+  totalEligible: number;
+  totalPlayers: number;
+  sortedThetas: number[];
+}
+
+export function computeLeaderboard(players: PlayersDict, charts: Chart[]): LeaderboardResult {
+  const rankingChartIds = new Set<number>();
+  for (const c of charts) {
+    if (isValidRankingChart(c)) rankingChartIds.add(c.id);
+  }
+
+  const rows: RankRow[] = Object.entries(players).map(([id, data]) => {
+    let nVhard = 0;
+    let nHard = 0;
+    let nNormal = 0;
+    let nFailed = 0;
+    let eligPlays = 0;
+    let eligHardOrBetter = 0;
+
+    for (const [cidStr, s] of Object.entries(data.c || {})) {
+      if (s === 3) nVhard += 1;
+      else if (s === 2) nHard += 1;
+      else if (s === 1) nNormal += 1;
+      else if (s === 0) nFailed += 1;
+
+      if (rankingChartIds.has(Number(cidStr))) {
+        eligPlays += 1;
+        if (s >= 2) eligHardOrBetter += 1;
+      }
+    }
+
+    const nClears = nVhard + nHard + nNormal + nFailed;
+    const eligible =
+      eligPlays >= MIN_RANKING_PLAYS && eligHardOrBetter >= MIN_RANKING_HARD_OR_BETTER;
+
+    return { id, data, nClears, nVhard, nHard, eligible };
+  });
+
+  rows.sort((a, b) => {
+    if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+    if (a.data.t !== b.data.t) return b.data.t - a.data.t;
+    return b.nClears - a.nClears;
+  });
+
+  const rankMap = new Map<string, number>();
+  let totalEligible = 0;
+  rows.forEach((r, i) => {
+    if (r.eligible) {
+      rankMap.set(r.id, i + 1);
+      totalEligible += 1;
+    }
+  });
+
+  const sortedThetas = Object.values(players)
+    .map((p) => p.t)
+    .filter((t) => typeof t === "number" && Number.isFinite(t))
+    .sort((a, b) => a - b);
+
+  return {
+    ranked: rows,
+    rankMap,
+    totalEligible,
+    totalPlayers: rows.length,
+    sortedThetas,
+  };
+}
+
+/**
+ * Calculates a player's top-percentile based on their latent skill θ.
+ * If sortedThetas is provided, calculates the exact empirical percentile across all players.
+ * If fallback SamplePlayers histogram is provided, calculates interpolated percentile.
+ *
+ * Returns a number between 0 and 100 (e.g. 1.8 for Top 1.8%).
+ */
+export function computeTopPercentile(
+  theta: number,
+  sortedThetas?: number[] | null,
+  samplePlayers?: SamplePlayers | null
+): number | null {
+  if (typeof theta !== "number" || !Number.isFinite(theta)) return null;
+
+  if (sortedThetas && sortedThetas.length > 0) {
+    const N = sortedThetas.length;
+    let low = 0;
+    let high = N;
+    while (low < high) {
+      const mid = (low + high) >>> 1;
+      if (sortedThetas[mid] <= theta) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    const strictlyBetter = N - low;
+    const topPct = ((strictlyBetter + 1) / N) * 100;
+    return Math.min(100, Math.max(0.01, topPct));
+  }
+
+  if (samplePlayers && samplePlayers.theta_edges.length > 1) {
+    const edges = samplePlayers.theta_edges;
+    const hist = samplePlayers.theta_histogram;
+    let total = 0;
+    let below = 0;
+    for (let i = 0; i < hist.length; i++) {
+      const lo = edges[i];
+      const hi = edges[i + 1];
+      total += hist[i];
+      if (theta <= lo) continue;
+      if (theta >= hi) {
+        below += hist[i];
+      } else {
+        const frac = (theta - lo) / (hi - lo);
+        below += hist[i] * frac;
+      }
+    }
+    if (total <= 0) return null;
+    const topPct = ((total - below) / total) * 100;
+    return Math.min(100, Math.max(0.01, topPct));
+  }
+
+  return null;
+}
+
+export function formatTopPercentile(topPct: number | null | undefined): string {
+  if (topPct == null) return "–";
+  if (topPct <= 0.05) return "<0.1%";
+  return `${topPct.toFixed(1)}%`;
 }
 
 // Special-folder ordering helper.

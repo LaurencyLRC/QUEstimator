@@ -32,7 +32,7 @@ export function PlayerSkillHistogram({
   const barW = innerW / bins.length;
   const yScale = (c: number) => (c / maxCount) * innerH;
 
-  const xTicks = [-4, -2, 0, 2, 4];
+  const xTicks = [-4, -2, 0, 2, 4, 6];
   const xScale = (t: number) =>
     PAD.left + ((t - edges[0]) / (edges[edges.length - 1] - edges[0])) * innerW;
 

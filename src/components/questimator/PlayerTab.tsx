@@ -31,7 +31,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, User, Target, Sparkles, TrendingUp, Save, Trash2, Download, Upload, Check, X } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import {
+  Search,
+  User,
+  Target,
+  Sparkles,
+  TrendingUp,
+  Save,
+  Trash2,
+  Download,
+  Upload,
+  Check,
+  X,
+  SlidersHorizontal,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  RotateCcw,
+} from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import { cn } from "@/lib/utils";
@@ -40,10 +58,13 @@ import {
   type PlayerData,
   type PlayersDict,
   type SamplePlayers,
+  type LeaderboardResult,
   pStar,
   levelSortKey,
   levelLabel,
   isSpecialLevel,
+  computeTopPercentile,
+  formatTopPercentile,
 } from "@/lib/questimator-types";
 import { PlayerSkillHistogram } from "@/components/questimator/PlayerSkillHistogram";
 import { fetchPlayersData } from "@/lib/players-cache";
@@ -51,6 +72,7 @@ import { fetchPlayersData } from "@/lib/players-cache";
 interface Props {
   charts: Chart[];
   samplePlayers: SamplePlayers | null;
+  leaderboard?: LeaderboardResult | null;
   playerThetaMean: number;
   playerThetaStd: number;
   onSelectChart: (c: Chart) => void;
@@ -72,12 +94,11 @@ const STATUS_LABELS: Record<number, { short: string; color: string; bgClass: str
   3: { short: "VH", color: "var(--color-lamp-vhard)",  bgClass: "bg-lamp-vhard",  textClass: "text-lamp-vhard" },
 };
 
-const REC_MIN_PROB = 0.30;
-const REC_MAX_PROB = 0.70;
-const REC_LIMIT = 24;
-
-const PROB_MIN_THRESHOLD = 0.05;
-const PROB_LIMIT = 60;
+export const LAMP_LABEL: Record<number, { text: string; bgClass: string; textClass: string; borderClass: string }> = {
+  2: { text: "H", bgClass: "bg-lamp-hard/15", textClass: "text-lamp-hard", borderClass: "border-lamp-hard/40" },
+  1: { text: "N", bgClass: "bg-lamp-normal/15", textClass: "text-lamp-normal", borderClass: "border-lamp-normal/40" },
+  0: { text: "F", bgClass: "bg-lamp-failed/15", textClass: "text-muted-foreground", borderClass: "border-lamp-failed/40" },
+};
 
 function fmtPct(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
@@ -96,6 +117,7 @@ function pVHard(theta: number, c: Chart): number | null {
 export function PlayerTab({
   charts,
   samplePlayers,
+  leaderboard,
   playerThetaMean,
   playerThetaStd,
   onSelectChart,
@@ -125,9 +147,50 @@ export function PlayerTab({
   const [internalLoadError, setInternalLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
+  const [minProb, setMinProb] = useState(30);
+  const [maxProb, setMaxProb] = useState(80);
+  const [horizonSearch, setHorizonSearch] = useState("");
+  const [horizonLevel, setHorizonLevel] = useState("ALL");
+  const [horizonSortKey, setHorizonSortKey] = useState<"p" | "b" | "a" | "level" | "title" | "lamp">("p");
+  const [horizonSortDir, setHorizonSortDir] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exported, setExported] = useState(false);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+
+  const availableLevels = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of charts) {
+      if (!c.provisional) set.add(c.level);
+    }
+    return Array.from(set).sort((a, b) => {
+      const [ax, ay] = levelSortKey(a);
+      const [bx, by] = levelSortKey(b);
+      return ax - bx || ay - by;
+    });
+  }, [charts]);
+
+  const applyPreset = (min: number, max: number) => {
+    setMinProb(min);
+    setMaxProb(max);
+  };
+
+  const resetHorizonFilters = () => {
+    setMinProb(30);
+    setMaxProb(80);
+    setHorizonSearch("");
+    setHorizonLevel("ALL");
+    setHorizonSortKey("p");
+    setHorizonSortDir("desc");
+  };
+
+  const handleHorizonSort = (key: "p" | "b" | "a" | "level" | "title" | "lamp") => {
+    if (horizonSortKey === key) {
+      setHorizonSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setHorizonSortKey(key);
+      setHorizonSortDir(key === "title" || key === "level" ? "asc" : "desc");
+    }
+  };
 
   const players = propPlayers !== undefined ? propPlayers : internalPlayers;
   const loadingPlayers = propLoadingPlayers !== undefined ? propLoadingPlayers : internalLoadingPlayers;
@@ -295,41 +358,96 @@ export function PlayerTab({
     const totalClears = statusCounts[0] + statusCounts[1] + statusCounts[2] + statusCounts[3];
 
     const theta = currentPlayer.t;
-    type Rec = { chart: Chart; p: number };
-    const recommendations: Rec[] = [];
-    const allProbabilities: Rec[] = [];
+    type Candidate = {
+      chart: Chart;
+      p: number;
+      lamp: number | null;
+    };
+
+    const targetThreshold = targetStatus === "HARD" ? 2 : 3;
+    const allCandidates: Candidate[] = [];
 
     for (const c of charts) {
       if (c.provisional) continue;
       const p = targetStatus === "HARD" ? pHard(theta, c) : pVHard(theta, c);
       if (p == null) continue;
-      const status = currentPlayer.c?.[String(c.id)] ?? 0;
-      if (status >= (targetStatus === "HARD" ? 2 : 3)) continue;
+      const rawStatus = currentPlayer.c?.[String(c.id)];
+      if (rawStatus !== undefined && rawStatus >= targetThreshold) continue;
 
-      if (p >= PROB_MIN_THRESHOLD) {
-        allProbabilities.push({ chart: c, p });
-      }
-      if (p >= REC_MIN_PROB && p <= REC_MAX_PROB) {
-        recommendations.push({ chart: c, p });
-      }
+      allCandidates.push({
+        chart: c,
+        p,
+        lamp: rawStatus !== undefined ? rawStatus : null,
+      });
     }
 
-    recommendations.sort((a, b) => {
-      const da = Math.abs(a.p - 0.5);
-      const db = Math.abs(b.p - 0.5);
-      if (Math.abs(da - db) > 1e-6) return da - db;
-      const aVal = targetStatus === "HARD"
-        ? ((a.chart.n_hard + a.chart.n_vhard === 0) ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_hard_display ?? -99) : a.chart.b_hard_display)
-        : (a.chart.n_vhard === 0 ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_vhard_display ?? -99) : a.chart.b_vhard_display);
-      const bVal = targetStatus === "HARD"
-        ? ((b.chart.n_hard + b.chart.n_vhard === 0) ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_hard_display ?? -99) : b.chart.b_hard_display)
-        : (b.chart.n_vhard === 0 ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_vhard_display ?? -99) : b.chart.b_vhard_display);
-      return (bVal ?? -99) - (aVal ?? -99);
-    });
-    const recommendationsLimited = recommendations.slice(0, REC_LIMIT);
+    const totalUncompleted = allCandidates.length;
 
-    allProbabilities.sort((a, b) => b.p - a.p);
-    const allProbabilitiesLimited = allProbabilities.slice(0, PROB_LIMIT);
+    // Filter by probability bounds [minProb/100, maxProb/100]
+    const pLo = Math.min(minProb, maxProb) / 100;
+    const pHi = Math.max(minProb, maxProb) / 100;
+
+    const inRangeCandidates = allCandidates.filter((c) => c.p >= pLo && c.p <= pHi);
+
+    // Search and level filtering for the explorer table
+    const searchClean = horizonSearch.trim().toLowerCase();
+    const filteredCandidates = inRangeCandidates.filter((c) => {
+      if (horizonLevel !== "ALL" && c.chart.level !== horizonLevel) return false;
+      if (!searchClean) return true;
+      return (
+        c.chart.title.toLowerCase().includes(searchClean) ||
+        c.chart.artist.toLowerCase().includes(searchClean) ||
+        c.chart.name_diff.toLowerCase().includes(searchClean)
+      );
+    });
+
+    // Sort table rows
+    filteredCandidates.sort((a, b) => {
+      let cmp = 0;
+      switch (horizonSortKey) {
+        case "p":
+          cmp = a.p - b.p;
+          break;
+        case "lamp":
+          cmp = (a.lamp ?? -1) - (b.lamp ?? -1);
+          break;
+        case "title":
+          cmp = a.chart.title.localeCompare(b.chart.title);
+          break;
+        case "level": {
+          const [ax, ay] = levelSortKey(a.chart.level);
+          const [bx, by] = levelSortKey(b.chart.level);
+          cmp = ax - bx || ay - by;
+          break;
+        }
+        case "a":
+          cmp = (a.chart.a ?? 0) - (b.chart.a ?? 0);
+          break;
+        case "b": {
+          const aVal = targetStatus === "HARD"
+            ? ((a.chart.n_hard + a.chart.n_vhard === 0) ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_hard_display ?? -99) : a.chart.b_hard_display)
+            : (a.chart.n_vhard === 0 ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_vhard_display ?? -99) : a.chart.b_vhard_display);
+          const bVal = targetStatus === "HARD"
+            ? ((b.chart.n_hard + b.chart.n_vhard === 0) ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_hard_display ?? -99) : b.chart.b_hard_display)
+            : (b.chart.n_vhard === 0 ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_vhard_display ?? -99) : b.chart.b_vhard_display);
+          cmp = (aVal ?? -99) - (bVal ?? -99);
+          break;
+        }
+      }
+      return horizonSortDir === "asc" ? cmp : -cmp;
+    });
+
+    // Curated recommendations (picks):
+    // Prioritize high discrimination 'a' and midpoint closeness
+    const pMid = (pLo + pHi) / 2;
+    const recommendations = [...inRangeCandidates]
+      .sort((a, b) => {
+        const distA = Math.abs(a.p - pMid);
+        const distB = Math.abs(b.p - pMid);
+        if (Math.abs(distA - distB) > 0.08) return distA - distB;
+        return (b.chart.a ?? 1) - (a.chart.a ?? 1);
+      })
+      .slice(0, 3);
 
     const clearedByLevel = new Map<string, number>();
     for (const [idStr, status] of Object.entries(currentPlayer.c || {})) {
@@ -347,34 +465,35 @@ export function PlayerTab({
     return {
       statusCounts,
       totalClears,
-      recommendations: recommendationsLimited,
-      allProbabilities: allProbabilitiesLimited,
+      totalUncompleted,
+      inRangeCount: inRangeCandidates.length,
+      filteredCandidates,
+      recommendations,
       clearedLevels,
       targetStatus,
     };
-  }, [currentPlayer, charts, targetStatus]);
+  }, [
+    currentPlayer,
+    charts,
+    targetStatus,
+    minProb,
+    maxProb,
+    horizonSearch,
+    horizonLevel,
+    horizonSortKey,
+    horizonSortDir,
+    chartMaxTheta,
+  ]);
 
-  const percentile = useMemo(() => {
-    if (!currentPlayer || !samplePlayers) return null;
-    const edges = samplePlayers.theta_edges;
-    const hist = samplePlayers.theta_histogram;
-    const theta = currentPlayer.t;
-    let total = 0;
-    let below = 0;
-    for (let i = 0; i < hist.length; i++) {
-      const lo = edges[i];
-      const hi = edges[i + 1];
-      total += hist[i];
-      if (theta <= lo) continue;
-      if (theta >= hi) {
-        below += hist[i];
-      } else {
-        const frac = (theta - lo) / (hi - lo);
-        below += hist[i] * frac;
-      }
-    }
-    return total > 0 ? below / total : null;
-  }, [currentPlayer, samplePlayers]);
+  const rank = useMemo(() => {
+    if (isCustomProfile || !submittedID || !leaderboard) return null;
+    return leaderboard.rankMap.get(submittedID) ?? null;
+  }, [isCustomProfile, submittedID, leaderboard]);
+
+  const topPercentile = useMemo(() => {
+    if (!currentPlayer) return null;
+    return computeTopPercentile(currentPlayer.t, leaderboard?.sortedThetas, samplePlayers);
+  }, [currentPlayer, leaderboard?.sortedThetas, samplePlayers]);
 
   return (
     <div className="space-y-6">
@@ -508,9 +627,14 @@ export function PlayerTab({
                       ({activePlayerExternal?.id ?? submittedID})
                     </span>
                   )}
-                  {percentile != null && (
-                    <span className="px-1.5 py-0.2 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-                      Top {((1 - percentile) * 100).toFixed(1)}%
+                  {rank != null && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                      #{rank}
+                    </span>
+                  )}
+                  {topPercentile != null && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                      Top {formatTopPercentile(topPercentile)}
                     </span>
                   )}
                 </div>
@@ -748,13 +872,20 @@ export function PlayerTab({
                   <TrendingUp className="w-4 h-4 text-cyan-400" />
                   {t.estimatedSkill}
                 </h4>
-                {percentile != null && (
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                    {t.lang === "en"
-                      ? `Top ${(100 - percentile * 100).toFixed(1)}%`
-                      : `상위 ${(100 - percentile * 100).toFixed(1)}%`}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {rank != null && (
+                    <span className="text-xs font-mono px-2 py-0.5 rounded font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                      #{rank}
+                    </span>
+                  )}
+                  {topPercentile != null && (
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                      {t.lang === "en"
+                        ? `Top ${formatTopPercentile(topPercentile)}`
+                        : `상위 ${formatTopPercentile(topPercentile)}`}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -845,18 +976,17 @@ export function PlayerTab({
               </p>
             </div>
           </div>
-          {/* Training Horizon: Recommended Charts */}
-          <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-border/40">
+          {/* Unified Training Horizon Console */}
+          <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-5">
+            {/* Master Header: Title + Target Status Toggle */}
+            <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-border/40">
               <div>
                 <h4 className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  {t.recommendedCharts}
+                  <Target className={cn("w-4 h-4", targetStatus === "HARD" ? "text-lamp-hard" : "text-lamp-vhard")} />
+                  {t.trainingHorizon}
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5 font-sans">
-                  {t.lang === "en"
-                    ? `Charts where P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] — prime target horizon. Top ${REC_LIMIT} shown.`
-                    : `P(${targetStatus}) ∈ [${fmtPct(REC_MIN_PROB)}, ${fmtPct(REC_MAX_PROB)}] 적정 성장 구간 채보. 상위 ${REC_LIMIT}개.`}
+                  {t.horizonDesc}
                 </p>
               </div>
 
@@ -887,105 +1017,358 @@ export function PlayerTab({
               </div>
             </div>
 
-            {analytics.recommendations.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center font-mono">
-                {t.noRecommendations}
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {analytics.recommendations.map(({ chart, p }) => (
-                  <RecommendationCard
-                    key={chart.md5}
-                    chart={chart}
-                    p={p}
-                    onClick={() => onSelectChart(chart)}
-                    formatFn={format}
-                    t={t}
-                    mode={mode}
-                    targetStatus={targetStatus}
-                    chartMaxTheta={chartMaxTheta}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+            {/* Filter Control Toolbar */}
+            <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 p-3 sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                {/* Probability range dual-thumb slider and inputs */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+                    {t.probRange}:
+                  </span>
 
-          {/* Probability Horizon Table Panel */}
-          <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-4">
-            <div className="pb-3 border-b border-border/40">
-              <h4 className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
-                <Target className={`w-4 h-4 ${targetStatus === "HARD" ? "text-rose-400" : "text-purple-400"}`} />
-                {t.yourProbabilities}
-              </h4>
-              <p className="text-xs text-muted-foreground mt-0.5 font-sans">
-                {t.lang === "en"
-                  ? `All uncompleted charts with P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}, sorted by descending probability. Top ${PROB_LIMIT} shown.`
-                  : `P(${targetStatus}) ≥ ${fmtPct(PROB_MIN_THRESHOLD)}인 미클리어 채보, 확률 내림차순. 상위 ${PROB_LIMIT}개.`}
-              </p>
+                  <div className="flex items-center gap-1.5 font-mono text-xs">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={minProb}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (!isNaN(val)) setMinProb(Math.max(0, Math.min(100, val)));
+                      }}
+                      className="w-14 h-7 text-xs font-mono tabular-nums text-center px-1 border-border/70"
+                    />
+                    <span className="text-muted-foreground font-mono">% –</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={maxProb}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (!isNaN(val)) setMaxProb(Math.max(0, Math.min(100, val)));
+                      }}
+                      className="w-14 h-7 text-xs font-mono tabular-nums text-center px-1 border-border/70"
+                    />
+                    <span className="text-muted-foreground font-mono">%</span>
+                  </div>
+
+                  <div className="px-2 w-36 sm:w-48">
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[Math.min(minProb, maxProb), Math.max(minProb, maxProb)]}
+                      onValueChange={([min, max]) => {
+                        setMinProb(min);
+                        setMaxProb(max);
+                      }}
+                      className="cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Preset Pills */}
+                <div className="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(30, 80)}
+                    className={cn(
+                      "px-2 py-1 rounded border text-[11px] transition-colors",
+                      minProb === 30 && maxProb === 80
+                        ? "bg-card text-cyan-400 border-cyan-500/40 font-semibold"
+                        : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    {t.preset3080}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(50, 100)}
+                    className={cn(
+                      "px-2 py-1 rounded border text-[11px] transition-colors",
+                      minProb === 50 && maxProb === 100
+                        ? "bg-card text-cyan-400 border-cyan-500/40 font-semibold"
+                        : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    {t.preset50}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(80, 100)}
+                    className={cn(
+                      "px-2 py-1 rounded border text-[11px] transition-colors",
+                      minProb === 80 && maxProb === 100
+                        ? "bg-card text-cyan-400 border-cyan-500/40 font-semibold"
+                        : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    {t.preset80}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetHorizonFilters}
+                    title={t.resetFilter}
+                    className="p-1 rounded border border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ml-1"
+                    aria-label={t.resetFilter}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Secondary toolbar: Keyword search + Level folder dropdown + Live match counter */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-border/40">
+                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
+                  {/* Search input */}
+                  <div className="relative flex-1 min-w-[180px]">
+                    <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder={t.horizonSearchPlaceholder}
+                      value={horizonSearch}
+                      onChange={(e) => setHorizonSearch(e.target.value)}
+                      className="pl-8 pr-7 h-7 text-xs border-border/70 bg-background"
+                    />
+                    {horizonSearch && (
+                      <button
+                        onClick={() => setHorizonSearch("")}
+                        className="absolute right-2 top-1.5 p-0.5 rounded text-muted-foreground hover:text-foreground"
+                        aria-label="Clear search"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Level folder dropdown */}
+                  <Select value={horizonLevel} onValueChange={setHorizonLevel}>
+                    <SelectTrigger className="w-[110px] h-7 text-xs font-mono border-border/70 bg-background">
+                      <SelectValue placeholder={t.allLevels} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="ALL" className="text-xs font-mono">{t.allLevels}</SelectItem>
+                      {availableLevels.map((lvl) => (
+                        <SelectItem key={lvl} value={lvl} className="text-xs font-mono">
+                          {lvl}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Live match counter */}
+                <div className="text-xs font-mono text-muted-foreground shrink-0 tabular-nums">
+                  {t.matchingCount(analytics.filteredCandidates.length, analytics.totalUncompleted)}
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-md border border-border/80 overflow-hidden font-mono text-xs">
-              <ScrollArea className="max-h-[480px]">
-                <Table className="w-full">
-                  <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
-                    <TableRow className="border-b border-border text-left">
-                      <TableHead className="px-3 py-2.5 font-semibold text-muted-foreground text-xs uppercase">{t.chart}</TableHead>
-                      <TableHead className="px-3 py-2.5 font-semibold text-muted-foreground text-xs text-center w-[70px] uppercase">{t.level}</TableHead>
-                      <TableHead className="px-3 py-2.5 font-semibold text-muted-foreground text-xs text-right w-[90px] uppercase">P({targetStatus})</TableHead>
-                      <TableHead className="px-3 py-2.5 font-semibold text-muted-foreground text-xs text-right w-[90px] uppercase">b_{targetStatus === "HARD" ? "hard" : "vhard"}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="divide-y divide-border/30">
-                    {analytics.allProbabilities.map(({ chart, p }) => (
-                      <TableRow
-                        key={chart.md5}
-                        tabIndex={0}
-                        role="button"
-                        aria-label={`View chart details for ${chart.title}`}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onSelectChart(chart);
-                          }
-                        }}
-                        onClick={() => onSelectChart(chart)}
-                        className="hover:bg-muted/40 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-telemetry-cyan"
-                      >
-                        <TableCell className="font-medium font-jp py-2.5">
-                          <div className="flex flex-col">
-                            <span className="text-sm leading-snug line-clamp-1 text-foreground">{chart.title}</span>
-                            <span className="text-[11px] text-muted-foreground">
-                              {chart.artist || "unknown"}
-                              {chart.name_diff && ` · ${chart.name_diff}`}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center font-mono text-xs py-2.5">
-                          <span className={isSpecialLevel(chart.level) ? "text-amber-400 font-bold" : "text-muted-foreground"}>
-                            {chart.level}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs py-2.5">
-                          <ProbabilityBadge p={p} />
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs py-2.5">
-                          <span className={cn(
-                            "tabular-nums",
-                            targetStatus === "HARD"
-                              ? (chart.n_hard + chart.n_vhard === 0 ? "text-amber-500/80" : "text-lamp-hard font-medium")
-                              : (chart.n_vhard === 0 ? "text-purple-400/80" : "text-lamp-vhard font-medium")
-                          )}>
-                            {targetStatus === "HARD"
-                              ? (chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : format(chart.b_hard_display))
-                              : (chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : format(chart.b_vhard_display))
-                            }
-                          </span>
-                        </TableCell>
+            {/* Featured Targets Horizon Shelf (Top 3 Picks) */}
+            {analytics.recommendations.length > 0 && (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    {t.featuredTargets}
+                  </h5>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {analytics.recommendations.map(({ chart, p, lamp }) => (
+                    <RecommendationCard
+                      key={chart.md5}
+                      chart={chart}
+                      p={p}
+                      lamp={lamp}
+                      onClick={() => onSelectChart(chart)}
+                      formatFn={format}
+                      t={t}
+                      mode={mode}
+                      targetStatus={targetStatus}
+                      chartMaxTheta={chartMaxTheta}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Horizon Explorer Table */}
+            <div className="space-y-2.5">
+              <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-cyan-400" />
+                {t.horizonExplorer}
+              </h5>
+
+              <div className="rounded-md border border-border/80 overflow-hidden font-mono text-xs">
+                <ScrollArea className="max-h-[480px]">
+                  <Table className="w-full">
+                    <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 border-b border-border">
+                      <TableRow className="border-b border-border hover:bg-transparent">
+                        <HorizonSortHead
+                          label={t.currentLamp}
+                          sortKey="lamp"
+                          currentKey={horizonSortKey}
+                          currentDir={horizonSortDir}
+                          onSort={handleHorizonSort}
+                          align="center"
+                          className="w-[65px]"
+                        />
+                        <HorizonSortHead
+                          label={t.chart}
+                          sortKey="title"
+                          currentKey={horizonSortKey}
+                          currentDir={horizonSortDir}
+                          onSort={handleHorizonSort}
+                          align="left"
+                        />
+                        <HorizonSortHead
+                          label={t.level}
+                          sortKey="level"
+                          currentKey={horizonSortKey}
+                          currentDir={horizonSortDir}
+                          onSort={handleHorizonSort}
+                          align="center"
+                          className="w-[75px]"
+                        />
+                        <HorizonSortHead
+                          label={`P(${targetStatus})`}
+                          sortKey="p"
+                          currentKey={horizonSortKey}
+                          currentDir={horizonSortDir}
+                          onSort={handleHorizonSort}
+                          align="right"
+                          className="w-[120px]"
+                        />
+                        <HorizonSortHead
+                          label={`b_${targetStatus === "HARD" ? "hard" : "vhard"}`}
+                          sortKey="b"
+                          currentKey={horizonSortKey}
+                          currentDir={horizonSortDir}
+                          onSort={handleHorizonSort}
+                          align="right"
+                          className="w-[95px]"
+                        />
+                        <HorizonSortHead
+                          label="a"
+                          sortKey="a"
+                          currentKey={horizonSortKey}
+                          currentDir={horizonSortDir}
+                          onSort={handleHorizonSort}
+                          align="right"
+                          className="w-[70px]"
+                        />
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-border/30">
+                      {analytics.filteredCandidates.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-10 text-center">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <p className="text-sm font-sans text-muted-foreground">
+                                {t.noRecommendations}
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={resetHorizonFilters}
+                                className="text-xs h-7 font-mono gap-1.5 mt-1 border-border/80"
+                              >
+                                <RotateCcw className="w-3 h-3 text-muted-foreground" />
+                                {t.resetFilter}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        analytics.filteredCandidates.map(({ chart, p, lamp }) => {
+                          const lampMeta = lamp != null ? LAMP_LABEL[lamp] : null;
+                          return (
+                            <TableRow
+                              key={chart.md5}
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`View chart details for ${chart.title}`}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  onSelectChart(chart);
+                                }
+                              }}
+                              onClick={() => onSelectChart(chart)}
+                              className="hover:bg-muted/40 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-telemetry-cyan"
+                            >
+                              <TableCell className="text-center font-mono text-xs py-2.5">
+                                {lampMeta ? (
+                                  <span
+                                    className={cn(
+                                      "inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border",
+                                      lampMeta.bgClass,
+                                      lampMeta.textClass,
+                                      lampMeta.borderClass
+                                    )}
+                                  >
+                                    {lampMeta.text}
+                                  </span>
+                                ) : (
+                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] text-muted-foreground border border-border/40 bg-muted/20">
+                                    --
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium font-jp py-2.5">
+                                <div className="flex flex-col">
+                                  <span className="text-sm leading-snug line-clamp-1 text-foreground">
+                                    {chart.title}
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {chart.artist || "unknown"}
+                                    {chart.name_diff && ` · ${chart.name_diff}`}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs py-2.5">
+                                <span className={isSpecialLevel(chart.level) ? "text-amber-400 font-bold" : "text-muted-foreground"}>
+                                  {chart.level}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-xs py-2.5">
+                                <ProbabilityBadge p={p} targetStatus={targetStatus} />
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-xs py-2.5">
+                                <span
+                                  className={cn(
+                                    "tabular-nums",
+                                    targetStatus === "HARD"
+                                      ? chart.n_hard + chart.n_vhard === 0
+                                        ? "text-amber-500/80"
+                                        : "text-lamp-hard font-medium"
+                                      : chart.n_vhard === 0
+                                      ? "text-purple-400/80"
+                                      : "text-lamp-vhard font-medium"
+                                  )}
+                                >
+                                  {targetStatus === "HARD"
+                                    ? chart.n_hard + chart.n_vhard === 0
+                                      ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?`
+                                      : format(chart.b_hard_display)
+                                    : chart.n_vhard === 0
+                                    ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?`
+                                    : format(chart.b_vhard_display)}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-xs py-2.5 text-muted-foreground tabular-nums">
+                                {chart.a != null ? chart.a.toFixed(2) : "–"}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
             </div>
           </div>
         </>
@@ -994,18 +1377,69 @@ export function PlayerTab({
   );
 }
 
+function HorizonSortHead({
+  label,
+  sortKey,
+  currentKey,
+  currentDir,
+  onSort,
+  align = "left",
+  className,
+}: {
+  label: React.ReactNode;
+  sortKey: "p" | "b" | "a" | "level" | "title" | "lamp";
+  currentKey: "p" | "b" | "a" | "level" | "title" | "lamp";
+  currentDir: "asc" | "desc";
+  onSort: (key: "p" | "b" | "a" | "level" | "title" | "lamp") => void;
+  align?: "left" | "center" | "right";
+  className?: string;
+}) {
+  const isActive = currentKey === sortKey;
+  return (
+    <TableHead
+      className={cn(
+        "px-3 py-2.5 font-semibold text-xs uppercase select-none cursor-pointer transition-colors hover:text-foreground",
+        align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left",
+        isActive ? "text-foreground" : "text-muted-foreground",
+        className
+      )}
+      onClick={() => onSort(sortKey)}
+    >
+      <div
+        className={cn(
+          "inline-flex items-center gap-1",
+          align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start"
+        )}
+      >
+        <span>{label}</span>
+        {isActive ? (
+          currentDir === "asc" ? (
+            <ArrowUp className="w-3 h-3 text-cyan-400" />
+          ) : (
+            <ArrowDown className="w-3 h-3 text-cyan-400" />
+          )
+        ) : (
+          <ArrowUpDown className="w-3 h-3 opacity-30 hover:opacity-70" />
+        )}
+      </div>
+    </TableHead>
+  );
+}
+
 function RecommendationCard({
   chart,
   p,
+  lamp,
   onClick,
   formatFn,
   t,
   mode,
   targetStatus,
-  chartMaxTheta
+  chartMaxTheta,
 }: {
   chart: Chart;
   p: number;
+  lamp?: number | null;
   onClick: () => void;
   formatFn: (val: number | null | undefined) => string;
   t: any;
@@ -1013,6 +1447,8 @@ function RecommendationCard({
   targetStatus: "HARD" | "V-HARD";
   chartMaxTheta?: Map<number, number> | null;
 }) {
+  const lampMeta = lamp != null ? LAMP_LABEL[lamp] : null;
+
   return (
     <button
       onClick={onClick}
@@ -1022,9 +1458,27 @@ function RecommendationCard({
         <span className="text-sm font-medium font-jp line-clamp-2 leading-snug group-hover:text-foreground">
           {chart.title}
         </span>
-        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-background border border-border/60 shrink-0">
-          {levelLabel(chart.level)}
-        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {lampMeta ? (
+            <span
+              className={cn(
+                "font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border",
+                lampMeta.bgClass,
+                lampMeta.textClass,
+                lampMeta.borderClass
+              )}
+            >
+              {lampMeta.text}
+            </span>
+          ) : (
+            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded text-muted-foreground bg-muted/20 border border-border/40">
+              --
+            </span>
+          )}
+          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-background border border-border/60">
+            {levelLabel(chart.level)}
+          </span>
+        </div>
       </div>
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="text-muted-foreground font-jp text-[11px] line-clamp-1">
@@ -1043,26 +1497,36 @@ function RecommendationCard({
       <div className="h-1.5 rounded-sm bg-muted/80 overflow-hidden border border-border/40">
         <div
           className={cn(
-            "h-full rounded-sm",
+            "h-full rounded-sm transition-all",
             targetStatus === "HARD" ? "bg-lamp-hard" : "bg-lamp-vhard"
           )}
           style={{
-            width: `${Math.min(100, p * 100)}%`,
+            width: `${Math.min(100, Math.max(0, p * 100))}%`,
           }}
         />
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
         <span>
-          b_{targetStatus === "HARD" ? "hard" : "vhard"}: <span className={cn(
-            "font-semibold tabular-nums",
-            targetStatus === "HARD"
-              ? (chart.n_hard + chart.n_vhard === 0 ? "text-amber-500/80" : "text-lamp-hard")
-              : (chart.n_vhard === 0 ? "text-purple-400/80" : "text-lamp-vhard")
-          )}>
+          b_{targetStatus === "HARD" ? "hard" : "vhard"}:{" "}
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              targetStatus === "HARD"
+                ? chart.n_hard + chart.n_vhard === 0
+                  ? "text-amber-500/80"
+                  : "text-lamp-hard"
+                : chart.n_vhard === 0
+                ? "text-purple-400/80"
+                : "text-lamp-vhard"
+            )}
+          >
             {targetStatus === "HARD"
-              ? (chart.n_hard + chart.n_vhard === 0 ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?` : formatFn(chart.b_hard_display))
-              : (chart.n_vhard === 0 ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?` : formatFn(chart.b_vhard_display))
-            }
+              ? chart.n_hard + chart.n_vhard === 0
+                ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?`
+                : formatFn(chart.b_hard_display)
+              : chart.n_vhard === 0
+              ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?`
+              : formatFn(chart.b_vhard_display)}
           </span>
         </span>
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
@@ -1071,18 +1535,36 @@ function RecommendationCard({
   );
 }
 
-function ProbabilityBadge({ p }: { p: number }) {
+function ProbabilityBadge({
+  p,
+  targetStatus,
+}: {
+  p: number;
+  targetStatus: "HARD" | "V-HARD";
+}) {
   const colorClass =
-    p >= 0.80
+    p >= 0.8
       ? "text-emerald-400"
-      : p >= 0.50
+      : p >= 0.5
       ? "text-cyan-400"
-      : p >= 0.20
+      : p >= 0.2
       ? "text-lamp-normal"
       : "text-muted-foreground";
+
   return (
-    <span className={cn("font-mono font-semibold tabular-nums", colorClass)}>
-      {fmtPct(p)}
-    </span>
+    <div className="flex items-center justify-end gap-2">
+      <div className="hidden sm:block w-12 h-1 bg-muted/60 rounded-full overflow-hidden border border-border/30">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            targetStatus === "HARD" ? "bg-lamp-hard" : "bg-lamp-vhard"
+          )}
+          style={{ width: `${Math.min(100, Math.max(0, p * 100))}%` }}
+        />
+      </div>
+      <span className={cn("font-mono font-semibold tabular-nums text-xs", colorClass)}>
+        {fmtPct(p)}
+      </span>
+    </div>
   );
 }

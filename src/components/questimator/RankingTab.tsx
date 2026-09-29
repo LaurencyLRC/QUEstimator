@@ -17,7 +17,8 @@ import {
 import { Trophy, Search, X } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
-import type { Chart, PlayerData, PlayersDict } from "@/lib/questimator-types";
+import type { Chart, PlayerData, PlayersDict, LeaderboardResult, RankRow } from "@/lib/questimator-types";
+import { computeLeaderboard } from "@/lib/questimator-types";
 import { fetchPlayersData } from "@/lib/players-cache";
 import { cn } from "@/lib/utils";
 
@@ -25,28 +26,9 @@ interface Props {
   charts: Chart[];
   onSelectPlayer: (id: string, data: PlayerData) => void;
   players?: PlayersDict | null;
+  leaderboard?: LeaderboardResult | null;
   loading?: boolean;
   error?: string | null;
-}
-
-interface RankRow {
-  id: string;
-  data: PlayerData;
-  nClears: number;
-  nVhard: number;
-  nHard: number;
-  eligible: boolean;
-}
-
-const MIN_PLAYS = 10;
-const MIN_HARD_OR_BETTER = 1;
-const EXCLUDED_LEVELS = new Set(["-_-", "?!", "◆"]);
-
-function isValidRankingChart(c: Chart): boolean {
-  if (c.provisional) return false;
-  if (EXCLUDED_LEVELS.has(c.level)) return false;
-  if (/^\d+$/.test(c.level)) return parseInt(c.level, 10) >= 20;
-  return c.level === "Ω";
 }
 
 function rankBadgeColor(rank: number): string | null {
@@ -60,6 +42,7 @@ export function RankingTab({
   charts,
   onSelectPlayer,
   players: propPlayers,
+  leaderboard,
   loading: propLoading,
   error: propError,
 }: Props) {
@@ -94,51 +77,11 @@ export function RankingTab({
     })();
   }, [propPlayers]);
 
-  const rankingChartIds = useMemo(() => {
-    const s = new Set<number>();
-    for (const c of charts) {
-      if (isValidRankingChart(c)) s.add(c.id);
-    }
-    return s;
-  }, [charts]);
-
   const ranked = useMemo<RankRow[]>(() => {
+    if (leaderboard) return leaderboard.ranked;
     if (!players) return [];
-    const rows: RankRow[] = Object.entries(players).map(([id, data]) => {
-      let nVhard = 0;
-      let nHard = 0;
-      let nNormal = 0;
-      let nFailed = 0;
-      let eligPlays = 0;
-      let eligHardOrBetter = 0;
-
-      for (const [cidStr, s] of Object.entries(data.c)) {
-        if (s === 3) nVhard += 1;
-        else if (s === 2) nHard += 1;
-        else if (s === 1) nNormal += 1;
-        else if (s === 0) nFailed += 1;
-
-        if (rankingChartIds.has(Number(cidStr))) {
-          eligPlays += 1;
-          if (s >= 2) eligHardOrBetter += 1;
-        }
-      }
-
-      const nClears = nVhard + nHard + nNormal + nFailed;
-      const eligible =
-        eligPlays >= MIN_PLAYS && eligHardOrBetter >= MIN_HARD_OR_BETTER;
-
-      return { id, data, nClears, nVhard, nHard, eligible };
-    });
-
-    rows.sort((a, b) => {
-      if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
-      if (a.data.t !== b.data.t) return b.data.t - a.data.t;
-      return b.nClears - a.nClears;
-    });
-
-    return rows;
-  }, [players, rankingChartIds]);
+    return computeLeaderboard(players, charts).ranked;
+  }, [leaderboard, players, charts]);
 
   const unrankedCount = useMemo(
     () => ranked.filter((r) => !r.eligible).length,

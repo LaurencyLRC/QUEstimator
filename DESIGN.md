@@ -193,7 +193,7 @@ QUEstimator adheres to a strictly flat, coplanar architectural model with zero s
 
 ### Statistical Charts
 - **Box Plot:** SVG distribution showing Q1, Median, and Q3 with separate Crimson (`HARD`) and Violet (`V-HARD`) box pairs per level folder.
-- **GRM Survival Curves:** Cumulative IRT logistic probability curves ($P^*(	heta)$) for Normal, Hard, and V-Hard clear probabilities with vertical player $	heta$ needle.
+- **GRM Survival Curves:** Cumulative IRT logistic probability curves ($P*(\theta)$) for Hard and V-Hard clear probabilities with vertical player $\theta$ needle (Normal curve is hidden due to lax gauge mechanics).
 - **Skill Histogram:** Bar chart with OKLCH cyan bars and dashed amber/cyan population and player benchmark markers.
 
 ## Do's and Don'ts

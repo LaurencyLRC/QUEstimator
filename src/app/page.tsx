@@ -24,10 +24,12 @@ import type {
   Meta,
   PlayerData,
   PlayersDict,
-  SamplePlayers
+  SamplePlayers,
+  LeaderboardResult,
 } from "@/lib/questimator-types";
 import {
   computeSamplePlayers,
+  computeLeaderboard,
   levelSortKey,
   levelLabel,
   isSpecialLevel
@@ -95,6 +97,11 @@ export default function Home() {
     if (!playersData) return null;
     return computeSamplePlayers(playersData);
   }, [playersData]);
+
+  const leaderboard = useMemo<LeaderboardResult | null>(() => {
+    if (!playersData || charts.length === 0) return null;
+    return computeLeaderboard(playersData, charts);
+  }, [playersData, charts]);
 
   const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
   const { profiles: customProfiles, saveProfile, deleteProfile } = useCustomProfiles();
@@ -458,6 +465,7 @@ export default function Home() {
               <PlayerTab
                 charts={charts}
                 samplePlayers={samplePlayers}
+                leaderboard={leaderboard}
                 playerThetaMean={samplePlayers?.theta_mean ?? meta?.player_theta_mean ?? 0}
                 playerThetaStd={samplePlayers?.theta_std ?? meta?.player_theta_std ?? 1}
                 onSelectChart={handleSelectChart}
@@ -483,6 +491,7 @@ export default function Home() {
               <RankingTab
                 charts={charts}
                 players={playersData}
+                leaderboard={leaderboard}
                 loading={playersLoading}
                 error={playersError}
                 onSelectPlayer={handleSelectPlayerFromRanking}
