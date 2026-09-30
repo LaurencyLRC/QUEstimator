@@ -9,7 +9,18 @@ export function useCustomProfiles() {
     try {
       const stored = localStorage.getItem("questimator_custom_profiles");
       if (stored) {
-        setProfiles(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        const normalized: Record<string, PlayerData> = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (v && typeof v === "object") {
+            normalized[k] = {
+              c: (v as any).c || {},
+              n: (v as any).n,
+              t: (v as any).t ?? 0,
+            };
+          }
+        }
+        setProfiles(normalized);
       }
     } catch (e) {
       console.error("Failed to load custom profiles", e);
@@ -20,7 +31,11 @@ export function useCustomProfiles() {
   const saveProfile = useCallback((id: string, data: PlayerData) => {
     setProfiles((prev) => {
       const next = { ...prev, [id]: data };
-      localStorage.setItem("questimator_custom_profiles", JSON.stringify(next));
+      // Omit player ability level (t) from storage to prevent obsolete calculations when chart difficulties update
+      const toStore = Object.fromEntries(
+        Object.entries(next).map(([k, v]) => [k, { c: v.c, ...(v.n ? { n: v.n } : {}) }])
+      );
+      localStorage.setItem("questimator_custom_profiles", JSON.stringify(toStore));
       return next;
     });
   }, []);
@@ -29,7 +44,10 @@ export function useCustomProfiles() {
     setProfiles((prev) => {
       const next = { ...prev };
       delete next[id];
-      localStorage.setItem("questimator_custom_profiles", JSON.stringify(next));
+      const toStore = Object.fromEntries(
+        Object.entries(next).map(([k, v]) => [k, { c: v.c, ...(v.n ? { n: v.n } : {}) }])
+      );
+      localStorage.setItem("questimator_custom_profiles", JSON.stringify(toStore));
       return next;
     });
   }, []);

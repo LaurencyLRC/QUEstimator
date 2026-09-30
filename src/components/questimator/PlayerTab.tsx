@@ -67,6 +67,7 @@ import {
   isSpecialLevel,
   computeTopPercentile,
   formatTopPercentile,
+  estimateTheta,
 } from "@/lib/questimator-types";
 import { PlayerSkillHistogram } from "@/components/questimator/PlayerSkillHistogram";
 import { fetchPlayersData } from "@/lib/players-cache";
@@ -271,11 +272,16 @@ export function PlayerTab({
   }, [activePlayerExternal]);
 
   const currentPlayer = useMemo<PlayerData | null>(() => {
-    if (isCustomProfile) return customProfiles?.[submittedID] ?? null;
+    if (isCustomProfile) {
+      const p = customProfiles?.[submittedID];
+      if (!p) return null;
+      const dynamicTheta = charts.length > 0 ? estimateTheta(charts, p.c || {}) : (p.t ?? 0);
+      return { ...p, t: dynamicTheta };
+    }
     if (activePlayerExternal && activePlayerExternal.id === submittedID) return activePlayerExternal.data;
     if (!players || !submittedID) return null;
     return players[submittedID] ?? null;
-  }, [players, submittedID, activePlayerExternal, customProfiles, isCustomProfile]);
+  }, [players, submittedID, activePlayerExternal, customProfiles, isCustomProfile, charts]);
 
   useEffect(() => {
     onPlayerChange(currentPlayer ? submittedID : null, currentPlayer, isCustomProfile);
@@ -744,7 +750,9 @@ export function PlayerTab({
                     onKeyDown={e => {
                       if (e.key === "Enter" && newProfileName.trim() && onSaveCustomProfile) {
                         const name = newProfileName.trim();
-                        onSaveCustomProfile(name, currentPlayer ? { ...currentPlayer, c: { ...currentPlayer.c } } : { t: 0, c: {} });
+                        const clears = currentPlayer?.c ? { ...currentPlayer.c } : {};
+                        const tVal = charts.length > 0 ? estimateTheta(charts, clears) : 0;
+                        onSaveCustomProfile(name, { t: tVal, c: clears, n: name });
                         setIsCustomProfile(true);
                         setSubmittedID(name);
                         setIsCreating(false);
@@ -757,7 +765,9 @@ export function PlayerTab({
                   <Button size="sm" className="h-8 text-xs font-sans" onClick={() => {
                     if (newProfileName.trim() && onSaveCustomProfile) {
                       const name = newProfileName.trim();
-                      onSaveCustomProfile(name, currentPlayer ? { ...currentPlayer, c: { ...currentPlayer.c } } : { t: 0, c: {} });
+                      const clears = currentPlayer?.c ? { ...currentPlayer.c } : {};
+                      const tVal = charts.length > 0 ? estimateTheta(charts, clears) : 0;
+                      onSaveCustomProfile(name, { t: tVal, c: clears, n: name });
                       setIsCustomProfile(true);
                       setSubmittedID(name);
                       setIsCreating(false);
@@ -827,7 +837,14 @@ export function PlayerTab({
                       <Button
                         size="sm" variant="outline" className="h-8 text-xs font-sans"
                         onClick={() => {
-                          const blob = new Blob([JSON.stringify(currentPlayer)], { type: "application/json" });
+                          if (!currentPlayer) return;
+                          // Do not store obsolete player ability levels (t).
+                          // Ability is dynamically calculated from the chart IRT calibration.
+                          const exportData: { c: Record<string, number>; n?: string } = {
+                            c: currentPlayer.c ?? {},
+                            ...(currentPlayer.n ? { n: currentPlayer.n } : {}),
+                          };
+                          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement("a");
                           a.href = url;
@@ -867,16 +884,22 @@ export function PlayerTab({
                         reader.onload = (e) => {
                           try {
                             const data = JSON.parse(e.target?.result as string);
-                            if (data && typeof data.t === 'number' && typeof data.c === 'object') {
+                            if (data && typeof data.c === 'object' && data.c !== null && !Array.isArray(data.c)) {
                               const name = file.name.replace('.json', '');
-                              if (onSaveCustomProfile) onSaveCustomProfile(name, data);
+                              const calculatedTheta = estimateTheta(charts, data.c);
+                              const profileData: PlayerData = {
+                                t: calculatedTheta,
+                                c: data.c,
+                                ...(typeof data.n === 'string' ? { n: data.n } : {}),
+                              };
+                              if (onSaveCustomProfile) onSaveCustomProfile(name, profileData);
                               setIsCustomProfile(true);
                               setSubmittedID(name);
                               setInternalLoadError(null);
                               setImportSuccess(name);
                               setTimeout(() => setImportSuccess(null), 3000);
                             } else {
-                              setInternalLoadError(t.lang === "en" ? "Invalid profile JSON format: expected 't' and 'c' fields" : "잘못된 프로필 JSON 형식입니다: 't' 및 'c' 필드가 필요합니다");
+                              setInternalLoadError(t.lang === "en" ? "Invalid profile JSON format: expected 'c' (clears) map" : "잘못된 프로필 JSON 형식입니다: 'c' (클리어) 맵이 필요합니다");
                             }
                           } catch (err) {
                             setInternalLoadError(t.lang === "en" ? "Failed to parse JSON file" : "JSON 파일을 구문 분석하지 못했습니다");
