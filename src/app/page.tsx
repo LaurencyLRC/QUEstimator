@@ -171,6 +171,16 @@ export default function Home() {
     setTab("player");
   };
 
+  const handleClearStatusChange = (chartId: number, status: number) => {
+    if (!activePlayer?.isCustom) return;
+    const newData = { ...activePlayer.data, c: { ...(activePlayer.data.c || {}) } };
+    if (status < 0) delete newData.c[String(chartId)];
+    else newData.c[String(chartId)] = status;
+    newData.t = estimateTheta(charts, newData.c);
+    setActivePlayer({ id: activePlayer.id, data: newData, isCustom: true });
+    saveProfile(activePlayer.id, newData);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -456,6 +466,7 @@ export default function Home() {
                     onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
                     activePlayer={activePlayer}
                     chartMaxTheta={chartMaxTheta}
+                    onClearStatusChange={activePlayer?.isCustom ? handleClearStatusChange : undefined}
                   />
                 </div>
               </div>
@@ -511,14 +522,6 @@ export default function Home() {
         onOpenChange={setDetailOpen}
         activePlayer={activePlayer}
         chartMaxTheta={chartMaxTheta}
-        onClearStatusChange={activePlayer?.isCustom ? (chartId, status) => {
-          const newData = { ...activePlayer.data, c: { ...(activePlayer.data.c || {}) } };
-          if (status < 0) delete newData.c[String(chartId)];
-          else newData.c[String(chartId)] = status;
-          newData.t = estimateTheta(charts, newData.c);
-          setActivePlayer({ id: activePlayer.id, data: newData, isCustom: true });
-          saveProfile(activePlayer.id, newData);
-        } : undefined}
       />
     </ScaleProvider>
   );

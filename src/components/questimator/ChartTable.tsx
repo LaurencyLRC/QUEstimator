@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
-import { levelLabel, levelSortKey, isSpecialLevel, pStar } from "@/lib/questimator-types";
+import { levelLabel, levelSortKey, isSpecialLevel, pStar, getNextLampStatus, getPrevLampStatus } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 
@@ -30,8 +30,9 @@ interface Props {
   sortKey: SortKey;
   sortDir: SortDir;
   onSortChange: (key: SortKey, dir: SortDir) => void;
-  activePlayer?: { id: string; data: PlayerData } | null;
+  activePlayer?: { id: string; data: PlayerData; isCustom?: boolean } | null;
   chartMaxTheta?: Map<number, number> | null;
+  onClearStatusChange?: (chartId: number, status: number) => void;
 }
 
 function SortHeaderBtn({
@@ -115,7 +116,7 @@ function ClearDistBar({
   );
 }
 
-export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChange, activePlayer, chartMaxTheta }: Props) {
+export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChange, activePlayer, chartMaxTheta, onClearStatusChange }: Props) {
   const { t } = useLang();
   const { mode, format } = useScale();
   const [query, setQuery] = useState("");
@@ -388,7 +389,40 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                         <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              {hasStatus && (
+                              {activePlayer?.isCustom && onClearStatusChange ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClearStatusChange(c.id, getNextLampStatus(status));
+                                  }}
+                                  onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onClearStatusChange(c.id, getPrevLampStatus(status));
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      onClearStatusChange(c.id, getNextLampStatus(status));
+                                    }
+                                  }}
+                                  title={
+                                    t.lang === "en"
+                                      ? "Click to cycle status: FAILED → HARD → V-HARD → None (Right-click: reverse)"
+                                      : "클리어 상태 변경: FAILED → HARD → V-HARD → 미설정 (우클릭: 역방향)"
+                                  }
+                                  className={cn(
+                                    "text-[10px] font-mono px-1.5 py-0.5 rounded font-bold uppercase shrink-0 border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer",
+                                    hasStatus
+                                      ? cn(STATUS_BADGE[status].className, "hover:brightness-125")
+                                      : "text-muted-foreground/60 border-border/50 bg-muted/20 hover:text-foreground hover:border-border"
+                                  )}
+                                >
+                                  {hasStatus ? STATUS_BADGE[status].label : "--"}
+                                </button>
+                              ) : hasStatus ? (
                                 <span
                                   className={cn(
                                     "text-[10px] font-mono px-1.5 py-0.5 rounded font-bold uppercase shrink-0 border",
@@ -397,7 +431,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                                 >
                                   {STATUS_BADGE[status].label}
                                 </span>
-                              )}
+                              ) : null}
                               <span className="text-sm leading-snug line-clamp-2">
                                 {c.title}
                               </span>

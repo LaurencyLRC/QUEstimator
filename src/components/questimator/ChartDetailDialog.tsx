@@ -8,7 +8,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
 import { levelLabel } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
@@ -21,7 +20,6 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activePlayer?: { id: string; data: PlayerData } | null;
-  onClearStatusChange?: (chartId: number, status: number) => void;
   chartMaxTheta?: Map<number, number> | null;
 }
 
@@ -46,7 +44,7 @@ function getClearBadge(status?: number) {
   return null;
 }
 
-export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onClearStatusChange, chartMaxTheta }: Props) {
+export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, chartMaxTheta }: Props) {
   const { t } = useLang();
   const { format, mode } = useScale();
   const [copiedMd5, setCopiedMd5] = useState(false);
@@ -75,7 +73,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
                   {t.provisional}
                 </Badge>
               )}
-              {activePlayer && !onClearStatusChange && activePlayer.data.c?.[chart.id.toString()] !== undefined && (
+              {activePlayer && activePlayer.data.c?.[chart.id.toString()] !== undefined && (
                 getClearBadge(activePlayer.data.c?.[chart.id.toString()])
               )}
             </div>
@@ -121,27 +119,6 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, onC
               )}
             </button>
           </DialogDescription>
-
-          {onClearStatusChange && activePlayer && (
-            <div className="flex items-center gap-2 pt-3 mt-2 border-t border-border/40">
-              <span className="text-xs font-sans text-muted-foreground">Status Override:</span>
-              <ToggleGroup
-                type="single"
-                value={String(activePlayer.data.c?.[chart.id.toString()] ?? -1)}
-                onValueChange={(v) => {
-                  onClearStatusChange(chart.id, v ? parseInt(v, 10) : -1);
-                }}
-                size="sm"
-                className="gap-0.5 h-6 bg-background/80 p-0.5 rounded border border-border/80"
-              >
-                <ToggleGroupItem value="-1" className="text-[10px] font-mono h-5 px-2 rounded-sm border border-transparent data-[state=on]:bg-muted data-[state=on]:text-foreground text-muted-foreground">NONE</ToggleGroupItem>
-                <ToggleGroupItem value="0" className="text-[10px] font-mono h-5 px-2 rounded-sm border border-transparent text-muted-foreground data-[state=on]:border-lamp-failed/40 data-[state=on]:bg-lamp-failed/20 data-[state=on]:text-foreground">FAILED</ToggleGroupItem>
-                <ToggleGroupItem value="1" className="text-[10px] font-mono h-5 px-2 rounded-sm border border-transparent text-lamp-normal/80 data-[state=on]:border-lamp-normal/40 data-[state=on]:bg-lamp-normal/20 data-[state=on]:text-lamp-normal">NORMAL</ToggleGroupItem>
-                <ToggleGroupItem value="2" className="text-[10px] font-mono h-5 px-2 rounded-sm border border-transparent text-lamp-hard/80 data-[state=on]:border-lamp-hard/40 data-[state=on]:bg-lamp-hard/20 data-[state=on]:text-lamp-hard">HARD</ToggleGroupItem>
-                <ToggleGroupItem value="3" className="text-[10px] font-mono h-5 px-2 rounded-sm border border-transparent text-lamp-vhard/80 data-[state=on]:border-lamp-vhard/40 data-[state=on]:bg-lamp-vhard/20 data-[state=on]:text-lamp-vhard">V-HARD</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-          )}
         </DialogHeader>
 
         <div className="space-y-4 mt-2">

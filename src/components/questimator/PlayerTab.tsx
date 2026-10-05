@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,8 @@ import {
   computeTopPercentile,
   formatTopPercentile,
   estimateTheta,
+  getNextLampStatus,
+  getPrevLampStatus,
 } from "@/lib/questimator-types";
 import { PlayerSkillHistogram } from "@/components/questimator/PlayerSkillHistogram";
 import { fetchPlayersData } from "@/lib/players-cache";
@@ -580,6 +583,41 @@ export function PlayerTab({
     if (!currentPlayer) return null;
     return computeTopPercentile(currentPlayer.t, leaderboard?.sortedThetas, samplePlayers);
   }, [currentPlayer, leaderboard?.sortedThetas, samplePlayers]);
+
+  const handleClearStatusChange = (chartId: number, status: number) => {
+    if (!isCustomProfile || !currentPlayer || !onSaveCustomProfile) return;
+    const newClears = { ...(currentPlayer.c || {}) };
+    if (status < 0) {
+      delete newClears[String(chartId)];
+    } else {
+      newClears[String(chartId)] = status;
+    }
+    const dynamicTheta = estimateTheta(charts, newClears);
+    const updatedProfile: PlayerData = {
+      ...currentPlayer,
+      c: newClears,
+      t: dynamicTheta,
+    };
+    onSaveCustomProfile(submittedID, updatedProfile);
+  };
+
+  const horizonScrollRef = useRef<HTMLDivElement>(null);
+  const horizonCandidates = analytics?.filteredCandidates ?? [];
+
+  const horizonVirtualizer = useVirtualizer({
+    count: horizonCandidates.length,
+    getScrollElement: () => horizonScrollRef.current,
+    estimateSize: () => 48,
+    overscan: 10,
+    getItemKey: (index) => horizonCandidates[index]?.chart.md5 ?? index,
+  });
+
+  const horizonVirtualItems = horizonVirtualizer.getVirtualItems();
+  const horizonPaddingTop = horizonVirtualItems.length > 0 ? horizonVirtualItems[0].start : 0;
+  const horizonPaddingBottom =
+    horizonVirtualItems.length > 0
+      ? horizonVirtualizer.getTotalSize() - horizonVirtualItems[horizonVirtualItems.length - 1].end
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -1419,6 +1457,7 @@ export function PlayerTab({
                       mode={mode}
                       targetStatus={targetStatus}
                       chartMaxTheta={chartMaxTheta}
+                      onClearStatusChange={isCustomProfile && onSaveCustomProfile ? handleClearStatusChange : undefined}
                     />
                   ))}
                 </div>
@@ -1433,7 +1472,7 @@ export function PlayerTab({
               </h5>
 
               <div className="rounded-md border border-border/80 overflow-hidden font-mono text-xs">
-                <div className="max-h-[500px] overflow-auto">
+                <div ref={horizonScrollRef} className="max-h-[500px] overflow-auto">
                   <Table className="w-full min-w-[620px]">
                     <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 border-b border-border">
                       <TableRow className="border-b border-border hover:bg-transparent">
@@ -1493,7 +1532,7 @@ export function PlayerTab({
                       </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border/30">
-                      {analytics.filteredCandidates.length === 0 ? (
+                      {horizonCandidates.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="py-10 text-center">
                             <div className="flex flex-col items-center justify-center gap-2">
@@ -1513,88 +1552,136 @@ export function PlayerTab({
                           </TableCell>
                         </TableRow>
                       ) : (
-                        analytics.filteredCandidates.map(({ chart, p, lamp }) => {
-                          const lampMeta = lamp != null ? LAMP_LABEL[lamp] : null;
-                          return (
-                            <TableRow
-                              key={chart.md5}
-                              tabIndex={0}
-                              role="button"
-                              aria-label={`View chart details for ${chart.title}`}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  onSelectChart(chart);
-                                }
-                              }}
-                              onClick={() => onSelectChart(chart)}
-                              className="hover:bg-muted/40 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-telemetry-cyan"
-                            >
-                              <TableCell className="text-center font-mono text-xs py-2.5">
-                                {lampMeta ? (
+                        <>
+                          {horizonPaddingTop > 0 && (
+                            <TableRow aria-hidden className="border-0 hover:bg-transparent">
+                              <TableCell colSpan={6} style={{ height: `${horizonPaddingTop}px`, padding: 0, border: 0 }} />
+                            </TableRow>
+                          )}
+                          {horizonVirtualItems.map((virtualRow) => {
+                            const { chart, p, lamp } = horizonCandidates[virtualRow.index];
+                            const lampMeta = lamp != null ? LAMP_LABEL[lamp] : null;
+                            return (
+                              <TableRow
+                                key={chart.md5}
+                                data-index={virtualRow.index}
+                                ref={horizonVirtualizer.measureElement}
+                                tabIndex={0}
+                                role="button"
+                                aria-label={`View chart details for ${chart.title}`}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    onSelectChart(chart);
+                                  }
+                                }}
+                                onClick={() => onSelectChart(chart)}
+                                className="hover:bg-muted/40 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-telemetry-cyan"
+                              >
+                                <TableCell className="text-center font-mono text-xs py-2.5">
+                                  {isCustomProfile && onSaveCustomProfile ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleClearStatusChange(chart.id, getNextLampStatus(lamp));
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleClearStatusChange(chart.id, getPrevLampStatus(lamp));
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleClearStatusChange(chart.id, getNextLampStatus(lamp));
+                                        }
+                                      }}
+                                      title={
+                                        t.lang === "en"
+                                          ? "Click to cycle status: FAILED → HARD → V-HARD → None (Right-click: reverse)"
+                                          : "클리어 상태 변경: FAILED → HARD → V-HARD → 미설정 (우클릭: 역방향)"
+                                      }
+                                      className={cn(
+                                        "inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer",
+                                        lampMeta
+                                          ? cn(lampMeta.bgClass, lampMeta.textClass, lampMeta.borderClass, "hover:brightness-125")
+                                          : "text-muted-foreground/60 border-border/50 bg-muted/20 hover:text-foreground hover:border-border"
+                                      )}
+                                    >
+                                      {lampMeta ? lampMeta.text : "--"}
+                                    </button>
+                                  ) : lampMeta ? (
+                                    <span
+                                      className={cn(
+                                        "inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border",
+                                        lampMeta.bgClass,
+                                        lampMeta.textClass,
+                                        lampMeta.borderClass
+                                      )}
+                                    >
+                                      {lampMeta.text}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-1.5 py-0.5 rounded text-[10px] text-muted-foreground border border-border/40 bg-muted/20">
+                                      --
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="font-medium font-jp py-2.5">
+                                  <div className="flex flex-col">
+                                    <span className="text-sm leading-snug line-clamp-1 text-foreground">
+                                      {chart.title}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {chart.artist || "unknown"}
+                                      {chart.name_diff && ` · ${chart.name_diff}`}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center font-mono text-xs py-2.5">
+                                  <span className={isSpecialLevel(chart.level) ? "text-amber-400 font-bold" : "text-muted-foreground"}>
+                                    {chart.level}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right font-mono text-xs py-2.5">
+                                  <ProbabilityBadge p={p} targetStatus={targetStatus} />
+                                </TableCell>
+                                <TableCell className="text-right font-mono text-xs py-2.5">
                                   <span
                                     className={cn(
-                                      "inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border",
-                                      lampMeta.bgClass,
-                                      lampMeta.textClass,
-                                      lampMeta.borderClass
+                                      "tabular-nums",
+                                      targetStatus === "HARD"
+                                        ? chart.n_hard + chart.n_vhard === 0
+                                          ? "text-amber-500/80"
+                                          : "text-lamp-hard font-medium"
+                                        : chart.n_vhard === 0
+                                        ? "text-purple-400/80"
+                                        : "text-lamp-vhard font-medium"
                                     )}
                                   >
-                                    {lampMeta.text}
-                                  </span>
-                                ) : (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] text-muted-foreground border border-border/40 bg-muted/20">
-                                    --
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell className="font-medium font-jp py-2.5">
-                                <div className="flex flex-col">
-                                  <span className="text-sm leading-snug line-clamp-1 text-foreground">
-                                    {chart.title}
-                                  </span>
-                                  <span className="text-[11px] text-muted-foreground">
-                                    {chart.artist || "unknown"}
-                                    {chart.name_diff && ` · ${chart.name_diff}`}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs py-2.5">
-                                <span className={isSpecialLevel(chart.level) ? "text-amber-400 font-bold" : "text-muted-foreground"}>
-                                  {chart.level}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-xs py-2.5">
-                                <ProbabilityBadge p={p} targetStatus={targetStatus} />
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-xs py-2.5">
-                                <span
-                                  className={cn(
-                                    "tabular-nums",
-                                    targetStatus === "HARD"
+                                    {targetStatus === "HARD"
                                       ? chart.n_hard + chart.n_vhard === 0
-                                        ? "text-amber-500/80"
-                                        : "text-lamp-hard font-medium"
+                                        ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?`
+                                        : format(chart.b_hard_display)
                                       : chart.n_vhard === 0
-                                      ? "text-purple-400/80"
-                                      : "text-lamp-vhard font-medium"
-                                  )}
-                                >
-                                  {targetStatus === "HARD"
-                                    ? chart.n_hard + chart.n_vhard === 0
-                                      ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?`
-                                      : format(chart.b_hard_display)
-                                    : chart.n_vhard === 0
-                                    ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?`
-                                    : format(chart.b_vhard_display)}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-xs py-2.5 text-muted-foreground tabular-nums">
-                                {chart.a != null ? chart.a.toFixed(2) : "–"}
-                              </TableCell>
+                                      ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?`
+                                      : format(chart.b_vhard_display)}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right font-mono text-xs py-2.5 text-muted-foreground tabular-nums">
+                                  {chart.a != null ? chart.a.toFixed(2) : "–"}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          {horizonPaddingBottom > 0 && (
+                            <TableRow aria-hidden className="border-0 hover:bg-transparent">
+                              <TableCell colSpan={6} style={{ height: `${horizonPaddingBottom}px`, padding: 0, border: 0 }} />
                             </TableRow>
-                          );
-                        })
+                          )}
+                        </>
                       )}
                     </TableBody>
                   </Table>
@@ -1676,6 +1763,7 @@ function RecommendationCard({
   mode,
   targetStatus,
   chartMaxTheta,
+  onClearStatusChange,
 }: {
   chart: Chart;
   p: number;
@@ -1686,6 +1774,7 @@ function RecommendationCard({
   mode: string;
   targetStatus: "HARD" | "V-HARD";
   chartMaxTheta?: Map<number, number> | null;
+  onClearStatusChange?: (chartId: number, status: number) => void;
 }) {
   const lampMeta = lamp != null ? LAMP_LABEL[lamp] : null;
 
@@ -1699,7 +1788,40 @@ function RecommendationCard({
           {chart.title}
         </span>
         <div className="flex items-center gap-1 shrink-0">
-          {lampMeta ? (
+          {onClearStatusChange ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClearStatusChange(chart.id, getNextLampStatus(lamp));
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClearStatusChange(chart.id, getPrevLampStatus(lamp));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClearStatusChange(chart.id, getNextLampStatus(lamp));
+                }
+              }}
+              title={
+                t.lang === "en"
+                  ? "Click to cycle status: FAILED → HARD → V-HARD → None (Right-click: reverse)"
+                  : "클리어 상태 변경: FAILED → HARD → V-HARD → 미설정 (우클릭: 역방향)"
+              }
+              className={cn(
+                "font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer",
+                lampMeta
+                  ? cn(lampMeta.bgClass, lampMeta.textClass, lampMeta.borderClass, "hover:brightness-125")
+                  : "text-muted-foreground/60 border-border/50 bg-muted/20 hover:text-foreground hover:border-border"
+              )}
+            >
+              {lampMeta ? lampMeta.text : "--"}
+            </button>
+          ) : lampMeta ? (
             <span
               className={cn(
                 "font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border",

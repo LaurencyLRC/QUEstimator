@@ -459,3 +459,27 @@ export function categoryProbabilities(
     vhard: psV,
   };
 }
+
+/**
+ * Cycle forward lamp status: NONE (-1) -> FAILED (0) -> HARD (2) -> V-HARD (3) -> NONE (-1)
+ * Note: Skips NORMAL (1) as the gauge is obsolete in Qwilight 2.0.
+ */
+export function getNextLampStatus(current?: number | null): number {
+  if (current == null || current < 0) return 0;
+  if (current === 0) return 2;
+  if (current === 1) return 2;
+  if (current === 2) return 3;
+  return -1;
+}
+
+/**
+ * Cycle backward lamp status (e.g. right-click): NONE (-1) -> V-HARD (3) -> HARD (2) -> FAILED (0) -> NONE (-1)
+ */
+export function getPrevLampStatus(current?: number | null): number {
+  if (current == null || current < 0) return 3;
+  if (current === 3) return 2;
+  if (current === 2) return 0;
+  if (current === 1) return 0;
+  return -1;
+}
+
