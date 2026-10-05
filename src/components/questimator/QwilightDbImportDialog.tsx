@@ -242,11 +242,8 @@ export function QwilightDbImportDialog({
                 <FolderOpen className="w-3.5 h-3.5 text-telemetry-cyan" />
                 <span>{t.qwilightDbLocationTip}</span>
               </div>
-              <p className="font-mono text-xs text-muted-foreground/90 pl-5">
-                • {t.qwilightDbStandaloneTip}
-              </p>
-              <p className="font-mono text-xs text-muted-foreground/90 pl-5">
-                • {t.qwilightDbSteamTip}
+              <p className="font-mono text-xs text-foreground/90 pl-5 select-all tracking-wide">
+                {t.qwilightDbPathTip}
               </p>
             </div>
           )}

@@ -52,8 +52,10 @@ import {
   ArrowDown,
   ArrowUpDown,
   RotateCcw,
+  RotateCw,
   Database,
 } from "lucide-react";
+import { LampBadge } from "./LampBadge";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import { cn } from "@/lib/utils";
@@ -1025,6 +1027,24 @@ export function PlayerTab({
 
       {currentPlayer && analytics && (
         <>
+          {isCustomProfile && (
+            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-telemetry-cyan/40 bg-telemetry-cyan/10 text-xs flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-telemetry-cyan animate-pulse shrink-0" />
+                <span className="font-semibold text-foreground">
+                  {t.customProfileActive}: {submittedID}
+                </span>
+                <span className="text-telemetry-cyan font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-telemetry-cyan/20 border border-telemetry-cyan/40">
+                  {t.lampOverrideActive}
+                </span>
+              </div>
+              <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                <RotateCw className="w-3.5 h-3.5 text-telemetry-cyan shrink-0" />
+                <span>{t.lampOverrideHint}</span>
+              </div>
+            </div>
+          )}
+
           {/* Twin Telemetry Panels */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Left: Skill Distribution Engine */}
@@ -1438,11 +1458,17 @@ export function PlayerTab({
             {/* Featured Targets Horizon Shelf (Top 3 Picks) */}
             {analytics.recommendations.length > 0 && (
               <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                     {t.featuredTargets}
                   </h5>
+                  {isCustomProfile && onSaveCustomProfile && (
+                    <span className="text-[11px] text-telemetry-cyan flex items-center gap-1 font-sans">
+                      <RotateCw className="w-2.5 h-2.5 shrink-0" />
+                      <span>{t.lampOverrideHint}</span>
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {analytics.recommendations.map(({ chart, p, lamp }) => (
@@ -1560,7 +1586,6 @@ export function PlayerTab({
                           )}
                           {horizonVirtualItems.map((virtualRow) => {
                             const { chart, p, lamp } = horizonCandidates[virtualRow.index];
-                            const lampMeta = lamp != null ? LAMP_LABEL[lamp] : null;
                             return (
                               <TableRow
                                 key={chart.md5}
@@ -1579,55 +1604,15 @@ export function PlayerTab({
                                 className="hover:bg-muted/40 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-telemetry-cyan"
                               >
                                 <TableCell className="text-center font-mono text-xs py-2.5">
-                                  {isCustomProfile && onSaveCustomProfile ? (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleClearStatusChange(chart.id, getNextLampStatus(lamp));
-                                      }}
-                                      onContextMenu={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleClearStatusChange(chart.id, getPrevLampStatus(lamp));
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          handleClearStatusChange(chart.id, getNextLampStatus(lamp));
-                                        }
-                                      }}
-                                      title={
-                                        t.lang === "en"
-                                          ? "Click to cycle status: FAILED → HARD → V-HARD → None (Right-click: reverse)"
-                                          : "클리어 상태 변경: FAILED → HARD → V-HARD → 미설정 (우클릭: 역방향)"
-                                      }
-                                      className={cn(
-                                        "inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer",
-                                        lampMeta
-                                          ? cn(lampMeta.bgClass, lampMeta.textClass, lampMeta.borderClass, "hover:brightness-125")
-                                          : "text-muted-foreground/60 border-border/50 bg-muted/20 hover:text-foreground hover:border-border"
-                                      )}
-                                    >
-                                      {lampMeta ? lampMeta.text : "--"}
-                                    </button>
-                                  ) : lampMeta ? (
-                                    <span
-                                      className={cn(
-                                        "inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border",
-                                        lampMeta.bgClass,
-                                        lampMeta.textClass,
-                                        lampMeta.borderClass
-                                      )}
-                                    >
-                                      {lampMeta.text}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-block px-1.5 py-0.5 rounded text-[10px] text-muted-foreground border border-border/40 bg-muted/20">
-                                      --
-                                    </span>
-                                  )}
+                                  <LampBadge
+                                    status={lamp}
+                                    editable={isCustomProfile && !!onSaveCustomProfile}
+                                    onStatusChange={(newStatus) =>
+                                      handleClearStatusChange(chart.id, newStatus)
+                                    }
+                                    variant="short"
+                                    showEmptyAsButton={isCustomProfile}
+                                  />
                                 </TableCell>
                                 <TableCell className="font-medium font-jp py-2.5">
                                   <div className="flex flex-col">
@@ -1776,8 +1761,6 @@ function RecommendationCard({
   chartMaxTheta?: Map<number, number> | null;
   onClearStatusChange?: (chartId: number, status: number) => void;
 }) {
-  const lampMeta = lamp != null ? LAMP_LABEL[lamp] : null;
-
   return (
     <button
       onClick={onClick}
@@ -1788,55 +1771,17 @@ function RecommendationCard({
           {chart.title}
         </span>
         <div className="flex items-center gap-1 shrink-0">
-          {onClearStatusChange ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onClearStatusChange(chart.id, getNextLampStatus(lamp));
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onClearStatusChange(chart.id, getPrevLampStatus(lamp));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onClearStatusChange(chart.id, getNextLampStatus(lamp));
-                }
-              }}
-              title={
-                t.lang === "en"
-                  ? "Click to cycle status: FAILED → HARD → V-HARD → None (Right-click: reverse)"
-                  : "클리어 상태 변경: FAILED → HARD → V-HARD → 미설정 (우클릭: 역방향)"
-              }
-              className={cn(
-                "font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer",
-                lampMeta
-                  ? cn(lampMeta.bgClass, lampMeta.textClass, lampMeta.borderClass, "hover:brightness-125")
-                  : "text-muted-foreground/60 border-border/50 bg-muted/20 hover:text-foreground hover:border-border"
-              )}
-            >
-              {lampMeta ? lampMeta.text : "--"}
-            </button>
-          ) : lampMeta ? (
-            <span
-              className={cn(
-                "font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border",
-                lampMeta.bgClass,
-                lampMeta.textClass,
-                lampMeta.borderClass
-              )}
-            >
-              {lampMeta.text}
-            </span>
-          ) : (
-            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded text-muted-foreground bg-muted/20 border border-border/40">
-              --
-            </span>
-          )}
+          <LampBadge
+            status={lamp}
+            editable={!!onClearStatusChange}
+            onStatusChange={
+              onClearStatusChange
+                ? (newStatus) => onClearStatusChange(chart.id, newStatus)
+                : undefined
+            }
+            variant="short"
+            showEmptyAsButton={true}
+          />
           <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-background border border-border/60">
             {levelLabel(chart.level)}
           </span>

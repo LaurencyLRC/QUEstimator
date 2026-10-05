@@ -38,6 +38,7 @@ import {
   BarChart3,
   Layers,
   ListTree,
+  RotateCw,
   Sigma,
   Trophy,
   User
@@ -444,7 +445,7 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <div className="mb-4 flex items-center justify-between flex-wrap gap-2 p-3 rounded-lg border border-border/80 bg-card">
+                  <div className="mb-4 flex items-center justify-between flex-wrap gap-3 p-3 rounded-lg border border-border/80 bg-card">
                     <div>
                       <h2 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
                         <span>{selectedLevel === "all" ? t.allChartsTitle : `${levelLabel(selectedLevel)}`}</span>
@@ -456,6 +457,35 @@ export default function Home() {
                         {t.sortBy(t.sortKeys[sortKey], t.sortDirs[sortDir])}
                       </p>
                     </div>
+
+                    {activePlayer && (
+                      <div className="flex items-center gap-2">
+                        {activePlayer.isCustom ? (
+                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-telemetry-cyan/10 border border-telemetry-cyan/40 text-xs">
+                            <span className="w-2 h-2 rounded-full bg-telemetry-cyan animate-pulse shrink-0" />
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-muted-foreground">{t.customProfileActive}:</span>
+                              <span className="font-semibold text-foreground">{activePlayer.id}</span>
+                              <span
+                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-telemetry-cyan/20 text-telemetry-cyan font-bold border border-telemetry-cyan/40 flex items-center gap-1"
+                                title={t.lampOverrideHint}
+                              >
+                                <RotateCw className="w-2.5 h-2.5 shrink-0" />
+                                <span>{t.lampOverrideActive}</span>
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/60 border border-border/60 text-xs text-muted-foreground">
+                            <span>{t.viewingPlayer}</span>
+                            <span className="font-semibold text-foreground">{activePlayer.id}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-background border border-border/60 text-muted-foreground">
+                              {t.readOnlyPlayer}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <ChartTable

@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils";
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
-import { levelLabel, levelSortKey, isSpecialLevel, pStar, getNextLampStatus, getPrevLampStatus } from "@/lib/questimator-types";
+import { levelLabel, levelSortKey, isSpecialLevel, pStar } from "@/lib/questimator-types";
+import { LampBadge } from "./LampBadge";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 
@@ -260,15 +261,25 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow>
                 <TableHead className="w-[32%]">
-                  <SortHeaderBtn
-                    columnKey="title"
-                    currentKey={sortKey}
-                    currentDir={sortDir}
-                    onSort={toggleSort}
-                    title="Sort by chart title"
-                  >
-                    {t.chart}
-                  </SortHeaderBtn>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <SortHeaderBtn
+                      columnKey="title"
+                      currentKey={sortKey}
+                      currentDir={sortDir}
+                      onSort={toggleSort}
+                      title="Sort by chart title"
+                    >
+                      {t.chart}
+                    </SortHeaderBtn>
+                    {activePlayer?.isCustom && (
+                      <span
+                        className="text-[9px] font-mono font-semibold text-telemetry-cyan bg-telemetry-cyan/15 px-1.5 py-0.5 rounded border border-telemetry-cyan/40"
+                        title={t.lampOverrideHint}
+                      >
+                        {t.lampOverrideActive}
+                      </span>
+                    )}
+                  </div>
                 </TableHead>
                 <TableHead className="text-center w-[60px]">
                   <SortHeaderBtn
@@ -389,49 +400,19 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                         <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              {activePlayer?.isCustom && onClearStatusChange ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onClearStatusChange(c.id, getNextLampStatus(status));
-                                  }}
-                                  onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onClearStatusChange(c.id, getPrevLampStatus(status));
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      onClearStatusChange(c.id, getNextLampStatus(status));
-                                    }
-                                  }}
-                                  title={
-                                    t.lang === "en"
-                                      ? "Click to cycle status: FAILED → HARD → V-HARD → None (Right-click: reverse)"
-                                      : "클리어 상태 변경: FAILED → HARD → V-HARD → 미설정 (우클릭: 역방향)"
+                              {activePlayer && (
+                                <LampBadge
+                                  status={status}
+                                  editable={!!(activePlayer?.isCustom && onClearStatusChange)}
+                                  onStatusChange={
+                                    onClearStatusChange
+                                      ? (newStatus) => onClearStatusChange(c.id, newStatus)
+                                      : undefined
                                   }
-                                  className={cn(
-                                    "text-[10px] font-mono px-1.5 py-0.5 rounded font-bold uppercase shrink-0 border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan cursor-pointer",
-                                    hasStatus
-                                      ? cn(STATUS_BADGE[status].className, "hover:brightness-125")
-                                      : "text-muted-foreground/60 border-border/50 bg-muted/20 hover:text-foreground hover:border-border"
-                                  )}
-                                >
-                                  {hasStatus ? STATUS_BADGE[status].label : "--"}
-                                </button>
-                              ) : hasStatus ? (
-                                <span
-                                  className={cn(
-                                    "text-[10px] font-mono px-1.5 py-0.5 rounded font-bold uppercase shrink-0 border",
-                                    STATUS_BADGE[status].className
-                                  )}
-                                >
-                                  {STATUS_BADGE[status].label}
-                                </span>
-                              ) : null}
+                                  variant="short"
+                                  showEmptyAsButton={!!activePlayer?.isCustom}
+                                />
+                              )}
                               <span className="text-sm leading-snug line-clamp-2">
                                 {c.title}
                               </span>
