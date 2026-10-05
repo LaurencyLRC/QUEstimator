@@ -51,6 +51,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   RotateCcw,
+  Database,
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
@@ -71,6 +72,7 @@ import {
 } from "@/lib/questimator-types";
 import { PlayerSkillHistogram } from "@/components/questimator/PlayerSkillHistogram";
 import { fetchPlayersData } from "@/lib/players-cache";
+import { QwilightDbImportDialog } from "@/components/questimator/QwilightDbImportDialog";
 
 interface Props {
   charts: Chart[];
@@ -191,6 +193,45 @@ export function PlayerTab({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exported, setExported] = useState(false);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [qwilightDbDialogOpen, setQwilightDbDialogOpen] = useState(false);
+
+  const handleQwilightDbImport = (
+    name: string,
+    newClears: Record<string, number>,
+    isMerge?: boolean
+  ) => {
+    let finalClears = newClears;
+    let targetName = name;
+
+    if (isMerge && isCustomProfile && customProfiles[submittedID]) {
+      targetName = submittedID;
+      const existingClears = customProfiles[submittedID].c || {};
+      // Merge: for overlapping charts, keep the better lamp (higher status number)
+      finalClears = { ...existingClears };
+      for (const [chartId, lamp] of Object.entries(newClears)) {
+        const existingLamp = finalClears[chartId];
+        if (existingLamp === undefined || lamp > existingLamp) {
+          finalClears[chartId] = lamp;
+        }
+      }
+    }
+
+    const calculatedTheta = estimateTheta(charts, finalClears);
+    const profileData: PlayerData = {
+      t: calculatedTheta,
+      c: finalClears,
+      n: targetName,
+    };
+
+    if (onSaveCustomProfile) {
+      onSaveCustomProfile(targetName, profileData);
+    }
+    setIsCustomProfile(true);
+    setSubmittedID(targetName);
+    setInternalLoadError(null);
+    setImportSuccess(targetName);
+    setTimeout(() => setImportSuccess(null), 3000);
+  };
 
   const applyPreset = (min: number, max: number) => {
     setMinProb(min);
@@ -617,18 +658,29 @@ export function PlayerTab({
                     : "로컬 프로필을 생성하여 수동 클리어 기록 및 실력 수치를 산출할 수 있습니다."}
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs font-sans shrink-0"
-                onClick={() => {
-                  setNewProfileName(query.trim());
-                  setIsCreating(true);
-                }}
-              >
-                <Save className="w-3 h-3 mr-1" />
-                {t.newProfile}
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs font-sans border-telemetry-cyan/40 bg-telemetry-cyan/10 text-telemetry-cyan hover:bg-telemetry-cyan/20 gap-1.5"
+                  onClick={() => setQwilightDbDialogOpen(true)}
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  {t.importQwilightDb}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs font-sans shrink-0"
+                  onClick={() => {
+                    setNewProfileName(query.trim());
+                    setIsCreating(true);
+                  }}
+                >
+                  <Save className="w-3 h-3 mr-1" />
+                  {t.newProfile}
+                </Button>
+              </div>
             </div>
           )}
           {loadError && (
@@ -909,6 +961,16 @@ export function PlayerTab({
                         e.target.value = "";
                       }}
                     />
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs font-sans border-telemetry-cyan/40 bg-telemetry-cyan/10 text-telemetry-cyan hover:bg-telemetry-cyan/20 hover:text-telemetry-cyan hover:border-telemetry-cyan/70 gap-1.5"
+                    onClick={() => setQwilightDbDialogOpen(true)}
+                  >
+                    <Database className="w-3 h-3 text-telemetry-cyan shrink-0" />
+                    <span>{t.importQwilightDb}</span>
                   </Button>
                 </div>
               )}
@@ -1542,6 +1604,15 @@ export function PlayerTab({
           </div>
         </>
       )}
+
+      <QwilightDbImportDialog
+        open={qwilightDbDialogOpen}
+        onOpenChange={setQwilightDbDialogOpen}
+        charts={charts}
+        leaderboard={leaderboard}
+        activeProfileId={isCustomProfile ? submittedID : undefined}
+        onImportComplete={handleQwilightDbImport}
+      />
     </div>
   );
 }
