@@ -34,14 +34,50 @@ export interface QwilightImportResult {
   avatarName?: string;
 }
 
+async function loadWasmBinary(): Promise<ArrayBuffer> {
+  const isGhPages =
+    typeof window !== "undefined" && window.location.pathname.startsWith("/QUEstimator");
+  const candidates = [
+    isGhPages ? "/QUEstimator/sql-wasm.wasm" : "/sql-wasm.wasm",
+    "/sql-wasm.wasm",
+    "./sql-wasm.wasm",
+    "sql-wasm.wasm",
+    "https://cdn.jsdelivr.net/npm/sql.js@1.14.2/dist/sql-wasm.wasm",
+    "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.wasm",
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        if (buf && buf.byteLength > 0) return buf;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+  throw new Error("Failed to load SQLite WebAssembly binary (sql-wasm.wasm)");
+}
+
 export async function getSqlStatic(): Promise<SqlJsStatic> {
   if (!sqlPromise) {
-    const basePath =
-      typeof window !== "undefined" && window.location.pathname.startsWith("/QUEstimator")
-        ? "/QUEstimator"
-        : "";
-    sqlPromise = initSqlJs({
-      locateFile: (file) => `${basePath}/${file}`,
+    sqlPromise = (async () => {
+      try {
+        const wasmBinary = await loadWasmBinary();
+        return await initSqlJs({ wasmBinary });
+      } catch {
+        // Fallback: try locateFile with safe non-empty prefix
+        const isGhPages =
+          typeof window !== "undefined" && window.location.pathname.startsWith("/QUEstimator");
+        const prefix = isGhPages ? "/QUEstimator" : "";
+        return await initSqlJs({
+          locateFile: (file) => (prefix ? `${prefix}/${file}` : `/${file}`),
+        });
+      }
+    })().catch((err) => {
+      sqlPromise = null;
+      throw err;
     });
   }
   return sqlPromise;
@@ -49,15 +85,30 @@ export async function getSqlStatic(): Promise<SqlJsStatic> {
 
 export async function getSha512ToIdMap(): Promise<Record<string, number>> {
   if (!sha512ToIdPromise) {
-    const basePath =
-      typeof window !== "undefined" && window.location.pathname.startsWith("/QUEstimator")
-        ? "/QUEstimator"
-        : "";
-    sha512ToIdPromise = fetch(`${basePath}/data/sha512-to-id.json`).then(async (res) => {
-      if (!res.ok) {
-        throw new Error(`Failed to load hash mapping: ${res.statusText}`);
+    const isGhPages =
+      typeof window !== "undefined" && window.location.pathname.startsWith("/QUEstimator");
+    const candidates = [
+      isGhPages ? "/QUEstimator/data/sha512-to-id.json" : "/data/sha512-to-id.json",
+      "/data/sha512-to-id.json",
+      "./data/sha512-to-id.json",
+      "data/sha512-to-id.json",
+    ];
+
+    sha512ToIdPromise = (async () => {
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            return (await res.json()) as Record<string, number>;
+          }
+        } catch {
+          // try next
+        }
       }
-      return res.json() as Promise<Record<string, number>>;
+      throw new Error("Failed to load hash mapping (sha512-to-id.json)");
+    })().catch((err) => {
+      sha512ToIdPromise = null;
+      throw err;
     });
   }
   return sha512ToIdPromise;
