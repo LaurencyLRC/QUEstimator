@@ -261,25 +261,15 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow>
                 <TableHead className="w-[32%]">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <SortHeaderBtn
-                      columnKey="title"
-                      currentKey={sortKey}
-                      currentDir={sortDir}
-                      onSort={toggleSort}
-                      title="Sort by chart title"
-                    >
-                      {t.chart}
-                    </SortHeaderBtn>
-                    {activePlayer?.isCustom && (
-                      <span
-                        className="text-[9px] font-mono font-semibold text-telemetry-cyan bg-telemetry-cyan/15 px-1.5 py-0.5 rounded border border-telemetry-cyan/40"
-                        title={t.lampOverrideHint}
-                      >
-                        {t.lampOverrideActive}
-                      </span>
-                    )}
-                  </div>
+                  <SortHeaderBtn
+                    columnKey="title"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onSort={toggleSort}
+                    title="Sort by chart title"
+                  >
+                    {t.chart}
+                  </SortHeaderBtn>
                 </TableHead>
                 <TableHead className="text-center w-[60px]">
                   <SortHeaderBtn
