@@ -32,6 +32,7 @@ import {
   Database,
   Upload,
   Check,
+  Copy,
   AlertCircle,
   FileSpreadsheet,
   FolderOpen,
@@ -71,6 +72,7 @@ export function QwilightDbImportDialog({
   const [result, setResult] = useState<QwilightImportResult | null>(null);
   const [profileName, setProfileName] = useState("");
   const [importAction, setImportAction] = useState<"new" | "merge">("new");
+  const [copied, setCopied] = useState(false);
 
   const newRadioId = useId();
   const mergeRadioId = useId();
@@ -81,6 +83,7 @@ export function QwilightDbImportDialog({
     setProfileName("");
     setParsing(false);
     setImportAction("new");
+    setCopied(false);
   };
 
   const handleFileProcess = async (file: File) => {
@@ -227,7 +230,7 @@ export function QwilightDbImportDialog({
                       {t.qwilightDbDragDrop}
                     </p>
                     <p className="text-xs font-mono text-muted-foreground mt-0.5">
-                      DB.db (SQLite)
+                      {t.qwilightDbFileConstraint}
                     </p>
                   </div>
                 </>
@@ -237,14 +240,46 @@ export function QwilightDbImportDialog({
 
           {/* Location Helper Guide */}
           {!result && (
-            <div className="rounded-md border border-border/60 bg-background/50 p-3 space-y-1.5 text-xs text-muted-foreground">
-              <div className="font-semibold text-foreground flex items-center gap-1.5">
-                <FolderOpen className="w-3.5 h-3.5 text-telemetry-cyan" />
-                <span>{t.qwilightDbLocationTip}</span>
+            <div className="rounded-md border border-border/60 bg-background/50 p-3 space-y-2 text-xs text-muted-foreground">
+              <div className="flex items-center justify-between flex-wrap gap-1">
+                <div className="font-semibold text-foreground flex items-center gap-1.5">
+                  <FolderOpen className="w-3.5 h-3.5 text-telemetry-cyan shrink-0" />
+                  <span>{t.qwilightDbLocationTip}</span>
+                </div>
+                <span className="text-[11px] text-muted-foreground/80">
+                  {t.qwilightDbLocationNote}
+                </span>
               </div>
-              <p className="font-mono text-xs text-foreground/90 pl-5 select-all tracking-wide">
-                {t.qwilightDbPathTip}
-              </p>
+              <div className="flex items-center justify-between gap-2 pl-3 bg-muted/40 rounded border border-border/60 px-2 py-1">
+                <p className="font-mono text-xs text-foreground/90 select-all tracking-wide truncate">
+                  {t.qwilightDbPathTip}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(t.qwilightDbPathTip);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  title={t.copyPath}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      <span className="text-emerald-400 font-sans">{t.copied}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span className="font-sans">{t.copyPath}</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           )}
 
