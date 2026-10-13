@@ -110,6 +110,8 @@ interface Props {
   chartMaxTheta?: Map<number, number> | null;
   rivalPlayer?: { id: string; data: PlayerData; isCustom?: boolean } | null;
   onSetRival?: (id: string | null, player?: PlayerData | null, isCustom?: boolean) => void;
+  targetStatus?: "HARD" | "V-HARD";
+  onTargetStatusChange?: (mode: "HARD" | "V-HARD") => void;
 }
 
 const STATUS_LABELS: Record<number, { short: string; color: string; bgClass: string; textClass: string }> = {
@@ -192,6 +194,8 @@ export function PlayerTab({
   chartMaxTheta: propChartMaxTheta,
   rivalPlayer,
   onSetRival,
+  targetStatus: targetStatusProp,
+  onTargetStatusChange,
 }: Props) {
   const { t } = useLang();
   const { mode, format, toScale } = useScale();
@@ -208,7 +212,12 @@ export function PlayerTab({
   const [internalLoadingPlayers, setInternalLoadingPlayers] = useState(false);
   const [internalLoadError, setInternalLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
+  const [internalTargetStatus, setInternalTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
+  const targetStatus = targetStatusProp ?? internalTargetStatus;
+  const setTargetStatus = (mode: "HARD" | "V-HARD") => {
+    setInternalTargetStatus(mode);
+    onTargetStatusChange?.(mode);
+  };
   const [rivalDiffOnly, setRivalDiffOnly] = useState(false);
   const [minProb, setMinProb] = useState(30);
   const [maxProb, setMaxProb] = useState(80);
@@ -1729,7 +1738,7 @@ export function PlayerTab({
                   {t.trainingHorizon}
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5 font-sans">
-                  {t.horizonDesc}
+                  {targetStatus === "V-HARD" ? t.horizonDescVhard : t.horizonDesc}
                 </p>
               </div>
 
@@ -1758,27 +1767,45 @@ export function PlayerTab({
                 )}
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Target:</span>
-                  <div className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80">
+                  <span className="text-muted-foreground">{t.targetMode}</span>
+                  <div
+                    role="radiogroup"
+                    aria-label={t.targetMode}
+                    className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80"
+                  >
                     <button
+                      type="button"
+                      role="radio"
+                      aria-checked={targetStatus === "HARD"}
                       onClick={() => setTargetStatus("HARD")}
-                      className={`px-2.5 py-1 rounded transition-all font-medium ${
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono transition-all border",
                         targetStatus === "HARD"
-                          ? "bg-card text-foreground border border-border/80"
-                          : "text-muted-foreground hover:text-foreground border border-transparent"
-                      }`}
+                          ? "bg-lamp-hard/20 text-lamp-hard border-lamp-hard/50 font-bold"
+                          : "text-muted-foreground hover:text-foreground border-transparent hover:bg-muted/40 font-medium"
+                      )}
                     >
-                      HARD
+                      {targetStatus === "HARD" && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-lamp-hard shrink-0" aria-hidden="true" />
+                      )}
+                      <span>HARD</span>
                     </button>
                     <button
+                      type="button"
+                      role="radio"
+                      aria-checked={targetStatus === "V-HARD"}
                       onClick={() => setTargetStatus("V-HARD")}
-                      className={`px-2.5 py-1 rounded transition-all font-medium ${
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono transition-all border",
                         targetStatus === "V-HARD"
-                          ? "bg-card text-foreground border border-border/80"
-                          : "text-muted-foreground hover:text-foreground border border-transparent"
-                      }`}
+                          ? "bg-lamp-vhard/20 text-lamp-vhard border-lamp-vhard/50 font-bold"
+                          : "text-muted-foreground hover:text-foreground border-transparent hover:bg-muted/40 font-medium"
+                      )}
                     >
-                      V-HARD
+                      {targetStatus === "V-HARD" && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-lamp-vhard shrink-0" aria-hidden="true" />
+                      )}
+                      <span>V-HARD</span>
                     </button>
                   </div>
                 </div>

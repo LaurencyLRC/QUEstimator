@@ -107,7 +107,17 @@ export default function Home() {
 
   const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
   const [rivalPlayer, setRivalPlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
+  const [targetMode, setTargetMode] = useState<"HARD" | "V-HARD">("HARD");
   const { profiles: customProfiles, saveProfile, deleteProfile } = useCustomProfiles(charts);
+
+  const handleTargetModeChange = (mode: "HARD" | "V-HARD") => {
+    setTargetMode(mode);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("questimator_target_mode", mode);
+      } catch {}
+    }
+  };
 
   const handleSetRival = (id: string | null, player?: PlayerData | null, isCustom?: boolean) => {
     if (!id || !player) {
@@ -193,6 +203,15 @@ export default function Home() {
     if (initialLevel) {
       setSelectedLevel(initialLevel);
     }
+    const targetParam = params.get("target")?.toLowerCase();
+    if (targetParam === "vhard" || targetParam === "v-hard") {
+      setTargetMode("V-HARD");
+    } else if (!params.has("target")) {
+      const savedTarget = localStorage.getItem("questimator_target_mode");
+      if (savedTarget === "V-HARD") {
+        setTargetMode("V-HARD");
+      }
+    }
   }, []);
 
   const hasRestoredChart = useRef(false);
@@ -227,11 +246,14 @@ export default function Home() {
     if (rivalPlayer?.id) url.searchParams.set("rival", rivalPlayer.id);
     else url.searchParams.delete("rival");
 
+    if (targetMode === "V-HARD") url.searchParams.set("target", "vhard");
+    else url.searchParams.delete("target");
+
     if (detailOpen && selectedChart?.md5) url.searchParams.set("chart", selectedChart.md5);
     else url.searchParams.delete("chart");
 
     window.history.replaceState(null, "", url.toString());
-  }, [tab, selectedLevel, activePlayer?.id, rivalPlayer?.id, detailOpen, selectedChart?.md5]);
+  }, [tab, selectedLevel, activePlayer?.id, rivalPlayer?.id, targetMode, detailOpen, selectedChart?.md5]);
 
   useEffect(() => {
     (async () => {
@@ -715,6 +737,8 @@ export default function Home() {
                 chartMaxTheta={chartMaxTheta}
                 rivalPlayer={rivalPlayer}
                 onSetRival={handleSetRival}
+                targetStatus={targetMode}
+                onTargetStatusChange={handleTargetModeChange}
                 onPlayerChange={(id, player, isCustom) => {
                   setActivePlayer((prev) => {
                     if (!player) return prev === null ? prev : null;
