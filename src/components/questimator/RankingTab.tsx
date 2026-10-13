@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trophy, Search, X } from "lucide-react";
+import { Trophy, Search, X, Swords } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import type { Chart, PlayerData, PlayersDict, LeaderboardResult, RankRow } from "@/lib/questimator-types";
@@ -29,6 +29,8 @@ interface Props {
   leaderboard?: LeaderboardResult | null;
   loading?: boolean;
   error?: string | null;
+  rivalId?: string | null;
+  onToggleRival?: (id: string, data: PlayerData) => void;
 }
 
 function rankBadgeColor(rank: number): string | null {
@@ -45,6 +47,8 @@ export function RankingTab({
   leaderboard,
   loading: propLoading,
   error: propError,
+  rivalId,
+  onToggleRival,
 }: Props) {
   const { t } = useLang();
   const { mode, format } = useScale();
@@ -268,21 +272,42 @@ export function RankingTab({
                               </TableCell>
 
                               <TableCell className="py-2.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-sm font-jp truncate max-w-[320px] text-foreground" title={r.id}>
-                                    {r.data.n ? r.data.n : r.id}
-                                  </span>
-                                  {r.data.n && (
-                                    <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]" title={r.id}>
-                                      ({r.id})
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-semibold text-sm font-jp truncate max-w-[280px] text-foreground" title={r.id}>
+                                      {r.data.n ? r.data.n : r.id}
                                     </span>
-                                  )}
-                                  {!r.eligible && (
-                                    <span
-                                      className="text-[10px] py-0.2 px-1 rounded font-mono text-muted-foreground border border-border/60 bg-muted/40 shrink-0"
+                                    {r.data.n && (
+                                      <span className="text-xs text-muted-foreground font-mono truncate max-w-[160px]" title={r.id}>
+                                        ({r.id})
+                                      </span>
+                                    )}
+                                    {!r.eligible && (
+                                      <span
+                                        className="text-[10px] py-0.2 px-1 rounded font-mono text-muted-foreground border border-border/60 bg-muted/40 shrink-0"
+                                      >
+                                        {t.lang === "en" ? "ineligible" : "순위 외"}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {onToggleRival && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleRival(r.id, r.data);
+                                      }}
+                                      title={r.id === rivalId ? t.unpinRival : t.setRival}
+                                      aria-label={r.id === rivalId ? t.unpinRival : t.setRival}
+                                      className={cn(
+                                        "p-1 rounded transition-colors shrink-0 border cursor-pointer",
+                                        r.id === rivalId
+                                          ? "bg-amber-500/20 text-amber-400 border-amber-500/40 font-bold"
+                                          : "opacity-40 hover:opacity-100 hover:bg-muted text-muted-foreground border-transparent hover:border-border/60"
+                                      )}
                                     >
-                                      {t.lang === "en" ? "ineligible" : "순위 외"}
-                                    </span>
+                                      <Swords className="w-3.5 h-3.5" />
+                                    </button>
                                   )}
                                 </div>
                               </TableCell>

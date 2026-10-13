@@ -56,6 +56,7 @@ import {
   Database,
   Trophy,
   Zap,
+  Swords,
 } from "lucide-react";
 import { LampBadge } from "./LampBadge";
 import { useLang } from "@/lib/i18n";
@@ -103,6 +104,8 @@ interface Props {
   loadingPlayers?: boolean;
   loadError?: string | null;
   chartMaxTheta?: Map<number, number> | null;
+  rivalPlayer?: { id: string; data: PlayerData; isCustom?: boolean } | null;
+  onSetRival?: (id: string | null, player?: PlayerData | null, isCustom?: boolean) => void;
 }
 
 const STATUS_LABELS: Record<number, { short: string; color: string; bgClass: string; textClass: string }> = {
@@ -176,6 +179,8 @@ export function PlayerTab({
   loadingPlayers: propLoadingPlayers,
   loadError: propLoadError,
   chartMaxTheta: propChartMaxTheta,
+  rivalPlayer,
+  onSetRival,
 }: Props) {
   const { t } = useLang();
   const { mode, format, toScale } = useScale();
@@ -193,6 +198,7 @@ export function PlayerTab({
   const [internalLoadError, setInternalLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [targetStatus, setTargetStatus] = useState<"HARD" | "V-HARD">("HARD");
+  const [rivalDiffOnly, setRivalDiffOnly] = useState(false);
   const [minProb, setMinProb] = useState(30);
   const [maxProb, setMaxProb] = useState(80);
   const [minLevel, setMinLevel] = useState(1);
@@ -201,7 +207,7 @@ export function PlayerTab({
   const [showExclamation, setShowExclamation] = useState(false);
   const [showDiamond, setShowDiamond] = useState(false);
   const [horizonSearch, setHorizonSearch] = useState("");
-  const [horizonSortKey, setHorizonSortKey] = useState<"p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected">("p");
+  const [horizonSortKey, setHorizonSortKey] = useState<"p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected" | "rival">("p");
   const [horizonSortDir, setHorizonSortDir] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exported, setExported] = useState(false);
@@ -264,7 +270,7 @@ export function PlayerTab({
     setHorizonSortDir("desc");
   };
 
-  const handleHorizonSort = (key: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected") => {
+  const handleHorizonSort = (key: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected" | "rival") => {
     if (horizonSortKey === key) {
       setHorizonSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -456,12 +462,28 @@ export function PlayerTab({
     const totalClears = statusCounts[0] + statusCounts[1] + statusCounts[2] + statusCounts[3];
 
     const theta = currentPlayer.t;
+
+    // Count how many charts rival has cleared (lamp >= 2) that current player hasn't or has lower lamp
+    let rivalAheadCount = 0;
+    if (rivalPlayer?.data?.c) {
+      for (const c of charts) {
+        if (c.provisional) continue;
+        const rLamp = rivalPlayer.data.c[String(c.id)];
+        const pLamp = currentPlayer.c?.[String(c.id)];
+        if (rLamp !== undefined && rLamp >= 2 && (pLamp === undefined || pLamp < rLamp)) {
+          rivalAheadCount++;
+        }
+      }
+    }
+
     type Candidate = {
       chart: Chart;
       p: number;
       lamp: number | null;
       deltaTheta: number;
       expectedGain: number;
+      rivalLamp: number | null;
+      isRivalAhead: boolean;
     };
 
     const targetThreshold = targetStatus === "HARD" ? 2 : 3;
@@ -474,6 +496,10 @@ export function PlayerTab({
       const rawStatus = currentPlayer.c?.[String(c.id)];
       if (rawStatus !== undefined && rawStatus >= targetThreshold) continue;
 
+      const rStatus = rivalPlayer?.data?.c?.[String(c.id)];
+      const rivalLamp = rStatus !== undefined ? rStatus : null;
+      const isRivalAhead = rivalLamp !== null && rivalLamp >= 2 && (rawStatus === undefined || rawStatus < rivalLamp);
+
       const deltaTheta = baseLogLik.length > 0
         ? Math.max(0, estimateThetaWithBase(baseLogLik, c, targetThreshold, rawStatus) - theta)
         : 0;
@@ -485,6 +511,8 @@ export function PlayerTab({
         lamp: rawStatus !== undefined ? rawStatus : null,
         deltaTheta,
         expectedGain,
+        rivalLamp,
+        isRivalAhead,
       });
     }
 
@@ -495,7 +523,11 @@ export function PlayerTab({
     const pHi = Math.max(minProb, maxProb) / 100;
 
     const inRangeCandidates = allCandidates.filter((c) => {
-      if (c.p < pLo || c.p > pHi) return false;
+      if (rivalDiffOnly) {
+        if (!c.isRivalAhead) return false;
+      } else {
+        if (c.p < pLo || c.p > pHi) return false;
+      }
       return matchesLevel(
         c.chart.level,
         minLevel,
@@ -532,6 +564,9 @@ export function PlayerTab({
           break;
         case "lamp":
           cmp = (a.lamp ?? -1) - (b.lamp ?? -1);
+          break;
+        case "rival":
+          cmp = (a.rivalLamp ?? -1) - (b.rivalLamp ?? -1);
           break;
         case "title":
           cmp = a.chart.title.localeCompare(b.chart.title);
@@ -620,6 +655,7 @@ export function PlayerTab({
       clearedLevels,
       levelStats,
       targetStatus,
+      rivalAheadCount,
     };
   }, [
     currentPlayer,
@@ -637,6 +673,8 @@ export function PlayerTab({
     horizonSortDir,
     chartMaxTheta,
     baseLogLik,
+    rivalPlayer?.data?.c,
+    rivalDiffOnly,
   ]);
 
   const rank = useMemo(() => {
@@ -1108,6 +1146,145 @@ export function PlayerTab({
             </div>
           )}
 
+          {/* Rival Head-to-Head Comparison Card */}
+          {rivalPlayer && rivalPlayer.data && rivalPlayer.id !== submittedID && (
+            <div className="rounded-lg border border-amber-500/30 bg-card p-4 sm:p-5 relative overflow-hidden space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border/40 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                    <Swords className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
+                      {t.rivalComparison}
+                    </h4>
+                    <p className="text-xs text-muted-foreground font-sans">
+                      {t.lang === "en" ? "Head-to-head performance telemetry & target gap" : "1:1 상대 전적 및 채보 클리어 격차"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRivalDiffOnly((prev) => !prev)}
+                    className={cn(
+                      "h-7 text-xs font-mono gap-1.5 border transition-all",
+                      rivalDiffOnly
+                        ? "bg-amber-500/20 text-amber-400 border-amber-500/50 font-bold hover:bg-amber-500/25"
+                        : "bg-muted/30 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <Swords className="w-3 h-3 text-amber-400" />
+                    <span>{t.rivalDiff}</span>
+                    {analytics.rivalAheadCount > 0 && (
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-amber-500/10 text-amber-400 border-amber-500/30 font-mono">
+                        {analytics.rivalAheadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onSetRival?.(null)}
+                    title={t.unpinRival}
+                    aria-label={t.unpinRival}
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
+                  >
+                    <X className="w-3.5 h-3.5 mr-1" />
+                    <span>{t.unpinRival}</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Telemetry Duel Strip */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center bg-muted/20 rounded-md p-3.5 border border-border/50">
+                {/* You */}
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="font-semibold text-foreground truncate max-w-[150px]">{currentPlayer.n || submittedID}</span>
+                    {isCustomProfile && (
+                      <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-telemetry-cyan/15 text-telemetry-cyan border border-telemetry-cyan/30">
+                        {t.lang === "en" ? "You" : "나"}
+                      </span>
+                    )}
+                  </span>
+                  <div className="font-mono text-2xl font-black text-cyan-400 tracking-tight">
+                    {format(currentPlayer.t, mode === "lerp" ? 2 : 3)}
+                    <span className="text-xs font-normal text-muted-foreground ml-1.5">
+                      {mode === "lerp" ? "Level" : "θ"}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {analytics.totalClears} {t.clears}
+                  </span>
+                </div>
+
+                {/* Difference Badge & Lead/Deficit Indicator */}
+                <div className="flex flex-col items-center justify-center text-center gap-1.5 py-1 sm:border-x sm:border-border/40">
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    {t.lang === "en" ? "Ability Differential" : "실력 격차"}
+                  </div>
+                  {(() => {
+                    const deltaRaw = currentPlayer.t - rivalPlayer.data.t;
+                    const deltaScale = (() => {
+                      if (mode === "lerp") {
+                        const s0 = toScale(rivalPlayer.data.t);
+                        const s1 = toScale(currentPlayer.t);
+                        if (s0 != null && s1 != null) return s1 - s0;
+                      }
+                      return deltaRaw;
+                    })();
+
+                    if (Math.abs(deltaRaw) < 0.005) {
+                      return (
+                        <Badge variant="outline" className="font-mono text-xs px-2.5 py-0.5 bg-muted text-muted-foreground border-border/60">
+                          {t.rivalTied} (±0.00)
+                        </Badge>
+                      );
+                    } else if (deltaRaw > 0) {
+                      return (
+                        <Badge variant="outline" className="font-mono text-xs px-2.5 py-0.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/40 font-bold">
+                          +{deltaScale.toFixed(2)} {t.rivalLead}
+                        </Badge>
+                      );
+                    } else {
+                      return (
+                        <Badge variant="outline" className="font-mono text-xs px-2.5 py-0.5 bg-amber-500/15 text-amber-400 border-amber-500/40 font-bold">
+                          {deltaScale.toFixed(2)} {t.rivalDeficit}
+                        </Badge>
+                      );
+                    }
+                  })()}
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    {analytics.rivalAheadCount} {t.lang === "en" ? "snipes to chase" : "개 추격 가능"}
+                  </span>
+                </div>
+
+                {/* Rival */}
+                <div className="flex flex-col items-start sm:items-end gap-1">
+                  <span className="text-xs font-medium text-amber-400 flex items-center gap-1.5">
+                    <Swords className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="truncate max-w-[150px] font-semibold">{rivalPlayer.data.n || rivalPlayer.id}</span>
+                    <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      {t.rival}
+                    </span>
+                  </span>
+                  <div className="font-mono text-2xl font-black text-amber-400 tracking-tight">
+                    {format(rivalPlayer.data.t, mode === "lerp" ? 2 : 3)}
+                    <span className="text-xs font-normal text-muted-foreground ml-1.5">
+                      {mode === "lerp" ? "Level" : "θ"}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {Object.keys(rivalPlayer.data.c || {}).length} {t.clears}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Twin Telemetry Panels */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Left: Skill Distribution Engine */}
@@ -1118,6 +1295,31 @@ export function PlayerTab({
                   {t.estimatedSkill}
                 </h4>
                 <div className="flex items-center gap-1.5">
+                  {onSetRival && (
+                    rivalPlayer?.id === submittedID ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onSetRival(null)}
+                        className="h-6 text-[11px] font-mono gap-1 px-2 bg-amber-500/15 text-amber-400 border-amber-500/40 hover:bg-amber-500/25"
+                        title={t.unpinRival}
+                      >
+                        <Swords className="w-3 h-3" />
+                        <span>{t.rival}</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onSetRival(submittedID, currentPlayer, isCustomProfile)}
+                        className="h-6 text-[11px] font-mono gap-1 px-2 bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted"
+                        title={t.setRival}
+                      >
+                        <Swords className="w-3 h-3 text-amber-400" />
+                        <span>{t.setRival}</span>
+                      </Button>
+                    )
+                  )}
                   {rank != null && (
                     <span className="text-xs font-mono px-2 py-0.5 rounded font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
                       #{rank}
@@ -1147,6 +1349,8 @@ export function PlayerTab({
                   <PlayerSkillHistogram
                     data={samplePlayers}
                     playerTheta={currentPlayer.t}
+                    rivalTheta={rivalPlayer?.data?.t ?? null}
+                    rivalName={rivalPlayer?.data?.n || rivalPlayer?.id}
                   />
                   <div className="text-[10px] font-mono text-muted-foreground text-center mt-1">
                     {t.histogramXAxis(mode === 'lerp')}
@@ -1447,29 +1651,54 @@ export function PlayerTab({
                 </p>
               </div>
 
-              <div className="flex items-center gap-1.5 font-mono text-xs">
-                <span className="text-muted-foreground">Target:</span>
-                <div className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80">
-                  <button
-                    onClick={() => setTargetStatus("HARD")}
-                    className={`px-2.5 py-1 rounded transition-all font-medium ${
-                      targetStatus === "HARD"
-                        ? "bg-card text-foreground border border-border/80"
-                        : "text-muted-foreground hover:text-foreground border border-transparent"
-                    }`}
+              <div className="flex items-center gap-3 font-mono text-xs flex-wrap">
+                {rivalPlayer && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRivalDiffOnly((prev) => !prev)}
+                    className={cn(
+                      "h-7 text-xs font-mono gap-1.5 transition-all border",
+                      rivalDiffOnly
+                        ? "bg-amber-500/20 text-amber-400 border-amber-500/50 font-bold hover:bg-amber-500/25"
+                        : "bg-muted/30 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted/50"
+                    )}
                   >
-                    HARD
-                  </button>
-                  <button
-                    onClick={() => setTargetStatus("V-HARD")}
-                    className={`px-2.5 py-1 rounded transition-all font-medium ${
-                      targetStatus === "V-HARD"
-                        ? "bg-card text-foreground border border-border/80"
-                        : "text-muted-foreground hover:text-foreground border border-transparent"
-                    }`}
-                  >
-                    V-HARD
-                  </button>
+                    <Swords className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{t.rivalDiff}</span>
+                    {analytics.rivalAheadCount > 0 && (
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-amber-500/10 text-amber-400 border-amber-500/30 font-mono">
+                        {analytics.rivalAheadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                )}
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Target:</span>
+                  <div className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80">
+                    <button
+                      onClick={() => setTargetStatus("HARD")}
+                      className={`px-2.5 py-1 rounded transition-all font-medium ${
+                        targetStatus === "HARD"
+                          ? "bg-card text-foreground border border-border/80"
+                          : "text-muted-foreground hover:text-foreground border border-transparent"
+                      }`}
+                    >
+                      HARD
+                    </button>
+                    <button
+                      onClick={() => setTargetStatus("V-HARD")}
+                      className={`px-2.5 py-1 rounded transition-all font-medium ${
+                        targetStatus === "V-HARD"
+                          ? "bg-card text-foreground border border-border/80"
+                          : "text-muted-foreground hover:text-foreground border border-transparent"
+                      }`}
+                    >
+                      V-HARD
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1730,6 +1959,25 @@ export function PlayerTab({
               </div>
             </div>
 
+            {/* Rival Diff Active Indicator */}
+            {rivalDiffOnly && rivalPlayer && (
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs text-amber-400 font-sans">
+                <div className="flex items-center gap-2">
+                  <Swords className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>
+                    {t.rivalDiffDesc} ({rivalPlayer.data?.n || rivalPlayer.id})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRivalDiffOnly(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground font-mono underline ml-auto cursor-pointer"
+                >
+                  {t.lang === "en" ? "Show all" : "전체 보기"}
+                </button>
+              </div>
+            )}
+
             {/* Featured Targets Horizon Shelf (Top 3 Picks) */}
             {analytics.recommendations.length > 0 && (
               <div className="space-y-2.5">
@@ -1778,7 +2026,7 @@ export function PlayerTab({
 
               <div className="rounded-md border border-border/80 overflow-hidden font-mono text-xs">
                 <div ref={horizonScrollRef} className="max-h-[500px] overflow-auto">
-                  <Table className="w-full min-w-[720px]">
+                  <Table className={cn("w-full min-w-[720px]", rivalPlayer && "min-w-[780px]")}>
                     <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 border-b border-border">
                       <TableRow className="border-b border-border hover:bg-transparent">
                         <HorizonSortHead
@@ -1790,6 +2038,17 @@ export function PlayerTab({
                           align="center"
                           className="w-[65px]"
                         />
+                        {rivalPlayer && (
+                          <HorizonSortHead
+                            label={<Swords className="w-3.5 h-3.5 text-amber-400" />}
+                            sortKey="rival"
+                            currentKey={horizonSortKey}
+                            currentDir={horizonSortDir}
+                            onSort={handleHorizonSort}
+                            align="center"
+                            className="w-[60px]"
+                          />
+                        )}
                         <HorizonSortHead
                           label={t.chart}
                           sortKey="title"
@@ -1848,15 +2107,18 @@ export function PlayerTab({
                     <TableBody className="divide-y divide-border/30">
                       {horizonCandidates.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="py-10 text-center">
+                          <TableCell colSpan={rivalPlayer ? 8 : 7} className="py-10 text-center">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <p className="text-sm font-sans text-muted-foreground">
-                                {t.noRecommendations}
+                                {rivalDiffOnly ? t.noRivalDiff : t.noRecommendations}
                               </p>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={resetHorizonFilters}
+                                onClick={() => {
+                                  if (rivalDiffOnly) setRivalDiffOnly(false);
+                                  resetHorizonFilters();
+                                }}
                                 className="text-xs h-7 font-mono gap-1.5 mt-1 border-border/80"
                               >
                                 <RotateCcw className="w-3 h-3 text-muted-foreground" />
@@ -1869,11 +2131,11 @@ export function PlayerTab({
                         <>
                           {horizonPaddingTop > 0 && (
                             <TableRow aria-hidden className="border-0 hover:bg-transparent">
-                              <TableCell colSpan={7} style={{ height: `${horizonPaddingTop}px`, padding: 0, border: 0 }} />
+                              <TableCell colSpan={rivalPlayer ? 8 : 7} style={{ height: `${horizonPaddingTop}px`, padding: 0, border: 0 }} />
                             </TableRow>
                           )}
                           {horizonVirtualItems.map((virtualRow) => {
-                            const { chart, p, lamp, deltaTheta, expectedGain } = horizonCandidates[virtualRow.index];
+                            const { chart, p, lamp, deltaTheta, expectedGain, rivalLamp } = horizonCandidates[virtualRow.index];
                             return (
                               <TableRow
                                 key={chart.md5}
@@ -1902,6 +2164,14 @@ export function PlayerTab({
                                     showEmptyAsButton={isCustomProfile}
                                   />
                                 </TableCell>
+                                {rivalPlayer && (
+                                  <TableCell className="text-center font-mono text-xs py-2.5">
+                                    <LampBadge
+                                      status={rivalLamp}
+                                      variant="short"
+                                    />
+                                  </TableCell>
+                                )}
                                 <TableCell className="font-medium font-jp py-2.5">
                                   <div className="flex flex-col">
                                     <span className="text-sm leading-snug line-clamp-1 text-foreground">
@@ -1975,7 +2245,7 @@ export function PlayerTab({
                           })}
                           {horizonPaddingBottom > 0 && (
                             <TableRow aria-hidden className="border-0 hover:bg-transparent">
-                              <TableCell colSpan={7} style={{ height: `${horizonPaddingBottom}px`, padding: 0, border: 0 }} />
+                              <TableCell colSpan={rivalPlayer ? 8 : 7} style={{ height: `${horizonPaddingBottom}px`, padding: 0, border: 0 }} />
                             </TableRow>
                           )}
                         </>
@@ -2011,10 +2281,10 @@ function HorizonSortHead({
   className,
 }: {
   label: React.ReactNode;
-  sortKey: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected";
-  currentKey: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected";
+  sortKey: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected" | "rival";
+  currentKey: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected" | "rival";
   currentDir: "asc" | "desc";
-  onSort: (key: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected") => void;
+  onSort: (key: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected" | "rival") => void;
   align?: "left" | "center" | "right";
   className?: string;
 }) {

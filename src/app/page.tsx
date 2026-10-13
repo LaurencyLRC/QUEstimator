@@ -106,7 +106,41 @@ export default function Home() {
   }, [playersData, charts]);
 
   const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
+  const [rivalPlayer, setRivalPlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
   const { profiles: customProfiles, saveProfile, deleteProfile } = useCustomProfiles(charts);
+
+  const handleSetRival = (id: string | null, player?: PlayerData | null, isCustom?: boolean) => {
+    if (!id || !player) {
+      setRivalPlayer(null);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("questimator_rival_id");
+        } catch {}
+      }
+      return;
+    }
+    setRivalPlayer({ id, data: player, isCustom });
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("questimator_rival_id", id);
+      } catch {}
+    }
+  };
+
+  // Restore rival from localStorage when data loads
+  useEffect(() => {
+    if (typeof window === "undefined" || !playersData) return;
+    try {
+      const savedRivalId = localStorage.getItem("questimator_rival_id");
+      if (savedRivalId && !rivalPlayer) {
+        if (customProfiles[savedRivalId]) {
+          setRivalPlayer({ id: savedRivalId, data: customProfiles[savedRivalId], isCustom: true });
+        } else if (playersData[savedRivalId]) {
+          setRivalPlayer({ id: savedRivalId, data: playersData[savedRivalId], isCustom: false });
+        }
+      }
+    } catch {}
+  }, [playersData, customProfiles, rivalPlayer]);
 
   // Keep activePlayer in sync if custom profile theta is recomputed
   useEffect(() => {
@@ -117,6 +151,16 @@ export default function Home() {
       }
     }
   }, [customProfiles, activePlayer]);
+
+  // Keep rivalPlayer in sync if custom profile theta is recomputed
+  useEffect(() => {
+    if (rivalPlayer?.isCustom && customProfiles[rivalPlayer.id]) {
+      const updated = customProfiles[rivalPlayer.id];
+      if (Math.abs(updated.t - rivalPlayer.data.t) > 0.0001) {
+        setRivalPlayer({ id: rivalPlayer.id, data: updated, isCustom: true });
+      }
+    }
+  }, [customProfiles, rivalPlayer]);
 
   // Restore navigation state from URL search params on mount
   useEffect(() => {
@@ -132,7 +176,7 @@ export default function Home() {
     }
   }, []);
 
-  // Restore player / chart when data loads
+  // Restore player / rival / chart when data loads
   useEffect(() => {
     if (typeof window === "undefined" || !playersData) return;
     const params = new URLSearchParams(window.location.search);
@@ -140,7 +184,11 @@ export default function Home() {
     if (playerId && playersData[playerId] && !activePlayer) {
       setActivePlayer({ id: playerId, data: playersData[playerId] });
     }
-  }, [playersData, activePlayer]);
+    const rivalId = params.get("rival");
+    if (rivalId && playersData[rivalId] && !rivalPlayer) {
+      setRivalPlayer({ id: rivalId, data: playersData[rivalId] });
+    }
+  }, [playersData, activePlayer, rivalPlayer]);
 
   useEffect(() => {
     if (typeof window === "undefined" || charts.length === 0) return;
@@ -168,11 +216,14 @@ export default function Home() {
     if (activePlayer?.id) url.searchParams.set("player", activePlayer.id);
     else url.searchParams.delete("player");
 
+    if (rivalPlayer?.id) url.searchParams.set("rival", rivalPlayer.id);
+    else url.searchParams.delete("rival");
+
     if (detailOpen && selectedChart?.md5) url.searchParams.set("chart", selectedChart.md5);
     else url.searchParams.delete("chart");
 
     window.history.replaceState(null, "", url.toString());
-  }, [tab, selectedLevel, activePlayer?.id, detailOpen, selectedChart?.md5]);
+  }, [tab, selectedLevel, activePlayer?.id, rivalPlayer?.id, detailOpen, selectedChart?.md5]);
 
   useEffect(() => {
     (async () => {
@@ -355,6 +406,9 @@ export default function Home() {
                 <span>{t.player}</span>
                 {activePlayer && (
                   <span className="w-1.5 h-1.5 rounded-full bg-telemetry-cyan" />
+                )}
+                {rivalPlayer && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title={`Rival: ${rivalPlayer.data?.n || rivalPlayer.id}`} />
                 )}
               </TabsTrigger>
               <TabsTrigger
@@ -651,6 +705,8 @@ export default function Home() {
                 loadingPlayers={playersLoading}
                 loadError={playersError}
                 chartMaxTheta={chartMaxTheta}
+                rivalPlayer={rivalPlayer}
+                onSetRival={handleSetRival}
                 onPlayerChange={(id, player, isCustom) => {
                   setActivePlayer((prev) => {
                     if (!player) return prev === null ? prev : null;
@@ -669,6 +725,14 @@ export default function Home() {
                 loading={playersLoading}
                 error={playersError}
                 onSelectPlayer={handleSelectPlayerFromRanking}
+                rivalId={rivalPlayer?.id}
+                onToggleRival={(id, data) => {
+                  if (rivalPlayer?.id === id) {
+                    handleSetRival(null);
+                  } else {
+                    handleSetRival(id, data, false);
+                  }
+                }}
               />
             </TabsContent>
 
@@ -684,6 +748,7 @@ export default function Home() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         activePlayer={activePlayer}
+        rivalPlayer={rivalPlayer}
         chartMaxTheta={chartMaxTheta}
         onClearStatusChange={handleClearStatusChange}
       />

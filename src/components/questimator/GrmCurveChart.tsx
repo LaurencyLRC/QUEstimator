@@ -23,6 +23,8 @@ interface Props {
    * to the survival curves.
    */
   playerTheta?: number;
+  rivalTheta?: number | null;
+  rivalName?: string;
 }
 
 const sigmoid = (z: number) => (z >= 0 ? 1 / (1 + Math.exp(-z)) : Math.exp(z) / (1 + Math.exp(z)));
@@ -31,7 +33,8 @@ const sigmoid = (z: number) => (z >= 0 ? 1 / (1 + Math.exp(-z)) : Math.exp(z) / 
  * GRM P*(θ) curve chart for a single chart.
  * Shows the cumulative survival probabilities for HARD/V-HARD
  * gauges across the player skill (θ) axis.
- * Supports ±1.96 SE credible interval ribbons and Samejima's Item Information Function I_i(θ).
+ * Supports ±1.96 SE credible interval ribbons, Samejima's Item Information Function I_i(θ),
+ * and Head-to-Head rival needle overlay.
  */
 export function GrmCurveChart({
   a,
@@ -43,6 +46,8 @@ export function GrmCurveChart({
   se_b_vhard,
   showNormal = false,
   playerTheta,
+  rivalTheta,
+  rivalName,
   width = 560,
   height = 280,
 }: Props) {
@@ -58,17 +63,17 @@ export function GrmCurveChart({
   const innerH = height - PAD.top - PAD.bottom;
 
   const bn = b_normal ?? (showNormal ? b_hard - 1.2 : undefined);
-  const minThreshold = Math.min(b_hard, bn ?? b_hard);
-  const maxThreshold = b_vhard;
+  let effectiveMin = Math.min(b_hard, bn ?? b_hard);
+  let effectiveMax = b_vhard;
 
-  const effectiveMin =
-    playerTheta != null && Number.isFinite(playerTheta)
-      ? Math.min(minThreshold, playerTheta)
-      : minThreshold;
-  const effectiveMax =
-    playerTheta != null && Number.isFinite(playerTheta)
-      ? Math.max(maxThreshold, playerTheta)
-      : maxThreshold;
+  if (playerTheta != null && Number.isFinite(playerTheta)) {
+    effectiveMin = Math.min(effectiveMin, playerTheta);
+    effectiveMax = Math.max(effectiveMax, playerTheta);
+  }
+  if (rivalTheta != null && Number.isFinite(rivalTheta)) {
+    effectiveMin = Math.min(effectiveMin, rivalTheta);
+    effectiveMax = Math.max(effectiveMax, rivalTheta);
+  }
 
   const thetaMin = Math.min(-4, Math.floor(effectiveMin - 0.5));
   const thetaMax = Math.max(4, Math.ceil(effectiveMax + 0.5));
@@ -434,6 +439,66 @@ export function GrmCurveChart({
                     {mode === "lerp"
                       ? format(playerTheta, 1)
                       : `θ=${playerTheta >= 0 ? `+${playerTheta.toFixed(2)}` : playerTheta.toFixed(2)}`}
+                  </text>
+                </>
+              );
+            })()}
+          </g>
+        )}
+
+        {/* Rival θ marker (overlay, amber dashed line) */}
+        {rivalTheta != null && Number.isFinite(rivalTheta) && (
+          <g>
+            {(() => {
+              const clamped = Math.max(thetaMin, Math.min(thetaMax, rivalTheta));
+              const x = xScale(clamped);
+              const pH = pStar(rivalTheta, a, b_hard);
+              const pV = pStar(rivalTheta, a, b_vhard);
+              const yH = yScale(Math.max(0, Math.min(1, pH)));
+              const yV = yScale(Math.max(0, Math.min(1, pV)));
+              const isNearPlayer = playerTheta != null && Math.abs(xScale(playerTheta) - x) < 36;
+              const labelY = isNearPlayer ? PAD.top - 12 : PAD.top - 2;
+              return (
+                <>
+                  <line
+                    x1={x}
+                    y1={PAD.top}
+                    x2={x}
+                    y2={height - PAD.bottom}
+                    stroke="#f59e0b"
+                    strokeWidth={1.8}
+                    strokeDasharray="4 2"
+                  />
+                  {/* P*(HARD) dot for rival */}
+                  <circle
+                    cx={x}
+                    cy={yH}
+                    r={3.5}
+                    fill="#f59e0b"
+                    stroke="white"
+                    strokeWidth={1}
+                  />
+                  {/* P*(V-HARD) dot for rival */}
+                  <circle
+                    cx={x}
+                    cy={yV}
+                    r={3.5}
+                    fill="#f59e0b"
+                    stroke="white"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={x}
+                    y={labelY}
+                    textAnchor="middle"
+                    fontSize={10}
+                    className="fill-amber-400 font-semibold"
+                    fontFamily="var(--font-geist-mono)"
+                  >
+                    {rivalName ? `${rivalName} ` : "Rival "}
+                    {mode === "lerp"
+                      ? format(rivalTheta, 1)
+                      : `θ=${rivalTheta >= 0 ? `+${rivalTheta.toFixed(2)}` : rivalTheta.toFixed(2)}`}
                   </text>
                 </>
               );

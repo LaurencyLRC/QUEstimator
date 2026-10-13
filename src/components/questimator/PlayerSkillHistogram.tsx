@@ -7,6 +7,8 @@ import { useLang } from "@/lib/i18n";
 interface Props {
   data: SamplePlayers;
   playerTheta?: number | null;
+  rivalTheta?: number | null;
+  rivalName?: string;
   width?: number;
   height?: number;
 }
@@ -18,6 +20,8 @@ interface Props {
 export function PlayerSkillHistogram({
   data,
   playerTheta,
+  rivalTheta,
+  rivalName,
   width = 460,
   height = 180,
 }: Props) {
@@ -119,6 +123,41 @@ export function PlayerSkillHistogram({
           >
             {mode === "lerp" ? `θ=${format(playerTheta!, 2)}` : `θ=${format(playerTheta!, 3)}`}
           </text>
+        </g>
+      )}
+
+      {/* Rival player needle (dashed amber) */}
+      {rivalTheta != null && Number.isFinite(rivalTheta) && (
+        <g>
+          {(() => {
+            const rivalClamped = Math.max(edges[0], Math.min(edges[edges.length - 1], rivalTheta));
+            const rivalX = xScale(rivalClamped);
+            const isNearPlayer = hasPlayer && Math.abs(rivalX - playerX) < 40;
+            const rivalLabelY = isNearPlayer ? PAD.top - 12 : PAD.top - 2;
+            return (
+              <>
+                <line
+                  x1={rivalX}
+                  y1={PAD.top}
+                  x2={rivalX}
+                  y2={PAD.top + innerH}
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  strokeDasharray="4 2"
+                />
+                <text
+                  x={rivalX}
+                  y={rivalLabelY}
+                  textAnchor="middle"
+                  fontSize={9}
+                  className="fill-amber-400 font-bold font-mono"
+                >
+                  {rivalName ? `${rivalName} ` : "Rival "}
+                  {mode === "lerp" ? `θ=${format(rivalTheta, 2)}` : `θ=${format(rivalTheta, 3)}`}
+                </text>
+              </>
+            );
+          })()}
         </g>
       )}
 

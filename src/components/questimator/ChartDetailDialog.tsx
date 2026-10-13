@@ -22,6 +22,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activePlayer?: { id: string; data: PlayerData; isCustom?: boolean } | null;
+  rivalPlayer?: { id: string; data: PlayerData; isCustom?: boolean } | null;
   chartMaxTheta?: Map<number, number> | null;
   onClearStatusChange?: (chartId: number, status: number) => void;
 }
@@ -39,7 +40,7 @@ function seColorClass(se: number | null): string {
   return "text-rose-400";
 }
 
-export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, chartMaxTheta, onClearStatusChange }: Props) {
+export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, rivalPlayer, chartMaxTheta, onClearStatusChange }: Props) {
   const { t } = useLang();
   const { format, mode } = useScale();
   const [copiedMd5, setCopiedMd5] = useState(false);
@@ -270,6 +271,8 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
                 se_b_hard={chart.se_b_hard}
                 se_b_vhard={chart.se_b_vhard}
                 playerTheta={activePlayer?.data.t}
+                rivalTheta={rivalPlayer?.data.t}
+                rivalName={rivalPlayer?.data.n || rivalPlayer?.id}
                 width={560}
                 height={260}
               />
