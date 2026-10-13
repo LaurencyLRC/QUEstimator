@@ -17,6 +17,7 @@ export function useCustomProfiles(charts?: Chart[]) {
               c: (v as any).c || {},
               n: (v as any).n,
               t: (v as any).t ?? 0,
+              history: (v as any).history,
             };
           }
         }
@@ -52,7 +53,14 @@ export function useCustomProfiles(charts?: Chart[]) {
       const next = { ...prev, [id]: data };
       // Omit player ability level (t) from storage to prevent obsolete calculations when chart difficulties update
       const toStore = Object.fromEntries(
-        Object.entries(next).map(([k, v]) => [k, { c: v.c, ...(v.n ? { n: v.n } : {}) }])
+        Object.entries(next).map(([k, v]) => [
+          k,
+          {
+            c: v.c,
+            ...(v.n ? { n: v.n } : {}),
+            ...(v.history ? { history: v.history } : {}),
+          },
+        ])
       );
       localStorage.setItem("questimator_custom_profiles", JSON.stringify(toStore));
       return next;

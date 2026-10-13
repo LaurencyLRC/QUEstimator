@@ -30,10 +30,18 @@ export interface Chart {
   provisional: boolean;
 }
 
+export interface PlayerHistoryPoint {
+  date: string;
+  theta: number;
+  clears: number;
+}
+
 export interface PlayerData {
   t: number; // theta (estimated skill level)
+  se?: number;
   n?: string;  // display name (avatarName from Qwilight)
   c: Record<string, number>; // map of chart_id (string) -> status
+  history?: PlayerHistoryPoint[];
 }
 
 export interface PlayersDict {

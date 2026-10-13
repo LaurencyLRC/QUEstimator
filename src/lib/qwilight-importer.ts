@@ -3,6 +3,12 @@ import initSqlJs, { type SqlJsStatic } from "sql.js";
 let sqlPromise: Promise<SqlJsStatic> | null = null;
 let sha512ToIdPromise: Promise<Record<string, number>> | null = null;
 
+import {
+  type Chart,
+  type PlayerHistoryPoint,
+  estimateTheta,
+} from "@/lib/questimator-types";
+
 // Qwilight Handled ID enum -> QUEstimator lamp status
 // 0: Not (unplayed)
 // 1: Clear -> NORMAL (1)
@@ -32,6 +38,7 @@ export interface QwilightImportResult {
     vhard: number;
   };
   avatarName?: string;
+  history?: PlayerHistoryPoint[];
 }
 
 async function loadWasmBinary(): Promise<ArrayBuffer> {
@@ -118,7 +125,10 @@ export async function getSha512ToIdMap(): Promise<Record<string, number>> {
  * Parses an uploaded Qwilight SQLite DB.db file buffer and extracts all cleared charts
  * matched against the U_E table.
  */
-export async function parseQwilightDb(buffer: ArrayBuffer): Promise<QwilightImportResult> {
+export async function parseQwilightDb(
+  buffer: ArrayBuffer,
+  charts?: Chart[]
+): Promise<QwilightImportResult> {
   const [SQL, sha512ToIdMap] = await Promise.all([
     getSqlStatic(),
     getSha512ToIdMap(),
@@ -208,12 +218,91 @@ export async function parseQwilightDb(buffer: ArrayBuffer): Promise<QwilightImpo
       }
     }
 
+    // 4. Extract chronological skill progression history from comment table
+    let history: PlayerHistoryPoint[] | undefined;
+    if (charts && charts.length > 0) {
+      try {
+        const commentCheck = db.exec(
+          "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='comment'"
+        );
+        if (
+          commentCheck.length > 0 &&
+          commentCheck[0].values.length > 0 &&
+          Number(commentCheck[0].values[0][0]) > 0
+        ) {
+          const commentRows = db.exec(
+            "SELECT Note_ID, Handled, Date FROM comment WHERE Handled != 0 AND Date IS NOT NULL ORDER BY Date ASC"
+          );
+          if (commentRows.length > 0 && commentRows[0].values.length > 0) {
+            type Event = { chartId: number; lamp: number; dateStr: string };
+            const events: Event[] = [];
+
+            for (const [rawNoteId, rawHandled, rawDate] of commentRows[0].values) {
+              if (typeof rawNoteId !== "string" || typeof rawHandled !== "number") continue;
+              const sha512 = rawNoteId.split(":")[0].toLowerCase();
+              const chartId = sha512ToIdMap[sha512];
+              if (chartId === undefined) continue;
+              const lamp = QWILIGHT_HANDLED_TO_LAMP[rawHandled];
+              if (lamp === undefined) continue;
+
+              let timeMs = 0;
+              if (typeof rawDate === "number") {
+                timeMs = rawDate > 1e11 ? rawDate : rawDate * 1000;
+              } else if (typeof rawDate === "string") {
+                timeMs = new Date(rawDate).getTime();
+              }
+              if (isNaN(timeMs) || timeMs <= 0) continue;
+
+              const d = new Date(timeMs);
+              const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+              events.push({ chartId, lamp, dateStr });
+            }
+
+            if (events.length >= 10) {
+              // Group chronologically by month
+              const monthMap = new Map<string, Record<string, number>>();
+              const runningClears: Record<string, number> = {};
+
+              for (const ev of events) {
+                const key = String(ev.chartId);
+                const prev = runningClears[key];
+                if (prev === undefined || ev.lamp > prev) {
+                  runningClears[key] = ev.lamp;
+                }
+                monthMap.set(ev.dateStr, { ...runningClears });
+              }
+
+              const historyPoints: PlayerHistoryPoint[] = [];
+              for (const [dateStr, snapClears] of monthMap.entries()) {
+                const clearCount = Object.keys(snapClears).length;
+                if (clearCount >= 5) {
+                  const th = estimateTheta(charts, snapClears);
+                  historyPoints.push({
+                    date: dateStr,
+                    theta: Number(th.toFixed(3)),
+                    clears: clearCount,
+                  });
+                }
+              }
+
+              if (historyPoints.length >= 2) {
+                history = historyPoints;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not extract play history from comment table", err);
+      }
+    }
+
     return {
       totalParsedNotes,
       matchedUeCharts,
       clears,
       breakdown,
       avatarName,
+      history,
     };
   } finally {
     db.close();

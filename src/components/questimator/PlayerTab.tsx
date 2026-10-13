@@ -57,6 +57,7 @@ import {
   Trophy,
   Zap,
   Swords,
+  Share2,
 } from "lucide-react";
 import { LampBadge } from "./LampBadge";
 import { useLang } from "@/lib/i18n";
@@ -70,6 +71,7 @@ import {
   type LeaderboardResult,
   type SignatureClear,
   type RatingDrag,
+  type PlayerHistoryPoint,
   pStar,
   levelSortKey,
   levelLabel,
@@ -87,6 +89,8 @@ import {
 import { PlayerSkillHistogram } from "@/components/questimator/PlayerSkillHistogram";
 import { fetchPlayersData } from "@/lib/players-cache";
 import { QwilightDbImportDialog } from "@/components/questimator/QwilightDbImportDialog";
+import { SkillProgressionChart } from "@/components/questimator/SkillProgressionChart";
+import { ProfileSummaryDialog } from "@/components/questimator/ProfileSummaryDialog";
 
 interface Props {
   charts: Chart[];
@@ -213,18 +217,22 @@ export function PlayerTab({
   const [exported, setExported] = useState(false);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [qwilightDbDialogOpen, setQwilightDbDialogOpen] = useState(false);
+  const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
 
   const handleQwilightDbImport = (
     name: string,
     newClears: Record<string, number>,
-    isMerge?: boolean
+    isMerge?: boolean,
+    history?: PlayerHistoryPoint[]
   ) => {
     let finalClears = newClears;
     let targetName = name;
+    let finalHistory = history;
 
     if (isMerge && isCustomProfile && customProfiles[submittedID]) {
       targetName = submittedID;
-      const existingClears = customProfiles[submittedID].c || {};
+      const existingProfile = customProfiles[submittedID];
+      const existingClears = existingProfile.c || {};
       // Merge: for overlapping charts, keep the better lamp (higher status number)
       finalClears = { ...existingClears };
       for (const [chartId, lamp] of Object.entries(newClears)) {
@@ -233,6 +241,9 @@ export function PlayerTab({
           finalClears[chartId] = lamp;
         }
       }
+      if (!finalHistory && existingProfile.history) {
+        finalHistory = existingProfile.history;
+      }
     }
 
     const calculatedTheta = estimateTheta(charts, finalClears);
@@ -240,6 +251,7 @@ export function PlayerTab({
       t: calculatedTheta,
       c: finalClears,
       n: targetName,
+      ...(finalHistory ? { history: finalHistory } : {}),
     };
 
     if (onSaveCustomProfile) {
@@ -1113,6 +1125,18 @@ export function PlayerTab({
                     <Database className="w-3 h-3 text-telemetry-cyan shrink-0" />
                     <span>{t.importQwilightDb}</span>
                   </Button>
+
+                  {currentPlayer && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs font-sans gap-1.5 border-border/80 hover:bg-muted"
+                      onClick={() => setSummaryDialogOpen(true)}
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-telemetry-cyan shrink-0" />
+                      <span>{t.shareProfile}</span>
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -1468,6 +1492,16 @@ export function PlayerTab({
               </p>
             </div>
           </div>
+
+          {/* Historical Skill Progression Timeline */}
+          {currentPlayer.history && currentPlayer.history.length >= 2 && (
+            <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-5 space-y-3">
+              <SkillProgressionChart
+                history={currentPlayer.history}
+                currentTheta={currentPlayer.t}
+              />
+            </div>
+          )}
 
           {/* Person-Fit Diagnostics: Signature Clears & Rating Recovery Targets */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -2267,6 +2301,22 @@ export function PlayerTab({
         activeProfileId={isCustomProfile ? submittedID : undefined}
         onImportComplete={handleQwilightDbImport}
       />
+
+      {currentPlayer && (
+        <ProfileSummaryDialog
+          open={summaryDialogOpen}
+          onOpenChange={setSummaryDialogOpen}
+          playerName={currentPlayer.n || submittedID}
+          playerTheta={currentPlayer.t}
+          clears={currentPlayer.c || {}}
+          charts={charts}
+          rank={rank}
+          topPercentile={topPercentile}
+          isCustomProfile={isCustomProfile}
+          signatureClears={diagnostics?.signatureClears}
+          levelStats={analytics?.levelStats}
+        />
+      )}
     </div>
   );
 }

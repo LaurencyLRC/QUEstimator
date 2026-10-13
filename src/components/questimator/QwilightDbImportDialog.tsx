@@ -24,6 +24,7 @@ import {
 import {
   type Chart,
   type LeaderboardResult,
+  type PlayerHistoryPoint,
   estimateTheta,
   computeTopPercentile,
   formatTopPercentile,
@@ -50,7 +51,8 @@ interface Props {
   onImportComplete: (
     name: string,
     clears: Record<string, number>,
-    isMerge?: boolean
+    isMerge?: boolean,
+    history?: PlayerHistoryPoint[]
   ) => void;
 }
 
@@ -93,7 +95,7 @@ export function QwilightDbImportDialog({
 
     try {
       const buffer = await file.arrayBuffer();
-      const parsed = await parseQwilightDb(buffer);
+      const parsed = await parseQwilightDb(buffer, charts);
 
       if (parsed.matchedUeCharts === 0) {
         throw new Error(
@@ -151,7 +153,7 @@ export function QwilightDbImportDialog({
     const finalName = profileName.trim() || "Qwilight Player";
     const isMerge = activeProfileId != null && importAction === "merge";
 
-    onImportComplete(finalName, result.clears, isMerge);
+    onImportComplete(finalName, result.clears, isMerge, result.history);
     onOpenChange(false);
     resetState();
   };
@@ -368,6 +370,19 @@ export function QwilightDbImportDialog({
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Historical progression snapshots detected */}
+                {result.history && result.history.length >= 2 && (
+                  <div className="flex items-center justify-between rounded border border-telemetry-cyan/30 bg-telemetry-cyan/10 px-3 py-2 text-xs font-mono text-telemetry-cyan">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                      <span className="font-semibold">{t.historicalSnapshotsFound(result.history.length)}</span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      {result.history[0].date} → {result.history[result.history.length - 1].date}
+                    </span>
                   </div>
                 )}
               </div>
