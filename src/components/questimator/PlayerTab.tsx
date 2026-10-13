@@ -1701,10 +1701,10 @@ export function PlayerTab({
 
                           <div className="flex flex-col items-end shrink-0 font-mono text-right">
                             <span className="text-xs font-bold text-emerald-400 tabular-nums">
-                              +{gainStr} {mode === "lerp" ? "U_E" : "θ"}
+                              {gainStr} {mode === "lerp" ? "U_E" : "θ"}
                             </span>
                             <span className="text-[10px] text-muted-foreground tabular-nums">
-                              P(HARD) {fmtPct(item.pHard)} · exp +{expStr}
+                              P(HARD) {fmtPct(item.pHard)} · exp {expStr}
                             </span>
                           </div>
                         </div>
