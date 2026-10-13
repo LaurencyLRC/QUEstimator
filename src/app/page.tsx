@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -115,6 +115,9 @@ export default function Home() {
       if (typeof window !== "undefined") {
         try {
           localStorage.removeItem("questimator_rival_id");
+          const url = new URL(window.location.href);
+          url.searchParams.delete("rival");
+          window.history.replaceState(null, "", url.toString());
         } catch {}
       }
       return;
@@ -123,24 +126,40 @@ export default function Home() {
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("questimator_rival_id", id);
+        const url = new URL(window.location.href);
+        url.searchParams.set("rival", id);
+        window.history.replaceState(null, "", url.toString());
       } catch {}
     }
   };
 
-  // Restore rival from localStorage when data loads
+  const hasRestoredInitialState = useRef(false);
+
+  // Restore initial player and rival from URL or localStorage when data loads (once only)
   useEffect(() => {
-    if (typeof window === "undefined" || !playersData) return;
+    if (typeof window === "undefined" || !playersData || hasRestoredInitialState.current) return;
+    hasRestoredInitialState.current = true;
+
     try {
+      const params = new URLSearchParams(window.location.search);
+      const playerId = params.get("player");
+      if (playerId && playersData[playerId]) {
+        setActivePlayer({ id: playerId, data: playersData[playerId] });
+      }
+
+      const urlRivalId = params.get("rival");
       const savedRivalId = localStorage.getItem("questimator_rival_id");
-      if (savedRivalId && !rivalPlayer) {
-        if (customProfiles[savedRivalId]) {
-          setRivalPlayer({ id: savedRivalId, data: customProfiles[savedRivalId], isCustom: true });
-        } else if (playersData[savedRivalId]) {
-          setRivalPlayer({ id: savedRivalId, data: playersData[savedRivalId], isCustom: false });
+      const targetRivalId = urlRivalId || savedRivalId;
+
+      if (targetRivalId) {
+        if (customProfiles[targetRivalId]) {
+          setRivalPlayer({ id: targetRivalId, data: customProfiles[targetRivalId], isCustom: true });
+        } else if (playersData[targetRivalId]) {
+          setRivalPlayer({ id: targetRivalId, data: playersData[targetRivalId], isCustom: false });
         }
       }
     } catch {}
-  }, [playersData, customProfiles, rivalPlayer]);
+  }, [playersData, customProfiles]);
 
   // Keep activePlayer in sync if custom profile theta is recomputed
   useEffect(() => {
@@ -176,32 +195,21 @@ export default function Home() {
     }
   }, []);
 
-  // Restore player / rival / chart when data loads
-  useEffect(() => {
-    if (typeof window === "undefined" || !playersData) return;
-    const params = new URLSearchParams(window.location.search);
-    const playerId = params.get("player");
-    if (playerId && playersData[playerId] && !activePlayer) {
-      setActivePlayer({ id: playerId, data: playersData[playerId] });
-    }
-    const rivalId = params.get("rival");
-    if (rivalId && playersData[rivalId] && !rivalPlayer) {
-      setRivalPlayer({ id: rivalId, data: playersData[rivalId] });
-    }
-  }, [playersData, activePlayer, rivalPlayer]);
+  const hasRestoredChart = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || charts.length === 0) return;
+    if (typeof window === "undefined" || charts.length === 0 || hasRestoredChart.current) return;
+    hasRestoredChart.current = true;
     const params = new URLSearchParams(window.location.search);
     const chartParam = params.get("chart");
-    if (chartParam && !selectedChart) {
+    if (chartParam) {
       const found = charts.find((c) => c.md5 === chartParam || String(c.id) === chartParam);
       if (found) {
         setSelectedChart(found);
         setDetailOpen(true);
       }
     }
-  }, [charts, selectedChart]);
+  }, [charts]);
 
   // Sync state changes to URL query params
   useEffect(() => {

@@ -1241,7 +1241,10 @@ export function PlayerTab({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onSetRival?.(null)}
+                    onClick={() => {
+                      setRivalDiffOnly(false);
+                      onSetRival?.(null);
+                    }}
                     title={t.unpinRival}
                     aria-label={t.unpinRival}
                     className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
