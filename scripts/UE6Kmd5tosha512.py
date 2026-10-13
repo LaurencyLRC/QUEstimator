@@ -44,8 +44,9 @@ def main():
 
     print(f"Loaded {len(ue_table)} charts from {INPUT_PATH.name}")
 
-    # Load existing SHA-512 cache if available
+    # Load existing SHA-512 cache and persistent monotonic integer IDs if available
     sha512_cache = {}
+    id_cache = {}
     if OUTPUT_PATH.exists():
         try:
             with open(OUTPUT_PATH, "r", encoding="utf-8") as f:
@@ -53,11 +54,17 @@ def main():
             for c in existing_data:
                 md5 = c.get("md5")
                 sha512 = c.get("sha512")
-                if md5 and sha512:
-                    sha512_cache[md5] = sha512
-            print(f"Found {len(sha512_cache)} cached SHA-512 mappings from existing {OUTPUT_PATH.name}")
+                cid = c.get("id")
+                if md5:
+                    if sha512:
+                        sha512_cache[md5] = sha512
+                    if cid is not None:
+                        id_cache[md5] = int(cid)
+            print(f"Found {len(sha512_cache)} cached SHA-512 mappings and {len(id_cache)} chart IDs from existing {OUTPUT_PATH.name}")
         except Exception as e:
             print(f"Warning: Could not read existing enriched table cache: {e}")
+
+    max_id = max(id_cache.values(), default=-1)
 
     enriched_table = []
     mapped = 0
@@ -72,6 +79,15 @@ def main():
         for index, chart in enumerate(ue_table, start=1):
             md5_hash = chart.get("md5")
             chart["sha512"] = ""
+
+            # Preserve existing persistent integer ID or assign next monotonic ID
+            if md5_hash and md5_hash in id_cache:
+                chart["id"] = id_cache[md5_hash]
+            else:
+                max_id += 1
+                chart["id"] = max_id
+                if md5_hash:
+                    id_cache[md5_hash] = max_id
 
             if not md5_hash:
                 enriched_table.append(chart)
@@ -114,7 +130,7 @@ def main():
     # Save the enriched data
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(enriched_table, f, indent=4, ensure_ascii=False)
+        json.dump(enriched_table, f, indent=2, ensure_ascii=False)
 
     print(f"\nDone! Total charts: {len(enriched_table)} | Mapped: {mapped} (Cached: {cached}, New: {newly_mapped}) | Failed: {failed}")
     print(f"Enriched table saved to {OUTPUT_PATH}")
