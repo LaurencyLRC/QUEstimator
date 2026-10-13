@@ -268,7 +268,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     currentKey={sortKey}
                     currentDir={sortDir}
                     onSort={toggleSort}
-                    title="Sort by chart title"
+                    title={t.lang === "en" ? "Sort by chart title" : "곡명 기준 정렬"}
                   >
                     {t.chart}
                   </SortHeaderBtn>
@@ -279,7 +279,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     currentKey={sortKey}
                     currentDir={sortDir}
                     onSort={toggleSort}
-                    title="Sort by difficulty folder level"
+                    title={t.lang === "en" ? "Sort by difficulty folder level" : "난이도 폴더 기준 정렬"}
                     align="center"
                   >
                     {t.level}
@@ -291,7 +291,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     currentKey={sortKey}
                     currentDir={sortDir}
                     onSort={toggleSort}
-                    title="Sort by HARD clear difficulty threshold (b_hard)"
+                    title={t.lang === "en" ? "Sort by HARD clear difficulty threshold (b_hard)" : "HARD 클리어 난이도 임계값(b_hard) 기준 정렬"}
                     align="right"
                   >
                     {t.bHard(mode === "lerp")}
@@ -303,7 +303,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     currentKey={sortKey}
                     currentDir={sortDir}
                     onSort={toggleSort}
-                    title="Sort by V-HARD clear difficulty threshold (b_vhard)"
+                    title={t.lang === "en" ? "Sort by V-HARD clear difficulty threshold (b_vhard)" : "V-HARD 클리어 난이도 임계값(b_vhard) 기준 정렬"}
                     align="right"
                   >
                     {t.bVhard(mode === "lerp")}
@@ -315,7 +315,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     currentKey={sortKey}
                     currentDir={sortDir}
                     onSort={toggleSort}
-                    title="Sort by IRT discrimination parameter (slope / sharpness)"
+                    title={t.lang === "en" ? "Sort by IRT discrimination parameter (slope / sharpness)" : "변별도 파라미터(a) 기준 정렬"}
                     align="right"
                   >
                     {t.disc}
@@ -327,7 +327,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                     currentKey={sortKey}
                     currentDir={sortDir}
                     onSort={toggleSort}
-                    title="Sort by sample size (total submissions)"
+                    title={t.lang === "en" ? "Sort by sample size (total submissions)" : "표본 수(총 플레이 건수) 기준 정렬"}
                     align="right"
                   >
                     n
@@ -436,7 +436,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                           {activePlayer && c.a != null && c.b_hard != null && (
                             <span
                               className="text-[10px] font-semibold tabular-nums text-lamp-hard"
-                              title="Your HARD clear probability"
+                              title={t.lang === "en" ? "Your HARD clear probability" : "HARD 클리어 예상 확률"}
                             >
                               {(pStar(activePlayer.data.t, c.a, c.b_hard) * 100).toFixed(1)}%
                             </span>
@@ -451,7 +451,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                           {activePlayer && c.a != null && c.b_vhard != null && (
                             <span
                               className="text-[10px] font-semibold tabular-nums text-lamp-vhard"
-                              title="Your V-HARD clear probability"
+                              title={t.lang === "en" ? "Your V-HARD clear probability" : "V-HARD 클리어 예상 확률"}
                             >
                               {(pStar(activePlayer.data.t, c.a, c.b_vhard) * 100).toFixed(1)}%
                             </span>

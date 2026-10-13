@@ -200,7 +200,7 @@ export const STRINGS = {
     // Overview tab
     levelDistribution: "U_E 레벨별 난이도 분포",
     levelDistributionDesc: (valid: number, provisional: number) =>
-      `GRM 난이도 추정치의 중앙값과 IQR을 공식 U_E 레벨별로 그룹화. 빨강 = HARD 클리어, 보라 = V-HARD 클리어. 유효 ${valid}개 · 임시 ${provisional}개 채보. 각 열을 클릭하면 해당 레벨의 채보로 이동합니다.`,
+      `공식 U_E 레벨별 GRM 난이도 추정치의 중앙값 및 사분위수 범위(IQR)입니다. 빨강 = HARD 클리어, 보라 = V-HARD 클리어 (유효 ${valid}개 · 잠정 ${provisional}개). 각 열을 클릭하면 해당 레벨의 채보 목록으로 이동합니다.`,
     yAxisLabel: (isLerp: boolean) => isLerp ? "환산 U_E 레벨" : "원시 난이도 (로짓, θ 스케일)",
     xAxisLabel: "공식 U_E 레벨 (열을 클릭하면 채보로 이동)",
     legendHard: "HARD 클리어",
@@ -209,7 +209,7 @@ export const STRINGS = {
       `U_E ${level} – 유효 ${valid}/${total}개 채보 (클릭하면 이동)`,
     perLevelAggregates: "레벨별 집계",
     perLevelDesc:
-      "레벨별 b 값 중앙값. 데이터가 부족하거나 사후 분산이 너무 큰 채보 (n < 10 또는 SE > 1.0)는 임시로 표기되며 중앙값 계산에서 제외됩니다.",
+      "레벨별 난이도(b) 중앙값 및 사분위수 범위입니다. 표본이 부족하거나 사후 표준오차가 큰 채보(n < 10 또는 SE > 1.0)는 잠정치로 분류되어 집계에서 제외됩니다.",
     level: "레벨",
     chartsCol: "채보",
     hardMed: "HARD 중앙값",
@@ -223,7 +223,7 @@ export const STRINGS = {
     allChartsTitle: "전체 채보",
     chartsCount: (n: number) => `${n}개 채보`,
     sortedByHard: "HARD 난이도순 정렬",
-    sortBy: (key: string, dir: string) => `${key}순 정렬 (${dir})`,
+    sortBy: (key: string, dir: string) => `${key} 기준 정렬 (${dir})`,
     sortKeys: {
       title: "제목",
       level: "레벨",
@@ -236,7 +236,7 @@ export const STRINGS = {
       asc: "오름차순",
       desc: "내림차순",
     },
-    searchPlaceholder: "제목, 아티스트, 채보 제작자 검색...",
+    searchPlaceholder: "곡명, 아티스트, 차분명 검색...",
     showingAll: "전체 표시",
     validOnly: "유효만",
     ofCharts: (shown: number, total: number) => `${shown} / ${total}개 채보`,
@@ -254,10 +254,10 @@ export const STRINGS = {
     vhardClear: "V-HARD 클리어",
     discrimination: "변별도",
     sampleSize: "표본 수",
-    provisional: "임시",
+    provisional: "잠정",
     ez2pattern: "EZ2PATTERN",
     by: "아티스트:",
-    notemaker: "채보 제작자",
+    notemaker: "차분",
     comment: "코멘트:",
 
     // Player tab
@@ -291,11 +291,11 @@ export const STRINGS = {
     qwilightDbSuccess: (matched: number, total: number) => `U_E 채보 ${matched} / ${total}개 일치`,
     qwilightDbSaveNew: "새 프로필 생성",
     qwilightDbMerge: "현재 프로필에 병합",
-    lampOverrideActive: "램프 오버라이드 활성",
+    lampOverrideActive: "램프 수동 편집 활성",
     lampOverrideHint: "채보의 램프를 클릭하여 클리어 상태를 변경할 수 있습니다",
     customProfileActive: "커스텀 프로필 활성",
     readOnlyPlayer: "읽기 전용",
-    viewingPlayer: "플레이어 조회:",
+    viewingPlayer: "조회 중인 프로필:",
     clickToCycleLamp: "클릭하여 램프 변경",
     setLamp: "설정",
     playerNotFound: "플레이어를 찾을 수 없습니다. 정확한 Avatar ID 또는 이름을 입력했는지 확인하세요.",
@@ -305,11 +305,11 @@ export const STRINGS = {
     yourProbabilities: "예상 클리어 확률",
     noRecommendations: "설정하신 필터 조건에 부합하는 채보가 없습니다.",
     histogramXAxis: (isLerp: boolean) => isLerp ? "플레이어 실력 (U_E 스케일)" : "플레이어 실력 θ (원시 로짓)",
-    trainingHorizon: "훈련 타겟 호라이즌",
+    trainingHorizon: "맞춤 연습 목표 탐색",
     horizonDesc: "지정한 클리어 확률 범위, 레벨 폴더, 검색어로 미클리어 채보를 탐색하고 다음 세션을 계획하세요.",
     probRange: "클리어 확률 범위",
-    featuredTargets: "주요 추천 타겟",
-    horizonExplorer: "호라이즌 탐색기",
+    featuredTargets: "핵심 추천 채보",
+    horizonExplorer: "목표 채보 탐색기",
     matchingCount: (matched: number, total: number) => `${matched} / ${total}개 채보`,
     allLevels: "전체 레벨",
     levelSpan: "레벨 범위",
@@ -319,13 +319,13 @@ export const STRINGS = {
     preset50: "≥ 50%",
     preset80: "≥ 80%",
     resetFilter: "초기화",
-    horizonSearchPlaceholder: "채보명, 작곡가, 난이도 검색...",
+    horizonSearchPlaceholder: "곡명, 아티스트, 차분명 검색...",
 
     // Ranking tab
     rankingTitle: "플레이어 랭킹",
-    rankingDesc: "추정 잠재 실력 θ 기준 정렬된 전체 플레이어 목록입니다. 행을 클릭하면 해당 플레이어가 플레이어 탭에 로드됩니다. 랭킹 대상이 되려면 유효한 U_E 20+ 채보(또는 Ω)에서 10플레이 이상 AND HARD 이상 클리어 1건 이상이 필요합니다 — 하위 레벨, 임시 채보, -_- / ?! / ◆에서의 플레이는 집계되지 않습니다.",
+    rankingDesc: "추정 잠재 실력(θ) 순으로 정렬된 전체 플레이어 목록입니다. 행을 클릭하면 플레이어 탭에서 해당 유저의 상세 프로필을 볼 수 있습니다. 랭킹에 집계되려면 유효한 U_E 20+ 또는 Ω 채보에서 플레이 기록 10건 이상 및 HARD 이상 클리어 1건 이상이 필요합니다. (하위 레벨, 잠정 채보, 특수 폴더 -_- · ?! · ◆ 기록은 제외)",
     rankingSearchPlaceholder: "플레이어 이름 또는 Avatar ID 검색...",
-    grmSurvivalProb: "생존 확률 P*(θ, k)",
+    grmSurvivalProb: "누적 생존 확률 P*(θ, k)",
     predictedClearProb: (pct: number) => `예상 클리어 확률 ${pct}%`,
     clearBreakdown: "클리어 분포",
     rankCol: "#",
@@ -334,7 +334,7 @@ export const STRINGS = {
     clearsCol: "클리어",
     vhardCol: "V-HARD",
     hardCol: "HARD",
-    unrankedNote: (n: number) => `${n}명의 플레이어는 랭킹 대상이 아닙니다 (유효 채보 플레이 10건 미만 또는 U_E 20+ / Ω에서 HARD 이상 클리어 없음).`,
+    unrankedNote: (n: number) => `${n}명의 플레이어는 랭킹 산정 기준 미달입니다 (U_E 20+ / Ω 유효 채보 플레이 10건 미만 또는 HARD 이상 클리어 없음).`,
 
     // Footer
     onDifficultyTable: "",
@@ -349,7 +349,7 @@ export const STRINGS = {
     mockMode: "모의 데이터 모드",
     model: "모델",
     categories: "카테고리",
-    provisionalRule: "임시 기준",
+    provisionalRule: "잠정 판정 기준",
     runtimeLabel: "실행시간",
 
     // Loading / error

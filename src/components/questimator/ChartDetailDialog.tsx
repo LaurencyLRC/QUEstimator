@@ -100,7 +100,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline"
-                  title="Watch chart video preview"
+                  title={t.lang === "en" ? "Watch chart video preview" : "채보 미리보기 영상 시청"}
                 >
                   <Video className="h-3 w-3" />
                   <span>Video</span>
@@ -112,7 +112,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline"
-                  title="Download BMS package"
+                  title={t.lang === "en" ? "Download BMS package" : "BMS 패키지 다운로드"}
                 >
                   <Download className="h-3 w-3" />
                   <span>BMS</span>
@@ -124,7 +124,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline"
-                  title="Download sabun differential"
+                  title={t.lang === "en" ? "Download sabun differential" : "차분 파일 다운로드"}
                 >
                   <Download className="h-3 w-3" />
                   <span>Sabun</span>
@@ -161,7 +161,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
                 setCopiedMd5(true);
                 setTimeout(() => setCopiedMd5(false), 1500);
               }}
-              title="Click to copy full MD5 hash to clipboard"
+              title={t.lang === "en" ? "Click to copy full MD5 hash to clipboard" : "클릭하여 전체 MD5 해시 복사"}
               className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground/80 hover:text-foreground transition-colors group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan rounded px-1 -mx-1"
             >
               <span>MD5: {chart.md5.slice(0, 8)}…</span>
@@ -192,7 +192,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
               seValue={chart.n_hard + chart.n_vhard === 0 ? null : chart.se_b_hard}
               fmtCIFn={fmtCI}
               color="var(--color-lamp-hard)"
-              title="Difficulty threshold b_hard (50% HARD clear probability)"
+              title={t.lang === "en" ? "Difficulty threshold b_hard (50% HARD clear probability)" : "난이도 임계값 b_hard (HARD 클리어 확률 50% 지점)"}
               playerProb={playerProbHard}
             />
             <ParamCard
@@ -202,7 +202,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
               seValue={chart.n_vhard === 0 ? null : chart.se_b_vhard}
               fmtCIFn={fmtCI}
               color="var(--color-lamp-vhard)"
-              title="Difficulty threshold b_vhard (50% V-HARD clear probability)"
+              title={t.lang === "en" ? "Difficulty threshold b_vhard (50% V-HARD clear probability)" : "난이도 임계값 b_vhard (V-HARD 클리어 확률 50% 지점)"}
               playerProb={playerProbVhard}
             />
             <ParamCard
@@ -211,12 +211,12 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
               ciCenter={chart.a}
               seValue={chart.se_a}
               fmtCIFn={(c, se) => `[${fmtRaw(c - 1.96 * se, 2)}, ${fmtRaw(c + 1.96 * se, 2)}]`}
-              title="Item discrimination parameter (a-parameter / slope) — indicates how sharply the chart separates player skill levels"
+              title={t.lang === "en" ? "Item discrimination parameter (a-parameter / slope) — indicates how sharply the chart separates player skill levels" : "문항 변별도 파라미터(a) — 플레이어 실력 격차를 얼마나 민감하게 구분하는지 나타냅니다"}
             />
             <ParamCard
               label={t.sampleSize}
               value={chart.n.toLocaleString()}
-              title="Total play submissions analyzed in the IRT dataset for this chart"
+              title={t.lang === "en" ? "Total play submissions analyzed in the IRT dataset for this chart" : "이 채보에 대해 IRT 분석에 반영된 총 플레이 제출 건수"}
             />
           </div>
 
@@ -225,7 +225,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
             <div className="rounded-lg border border-border/80 p-3 bg-muted/15 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-sans font-medium text-muted-foreground">{t.clearBreakdown}</span>
-                <span className="font-mono text-muted-foreground text-[11px]">{chart.n.toLocaleString()} submissions</span>
+                <span className="font-mono text-muted-foreground text-[11px]">{t.lang === "en" ? `${chart.n.toLocaleString()} submissions` : `${chart.n.toLocaleString()}건 기록`}</span>
               </div>
               <div className="w-full h-2 rounded overflow-hidden flex bg-muted/40 border border-border/40">
                 <div style={{ width: `${(chart.n_vhard / chart.n) * 100}%` }} className="h-full bg-lamp-vhard" title={`V-HARD: ${chart.n_vhard}`} />
@@ -316,6 +316,7 @@ function ParamCard({
   title?: string;
   playerProb?: number | null;
 }) {
+  const { t } = useLang();
   return (
     <div
       title={title}
@@ -343,7 +344,7 @@ function ParamCard({
 
       {playerProb != null && (
         <div className="text-[10px] font-mono tabular-nums text-telemetry-cyan font-medium mt-1.5 pt-1.5 border-t border-border/40 flex items-center justify-between">
-          <span className="text-muted-foreground">Est. Clear</span>
+          <span className="text-muted-foreground">{t.lang === "en" ? "Est. Clear" : "예상 확률"}</span>
           <span className="font-semibold">{(playerProb * 100).toFixed(0)}%</span>
         </div>
       )}

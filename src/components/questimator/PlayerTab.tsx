@@ -745,7 +745,7 @@ export function PlayerTab({
                 >
                   <span className="font-medium font-jp text-sm">{r.name}</span>
                   <span className="text-xs text-muted-foreground font-mono ml-2">
-                    {r.id} · {r.clears} clears
+                    {r.id} · {r.clears} {t.lang === "en" ? "clears" : "클리어"}
                   </span>
                 </button>
               ))}
@@ -777,7 +777,7 @@ export function PlayerTab({
                   )}
                 </div>
                 <div className="text-muted-foreground">
-                  <span className="text-foreground font-semibold">{analytics.totalClears}</span> / {charts.length} clears ({((analytics.totalClears / charts.length) * 100).toFixed(1)}%)
+                  <span className="text-foreground font-semibold">{analytics.totalClears}</span> / {charts.length} {t.lang === "en" ? "clears" : "개 클리어"} ({((analytics.totalClears / charts.length) * 100).toFixed(1)}%)
                 </div>
               </div>
 
@@ -1325,7 +1325,7 @@ export function PlayerTab({
                       className="w-12 h-7 text-xs font-mono tabular-nums text-center px-1 border-border/70"
                     />
                     {minLevel === 31 && (
-                      <span className="text-xs font-mono text-amber-400 font-bold" title="Ω = Level 31">Ω</span>
+                      <span className="text-xs font-mono text-amber-400 font-bold" title={t.lang === "en" ? "Ω = Level 31" : "Ω = 31레벨"}>Ω</span>
                     )}
                     <span className="text-muted-foreground font-mono">–</span>
                     <Input
@@ -1340,7 +1340,7 @@ export function PlayerTab({
                       className="w-12 h-7 text-xs font-mono tabular-nums text-center px-1 border-border/70"
                     />
                     {maxLevel === 31 && (
-                      <span className="text-xs font-mono text-amber-400 font-bold" title="Ω = Level 31">Ω</span>
+                      <span className="text-xs font-mono text-amber-400 font-bold" title={t.lang === "en" ? "Ω = Level 31" : "Ω = 31레벨"}>Ω</span>
                     )}
                   </div>
 

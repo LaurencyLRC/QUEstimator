@@ -494,7 +494,7 @@ export default function Home() {
               <div className="md:hidden rounded-lg border border-border/80 bg-card p-3 mb-4">
                 <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center justify-between">
                   <span>{t.levels}</span>
-                  <span className="font-mono text-xs text-muted-foreground"><span className="text-foreground font-semibold">{sortedLevels.length}</span> folders</span>
+                  <span className="font-mono text-xs text-muted-foreground"><span className="text-foreground font-semibold">{sortedLevels.length}</span> {t.lang === "en" ? "folders" : "개 폴더"}</span>
                 </div>
                 <div className="flex overflow-x-auto gap-1.5 pb-1 no-scrollbar">
                   <button
@@ -535,7 +535,7 @@ export default function Home() {
                 <div className="hidden md:block h-fit md:sticky md:top-[74px] rounded-lg border border-border/80 bg-card p-3">
                   <div className="px-2 py-1.5 mb-2 border-b border-border/40 flex items-center justify-between">
                     <span className="text-xs font-semibold text-muted-foreground">{t.levels}</span>
-                    <span className="text-xs text-muted-foreground"><span className="font-mono tabular-nums font-semibold text-foreground">{sortedLevels.length}</span> folders</span>
+                    <span className="text-xs text-muted-foreground"><span className="font-mono tabular-nums font-semibold text-foreground">{sortedLevels.length}</span> {t.lang === "en" ? "folders" : "개 폴더"}</span>
                   </div>
                   <ScrollArea className="h-[calc(100vh-220px)] max-h-[640px] pr-2">
                     <div className="space-y-1">
@@ -791,7 +791,7 @@ function AboutTab({ meta }: { meta: Meta | null }) {
           ) : (
             <>
               <p>
-                <strong className="text-foreground">QUEstimator</strong>는 <span className="text-foreground">Qwilight</span> U_E 단위인정(6키) 수록 채보를 대상으로 한 베이지안 문항반응이론(IRT) 기반 난이도 추정 대시보드입니다. 인터넷 랭킹(IR) 플레이 기록을 바탕으로 Graded Response Model(GRM)을 피팅하여 각 패턴의 HARD 및 V-HARD 클리어 한계 난이도를 산출합니다.
+                <strong className="text-foreground">QUEstimator</strong>는 <span className="text-foreground">Qwilight</span> U_E 6키 난이도표 수록 채보를 대상으로 한 베이지안 문항반응이론(IRT) 기반 난이도 추정 대시보드입니다. 인터넷 랭킹(IR) 플레이 기록을 바탕으로 Graded Response Model(GRM)을 피팅하여 각 패턴의 HARD 및 V-HARD 클리어 한계 난이도를 산출합니다.
               </p>
               <p>
                 Qwilight 특유의 <strong className="text-foreground">Gauge Auto-Shift(GAS)</strong> 시스템(V-HARD 폭사 시 HARD 게이지 자동 승계) 덕분에, IR에 기록된 클리어 상태는 별도의 추정 없이 유저의 유기적인 최고 게이지 생존 역치를 나타냅니다.

@@ -128,7 +128,7 @@ export function RankingTab({
             {t.rankingTitle}
             {players && (
               <span className="text-xs font-mono text-muted-foreground font-normal ml-1">
-                ({Object.keys(players).length.toLocaleString()} players)
+                ({Object.keys(players).length.toLocaleString()}{t.lang === "en" ? " players" : "명"})
               </span>
             )}
           </h3>
@@ -281,7 +281,7 @@ export function RankingTab({
                                     <span
                                       className="text-[10px] py-0.2 px-1 rounded font-mono text-muted-foreground border border-border/60 bg-muted/40 shrink-0"
                                     >
-                                      {t.lang === "en" ? "ineligible" : "비대상"}
+                                      {t.lang === "en" ? "ineligible" : "순위 외"}
                                     </span>
                                   )}
                                 </div>
