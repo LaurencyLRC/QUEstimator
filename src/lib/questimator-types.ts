@@ -629,6 +629,44 @@ export function categoryProbabilities(
 }
 
 /**
+ * Samejima's Item Information Function I_i(θ) for the Graded Response Model.
+ * Computes Fisher information across response categories {FAILED, NORMAL, HARD, V-HARD}.
+ */
+export function itemInformation(
+  theta: number,
+  a: number,
+  b_hard: number,
+  b_vhard: number,
+  b_normal?: number
+): number {
+  const bn = b_normal ?? (b_hard - (b_vhard - b_hard));
+  const ps0 = 1;
+  const ps1 = pStar(theta, a, bn);
+  const ps2 = pStar(theta, a, b_hard);
+  const ps3 = pStar(theta, a, b_vhard);
+  const ps4 = 0;
+
+  const p0 = ps0 - ps1; // FAILED
+  const p1 = ps1 - ps2; // NORMAL
+  const p2 = ps2 - ps3; // HARD
+  const p3 = ps3 - ps4; // V-HARD
+
+  // Derivative dP_k/dtheta = a * [ P*_k(1 - P*_k) - P*_{k+1}(1 - P*_{k+1}) ]
+  const dp0 = -a * ps1 * (1 - ps1);
+  const dp1 = a * (ps1 * (1 - ps1) - ps2 * (1 - ps2));
+  const dp2 = a * (ps2 * (1 - ps2) - ps3 * (1 - ps3));
+  const dp3 = a * ps3 * (1 - ps3);
+
+  let info = 0;
+  if (p0 > 1e-12) info += (dp0 * dp0) / p0;
+  if (p1 > 1e-12) info += (dp1 * dp1) / p1;
+  if (p2 > 1e-12) info += (dp2 * dp2) / p2;
+  if (p3 > 1e-12) info += (dp3 * dp3) / p3;
+
+  return info;
+}
+
+/**
  * Cycle forward lamp status: NONE (-1) -> FAILED (0) -> HARD (2) -> V-HARD (3) -> NONE (-1)
  * Note: Skips NORMAL (1) as the gauge is obsolete in Qwilight 2.0.
  */

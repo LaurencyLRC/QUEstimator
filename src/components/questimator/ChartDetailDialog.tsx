@@ -258,26 +258,17 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
           )}
 
           {chart.a != null && chart.b_hard != null && chart.b_vhard != null && (
-            <div className="rounded-lg border border-border/80 p-4 bg-background/50">
-              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <div className="text-xs font-sans font-medium text-muted-foreground">
-                  {t.lang === "en" ? "GRM Cumulative Survival Probabilities" : "GRM 누적 생존 확률 곡선"}
-                </div>
-                <div className="flex items-center gap-3 text-xs font-mono">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-1 rounded-sm" style={{ background: "var(--color-lamp-hard)" }} />
-                    <span className="text-muted-foreground font-sans text-[11px]">HARD</span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-1 rounded-sm" style={{ background: "var(--color-lamp-vhard)" }} />
-                    <span className="text-muted-foreground font-sans text-[11px]">V-HARD</span>
-                  </span>
-                </div>
+            <div className="rounded-lg border border-border/80 p-4 bg-background/50 space-y-3">
+              <div className="text-xs font-sans font-medium text-muted-foreground">
+                {t.lang === "en" ? "GRM Cumulative Survival Probabilities" : "GRM 누적 생존 확률 곡선"}
               </div>
               <GrmCurveChart
                 a={chart.a}
                 b_hard={chart.b_hard}
                 b_vhard={chart.b_vhard}
+                se_a={chart.se_a}
+                se_b_hard={chart.se_b_hard}
+                se_b_vhard={chart.se_b_vhard}
                 playerTheta={activePlayer?.data.t}
                 width={560}
                 height={260}

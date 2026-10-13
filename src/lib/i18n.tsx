@@ -85,6 +85,13 @@ export const STRINGS = {
     by: "by",
     notemaker: "notemaker",
     comment: "Comment:",
+    grmConfidenceBand: "±1.96 SE Band",
+    grmConfidenceBandDesc: "95% credible interval ribbon based on posterior parameter standard errors",
+    grmItemInfo: "Item Information I(θ)",
+    grmItemInfoDesc: "Samejima's Fisher Information showing skill measurement precision",
+    grmPeakInfo: (theta: string, maxVal: string) => `Peak info: I=${maxVal} at θ=${theta}`,
+    folderClearsTitle: "Folder Lamp Distribution",
+    folderClearsDesc: "Clear status breakdown across level folders",
 
     // Player tab
     playerProfile: "Player Profile",
@@ -273,6 +280,13 @@ export const STRINGS = {
     by: "아티스트:",
     notemaker: "차분",
     comment: "코멘트:",
+    grmConfidenceBand: "±1.96 SE 오차 범위",
+    grmConfidenceBandDesc: "문항 모수 사후 표준오차에 기반한 95% 신용구간 리본",
+    grmItemInfo: "문항 정보 I(θ)",
+    grmItemInfoDesc: "실력 측정의 정밀도를 나타내는 사메지마의 피셔 정보 함수",
+    grmPeakInfo: (theta: string, maxVal: string) => `최대 정밀도: I=${maxVal} (θ=${theta})`,
+    folderClearsTitle: "폴더별 램프 분포",
+    folderClearsDesc: "각 난이도 폴더별 클리어 램프 현황",
 
     // Player tab
     playerProfile: "플레이어 프로필",

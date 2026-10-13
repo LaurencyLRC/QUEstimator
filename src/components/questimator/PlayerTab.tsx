@@ -571,18 +571,44 @@ export function PlayerTab({
       })
       .slice(0, 3);
 
-    const clearedByLevel = new Map<string, number>();
-    for (const [idStr, status] of Object.entries(currentPlayer.c || {})) {
-      if (status < 2) continue;
-      const c = chartById.get(Number(idStr));
-      if (!c) continue;
-      clearedByLevel.set(c.level, (clearedByLevel.get(c.level) ?? 0) + 1);
+    const folderMap = new Map<string, {
+      total: number;
+      vhard: number;
+      hard: number;
+      normal: number;
+      failed: number;
+    }>();
+
+    for (const c of charts) {
+      if (!c.level) continue;
+      let entry = folderMap.get(c.level);
+      if (!entry) {
+        entry = { total: 0, vhard: 0, hard: 0, normal: 0, failed: 0 };
+        folderMap.set(c.level, entry);
+      }
+      entry.total++;
+      const s = currentPlayer.c?.[String(c.id)];
+      if (s === 3) entry.vhard++;
+      else if (s === 2) entry.hard++;
+      else if (s === 1) entry.normal++;
+      else if (s === 0) entry.failed++;
     }
-    const clearedLevels = [...clearedByLevel.entries()].sort((a, b) => {
-      const [ax, ay] = levelSortKey(a[0]);
-      const [bx, by] = levelSortKey(b[0]);
-      return ax - bx || ay - by;
-    });
+
+    const levelStats = [...folderMap.entries()]
+      .map(([lvl, data]) => ({
+        level: lvl,
+        ...data,
+        cleared: data.vhard + data.hard,
+        played: data.vhard + data.hard + data.normal + data.failed,
+      }))
+      .filter((s) => s.played > 0)
+      .sort((a, b) => {
+        const [ax, ay] = levelSortKey(a.level);
+        const [bx, by] = levelSortKey(b.level);
+        return ax - bx || ay - by;
+      });
+
+    const clearedLevels = levelStats.map((s) => [s.level, s.cleared] as [string, number]);
 
     return {
       statusCounts,
@@ -592,6 +618,7 @@ export function PlayerTab({
       filteredCandidates,
       recommendations,
       clearedLevels,
+      levelStats,
       targetStatus,
     };
   }, [
@@ -1149,36 +1176,79 @@ export function PlayerTab({
               </div>
             </div>
 
-            {/* Right: Folder Clears Matrix */}
+            {/* Right: Folder Lamp Matrix */}
             <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-border/40">
                 <h4 className="text-sm font-semibold tracking-tight text-foreground">
-                  {t.lang === "en" ? "HARD+ Clears by Level Folder" : "레벨 폴더별 HARD+ 클리어"}
+                  {t.folderClearsTitle}
                 </h4>
                 <span className="text-xs font-mono text-muted-foreground">
-                  {analytics.clearedLevels.length} active
+                  {analytics.levelStats.length} active
                 </span>
               </div>
 
-              {analytics.clearedLevels.length === 0 ? (
+              {analytics.levelStats.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-6 text-center font-sans">
                   {t.lang === "en"
-                    ? "No HARD+ clears logged yet."
-                    : "HARD 이상 클리어 기록이 없습니다."}
+                    ? "No clears logged yet."
+                    : "클리어 기록이 없습니다."}
                 </p>
               ) : (
                 <ScrollArea className="max-h-[240px] pr-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {analytics.clearedLevels.map(([lvl, n]) => (
+                  <div className="space-y-2">
+                    {analytics.levelStats.map((s) => (
                       <div
-                        key={lvl}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-border/60 bg-muted/20 font-mono text-xs"
+                        key={s.level}
+                        className="flex items-center gap-2.5 font-mono text-xs"
+                        title={`U_E ${s.level} | V-HARD: ${s.vhard}, HARD: ${s.hard}, NORMAL: ${s.normal}, FAILED: ${s.failed}, Total: ${s.total}`}
                       >
-                        <span className={isSpecialLevel(lvl) ? "text-amber-400 font-bold" : "text-muted-foreground"}>
-                          {lvl}
+                        <span
+                          className={cn(
+                            "w-8 text-right font-bold shrink-0",
+                            isSpecialLevel(s.level) ? "text-amber-400" : "text-muted-foreground"
+                          )}
+                        >
+                          {s.level}
                         </span>
-                        <span className="text-border">|</span>
-                        <span className="text-foreground font-semibold">{n}</span>
+
+                        <div className="flex-1 h-2 rounded bg-muted/50 overflow-hidden flex border border-border/40">
+                          {s.vhard > 0 && (
+                            <div
+                              style={{ width: `${(s.vhard / s.total) * 100}%` }}
+                              className="bg-lamp-vhard h-full"
+                            />
+                          )}
+                          {s.hard > 0 && (
+                            <div
+                              style={{ width: `${(s.hard / s.total) * 100}%` }}
+                              className="bg-lamp-hard h-full"
+                            />
+                          )}
+                          {s.normal > 0 && (
+                            <div
+                              style={{ width: `${(s.normal / s.total) * 100}%` }}
+                              className="bg-lamp-normal h-full"
+                            />
+                          )}
+                          {s.failed > 0 && (
+                            <div
+                              style={{ width: `${(s.failed / s.total) * 100}%` }}
+                              className="bg-lamp-failed h-full"
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0 text-right text-[11px]">
+                          <span className="text-foreground font-semibold tabular-nums">
+                            {s.cleared}
+                          </span>
+                          <span className="text-muted-foreground/60 tabular-nums">
+                            /{s.total}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums w-7 text-right">
+                            {Math.round((s.cleared / s.total) * 100)}%
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
