@@ -189,17 +189,17 @@ export function RankingTab({
               </div>
             )}
 
-            <div className="rounded-md border border-border/80 overflow-hidden font-mono text-xs">
+            <div className="rounded-md border border-border/80 overflow-hidden text-xs">
               <div ref={scrollRef} className="h-[640px] overflow-y-auto">
                 <Table className="w-full">
                   <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
                     <TableRow className="border-b border-border text-left">
-                      <TableHead className="w-[70px] text-center uppercase font-semibold text-muted-foreground">{t.rankCol}</TableHead>
-                      <TableHead className="uppercase font-semibold text-muted-foreground">{t.playerCol}</TableHead>
-                      <TableHead className="text-right uppercase font-semibold text-cyan-400">{t.thetaCol(mode === "lerp")}</TableHead>
-                      <TableHead className="text-right uppercase font-semibold text-muted-foreground">{t.clearsCol}</TableHead>
-                      <TableHead className="text-right uppercase font-semibold text-lamp-hard">{t.hardCol}</TableHead>
-                      <TableHead className="text-right uppercase font-semibold text-lamp-vhard">{t.vhardCol}</TableHead>
+                      <TableHead className="w-[70px] text-center uppercase font-sans font-semibold text-muted-foreground">{t.rankCol}</TableHead>
+                      <TableHead className="uppercase font-sans font-semibold text-muted-foreground">{t.playerCol}</TableHead>
+                      <TableHead className="text-right uppercase font-sans font-semibold text-cyan-400">{t.thetaCol(mode === "lerp")}</TableHead>
+                      <TableHead className="text-right uppercase font-sans font-semibold text-muted-foreground">{t.clearsCol}</TableHead>
+                      <TableHead className="text-right uppercase font-sans font-semibold text-lamp-hard">{t.hardCol}</TableHead>
+                      <TableHead className="text-right uppercase font-sans font-semibold text-lamp-vhard">{t.vhardCol}</TableHead>
                     </TableRow>
                   </TableHeader>
 

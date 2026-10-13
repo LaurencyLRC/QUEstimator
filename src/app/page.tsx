@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { BoxPlot } from "@/components/questimator/BoxPlot";
 import { ChartTable, type SortKey, type SortDir } from "@/components/questimator/ChartTable";
 import { ChartDetailDialog } from "@/components/questimator/ChartDetailDialog";
@@ -116,6 +117,62 @@ export default function Home() {
       }
     }
   }, [customProfiles, activePlayer]);
+
+  // Restore navigation state from URL search params on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const initialTab = params.get("tab");
+    if (initialTab && ["overview", "charts", "player", "ranking", "about"].includes(initialTab)) {
+      setTab(initialTab);
+    }
+    const initialLevel = params.get("level");
+    if (initialLevel) {
+      setSelectedLevel(initialLevel);
+    }
+  }, []);
+
+  // Restore player / chart when data loads
+  useEffect(() => {
+    if (typeof window === "undefined" || !playersData) return;
+    const params = new URLSearchParams(window.location.search);
+    const playerId = params.get("player");
+    if (playerId && playersData[playerId] && !activePlayer) {
+      setActivePlayer({ id: playerId, data: playersData[playerId] });
+    }
+  }, [playersData, activePlayer]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || charts.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const chartParam = params.get("chart");
+    if (chartParam && !selectedChart) {
+      const found = charts.find((c) => c.md5 === chartParam || String(c.id) === chartParam);
+      if (found) {
+        setSelectedChart(found);
+        setDetailOpen(true);
+      }
+    }
+  }, [charts, selectedChart]);
+
+  // Sync state changes to URL query params
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (tab !== "overview") url.searchParams.set("tab", tab);
+    else url.searchParams.delete("tab");
+
+    if (selectedLevel !== "all") url.searchParams.set("level", selectedLevel);
+    else url.searchParams.delete("level");
+
+    if (activePlayer?.id) url.searchParams.set("player", activePlayer.id);
+    else url.searchParams.delete("player");
+
+    if (detailOpen && selectedChart?.md5) url.searchParams.set("chart", selectedChart.md5);
+    else url.searchParams.delete("chart");
+
+    window.history.replaceState(null, "", url.toString());
+  }, [tab, selectedLevel, activePlayer?.id, detailOpen, selectedChart?.md5]);
 
   useEffect(() => {
     (async () => {
@@ -251,8 +308,15 @@ export default function Home() {
                 <span>PLAYERS</span>
               </div>
               <span className="w-px h-3.5 bg-border/80" />
-              <div className="text-telemetry-cyan font-medium">
-                MCMC NUTS (R-hat: {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "1.0040"})
+              <div
+                className={cn(
+                  "font-medium",
+                  (meta?.convergence?.convergence_ok ?? true)
+                    ? "text-telemetry-cyan"
+                    : "text-amber-400"
+                )}
+              >
+                MCMC NUTS {meta?.convergence?.r_hat_max ? `(R̂: ${meta.convergence.r_hat_max.toFixed(4)})` : ""}
               </div>
             </div>
 
@@ -342,10 +406,28 @@ export default function Home() {
                 <div className="p-4 flex flex-col justify-between">
                   <div className="text-xs text-muted-foreground font-medium flex items-center justify-between">
                     <span>{t.lang === "en" ? "MCMC Convergence" : "MCMC 수렴도"}</span>
-                    <span className="text-[10px] text-emerald-400 font-mono font-semibold">PASS (≤ 1.05)</span>
+                    <span
+                      className={cn(
+                        "text-[10px] font-mono font-semibold",
+                        (meta?.convergence?.convergence_ok ?? true)
+                          ? "text-emerald-400"
+                          : "text-amber-400"
+                      )}
+                    >
+                      {(meta?.convergence?.convergence_ok ?? true)
+                        ? `PASS (≤ ${meta?.convergence?.r_hat_threshold ?? 1.05})`
+                        : `WARN (> ${meta?.convergence?.r_hat_threshold ?? 1.05})`}
+                    </span>
                   </div>
-                  <div className="text-xl font-bold font-mono tabular-nums text-emerald-400 mt-2">
-                    R-hat = {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "1.0040"}
+                  <div
+                    className={cn(
+                      "text-xl font-bold font-mono tabular-nums mt-2",
+                      (meta?.convergence?.convergence_ok ?? true)
+                        ? "text-emerald-400"
+                        : "text-amber-400"
+                    )}
+                  >
+                    R̂ = {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "—"}
                   </div>
                 </div>
 
@@ -408,20 +490,61 @@ export default function Home() {
             </TabsContent>
 
             <TabsContent value="charts" className="mt-0">
+              {/* Mobile horizontal folder pill bar */}
+              <div className="md:hidden rounded-lg border border-border/80 bg-card p-3 mb-4">
+                <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center justify-between">
+                  <span>{t.levels}</span>
+                  <span className="font-mono text-xs text-muted-foreground"><span className="text-foreground font-semibold">{sortedLevels.length}</span> folders</span>
+                </div>
+                <div className="flex overflow-x-auto gap-1.5 pb-1 no-scrollbar">
+                  <button
+                    onClick={() => setSelectedLevel("all")}
+                    className={`shrink-0 px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center gap-1.5 ${
+                      selectedLevel === "all"
+                        ? "bg-muted text-foreground border border-border font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
+                    }`}
+                  >
+                    <span className="font-sans">{t.allCharts}</span>
+                    <span className="text-[10px] px-1 py-0.2 rounded bg-background/80 border border-border/40 tabular-nums">
+                      {charts.length}
+                    </span>
+                  </button>
+                  {sortedLevels.map((l) => (
+                    <button
+                      key={`mob-${l.level}`}
+                      onClick={() => setSelectedLevel(l.level)}
+                      className={`shrink-0 px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center gap-1.5 ${
+                        selectedLevel === l.level
+                          ? "bg-muted text-foreground border border-border font-semibold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
+                      }`}
+                    >
+                      {isSpecialLevel(l.level) && <span className="text-amber-400 text-[10px]">●</span>}
+                      <span>{l.level}</span>
+                      <span className="text-[10px] px-1 py-0.2 rounded bg-background/80 border border-border/40 tabular-nums text-muted-foreground">
+                        {levelCounts.get(l.level) ?? 0}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-5">
-                <div className="h-fit md:sticky md:top-[74px] rounded-lg border border-border/80 bg-card p-3">
+                {/* Desktop sticky sidebar */}
+                <div className="hidden md:block h-fit md:sticky md:top-[74px] rounded-lg border border-border/80 bg-card p-3">
                   <div className="px-2 py-1.5 mb-2 border-b border-border/40 flex items-center justify-between">
                     <span className="text-xs font-semibold text-muted-foreground">{t.levels}</span>
                     <span className="text-xs text-muted-foreground"><span className="font-mono tabular-nums font-semibold text-foreground">{sortedLevels.length}</span> folders</span>
                   </div>
-                  <ScrollArea className="h-[65vh] pr-2">
+                  <ScrollArea className="h-[calc(100vh-220px)] max-h-[640px] pr-2">
                     <div className="space-y-1">
                       <button
                         onClick={() => setSelectedLevel("all")}
                         className={`w-full text-left px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center justify-between ${
                           selectedLevel === "all"
                             ? "bg-muted text-foreground border border-border font-semibold"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
                         }`}
                       >
                         <span className="font-sans">{t.allCharts}</span>
@@ -436,7 +559,7 @@ export default function Home() {
                           className={`w-full text-left px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center justify-between ${
                             selectedLevel === l.level
                               ? "bg-muted text-foreground border border-border font-semibold"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
                           }`}
                         >
                           <span className="flex items-center gap-1.5">
@@ -562,6 +685,7 @@ export default function Home() {
         onOpenChange={setDetailOpen}
         activePlayer={activePlayer}
         chartMaxTheta={chartMaxTheta}
+        onClearStatusChange={handleClearStatusChange}
       />
     </ScaleProvider>
   );
@@ -572,9 +696,9 @@ function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[
   const { format } = useScale();
 
   return (
-    <div className="max-h-[480px] overflow-y-auto rounded-md border border-border/80 font-mono text-xs">
+    <div className="max-h-[480px] overflow-y-auto rounded-md border border-border/80 text-xs">
       <table className="w-full">
-        <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
+        <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 font-sans">
           <tr className="border-b border-border text-left">
             <th className="px-3 py-2.5 font-semibold text-muted-foreground">{t.level}</th>
             <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">{t.chartsCol}</th>
@@ -584,7 +708,7 @@ function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[
             <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">{t.vhardIQR}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border/40">
+        <tbody className="divide-y divide-border/40 font-mono">
           {levels.map((l) => (
             <tr
               key={l.level}
@@ -606,7 +730,7 @@ function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[
                 </span>
               </td>
               <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">
-                {l.n_charts_valid} <span className="text-xs text-muted-foreground/80">/ {l.n_charts_total}</span>
+                {l.n_charts_valid} <span className="text-xs text-muted-foreground/80 font-sans">/ {l.n_charts_total}</span>
               </td>
               <td className="px-3 py-2.5 text-right font-semibold text-lamp-hard tabular-nums">
                 {format(l.hard_median)}

@@ -101,12 +101,14 @@ function ClearDistBar({
 
   return (
     <div
-      className="flex flex-col items-end gap-1 font-mono"
+      className="flex flex-col items-end gap-0.5 font-mono"
       title={`V-HARD ${nVhard} (${vhPct.toFixed(0)}%) | HARD ${nHard} (${hPct.toFixed(0)}%) | NORMAL+FAILED ${nLower} (${lowerPct.toFixed(0)}%) · Total: ${n}`}
     >
-      <div className="flex items-center gap-1 text-xs tabular-nums font-semibold">
-        <span className="text-lamp-vhard">{vhPct.toFixed(0)}%</span>
-        <span className="text-muted-foreground font-normal text-[10px]">VH</span>
+      <div className="flex items-center gap-1.5 text-xs tabular-nums">
+        <span className="font-semibold text-foreground">{n}</span>
+        <span className="text-[10px] text-muted-foreground font-normal">
+          ({vhPct.toFixed(0)}% <span className="text-lamp-vhard font-medium">VH</span>)
+        </span>
       </div>
       <div className="w-16 h-1 rounded-sm overflow-hidden flex bg-muted/40 border border-border/40">
         <div style={{ width: `${vhPct}%` }} className="h-full bg-lamp-vhard" />
@@ -387,7 +389,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                           rowClass
                         )}
                       >
-                        <TableCell className="font-medium font-jp whitespace-normal break-all max-w-[400px]">
+                        <TableCell className="font-medium font-jp whitespace-normal break-words max-w-[400px]">
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {activePlayer && (

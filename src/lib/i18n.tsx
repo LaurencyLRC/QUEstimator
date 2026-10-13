@@ -148,7 +148,10 @@ export const STRINGS = {
     // Ranking tab
     rankingTitle: "Player Ranking",
     rankingDesc: "All tracked players sorted by estimated latent skill θ. Click any row to load that player into the Player tab. Eligibility requires ≥ 10 plays AND ≥ 1 HARD-or-better clear on valid U_E 20+ charts (or Ω) — plays on lower levels, provisional charts, and -_- / ?! / ◆ do not count.",
-    rankingSearchPlaceholder: "Filter by Avatar ID...",
+    rankingSearchPlaceholder: "Search by player name or Avatar ID...",
+    grmSurvivalProb: "P*(θ, k) survival probability",
+    predictedClearProb: (pct: number) => `${pct}% predicted clear chance`,
+    clearBreakdown: "Clear Breakdown",
     rankCol: "#",
     playerCol: "Player",
     thetaCol: (isLerp: boolean) => isLerp ? "U_E (skill)" : "θ (skill)",
@@ -321,7 +324,10 @@ export const STRINGS = {
     // Ranking tab
     rankingTitle: "플레이어 랭킹",
     rankingDesc: "추정 잠재 실력 θ 기준 정렬된 전체 플레이어 목록입니다. 행을 클릭하면 해당 플레이어가 플레이어 탭에 로드됩니다. 랭킹 대상이 되려면 유효한 U_E 20+ 채보(또는 Ω)에서 10플레이 이상 AND HARD 이상 클리어 1건 이상이 필요합니다 — 하위 레벨, 임시 채보, -_- / ?! / ◆에서의 플레이는 집계되지 않습니다.",
-    rankingSearchPlaceholder: "Avatar ID로 필터링...",
+    rankingSearchPlaceholder: "플레이어 이름 또는 Avatar ID 검색...",
+    grmSurvivalProb: "생존 확률 P*(θ, k)",
+    predictedClearProb: (pct: number) => `예상 클리어 확률 ${pct}%`,
+    clearBreakdown: "클리어 분포",
     rankCol: "#",
     playerCol: "플레이어",
     thetaCol: (isLerp: boolean) => isLerp ? "U_E (실력)" : "θ (실력)",

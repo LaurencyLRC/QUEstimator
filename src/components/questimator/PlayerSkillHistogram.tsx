@@ -2,6 +2,7 @@
 
 import type { SamplePlayers } from "@/lib/questimator-types";
 import { useScale } from "@/lib/value-scale";
+import { useLang } from "@/lib/i18n";
 
 interface Props {
   data: SamplePlayers;
@@ -21,7 +22,8 @@ export function PlayerSkillHistogram({
   height = 180,
 }: Props) {
   const { mode, format } = useScale();
-  const PAD = { top: 14, right: 14, bottom: 36, left: 36 };
+  const { t } = useLang();
+  const PAD = { top: 22, right: 14, bottom: 36, left: 36 };
   const innerW = width - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
 
@@ -41,7 +43,7 @@ export function PlayerSkillHistogram({
   const playerClamped = hasPlayer ? Math.max(edges[0], Math.min(edges[edges.length - 1], playerTheta!)) : 0;
   const playerX = hasPlayer ? xScale(playerClamped) : 0;
   const isLabelNear = hasPlayer && Math.abs(meanX - playerX) < 45;
-  const meanLabelY = isLabelNear ? PAD.top + 10 : PAD.top - 2;
+  const meanLabelY = isLabelNear ? PAD.top - 12 : PAD.top - 2;
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
@@ -70,8 +72,8 @@ export function PlayerSkillHistogram({
             y={y}
             width={Math.max(0, barW - 2)}
             height={h}
-            fill="oklch(0.68 0.15 200)"
-            fillOpacity={0.7}
+            fill="var(--color-telemetry-cyan)"
+            fillOpacity={0.65}
             rx={1}
           />
         );
@@ -92,8 +94,7 @@ export function PlayerSkillHistogram({
         y={meanLabelY}
         textAnchor="middle"
         fontSize={9}
-        className="fill-muted-foreground"
-        fontFamily="var(--font-geist-mono)"
+        className="fill-muted-foreground font-mono"
       >
         {mode === "lerp" ? `μ=${format(data.theta_mean, 2)}` : `μ=${data.theta_mean.toFixed(2)}`}
       </text>
@@ -106,7 +107,7 @@ export function PlayerSkillHistogram({
             y1={PAD.top}
             x2={playerX}
             y2={PAD.top + innerH}
-            stroke="oklch(0.68 0.15 200)"
+            stroke="var(--color-telemetry-cyan)"
             strokeWidth={2}
           />
           <text
@@ -114,9 +115,7 @@ export function PlayerSkillHistogram({
             y={PAD.top - 2}
             textAnchor="middle"
             fontSize={9}
-            fill="oklch(0.68 0.15 200)"
-            fontWeight="bold"
-            fontFamily="var(--font-geist-mono)"
+            className="fill-telemetry-cyan font-bold font-mono"
           >
             {mode === "lerp" ? `θ=${format(playerTheta!, 2)}` : `θ=${format(playerTheta!, 3)}`}
           </text>
@@ -133,11 +132,22 @@ export function PlayerSkillHistogram({
           className="fill-muted-foreground"
           fontFamily="var(--font-geist-mono)"
         >
-          {mode === "lerp" ? format(t, 0) : (t >= 0 ? `+${t}` : t)}
+          {mode === "lerp" ? format(t, 1) : (t >= 0 ? `+${t}` : t)}
         </text>
       ))}
       <line x1={PAD.left} y1={PAD.top + innerH} x2={width - PAD.right} y2={PAD.top + innerH} stroke="currentColor" strokeOpacity={0.3} />
       <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + innerH} stroke="currentColor" strokeOpacity={0.3} />
+
+      {/* Axis title */}
+      <text
+        x={width / 2}
+        y={height - 6}
+        textAnchor="middle"
+        fontSize={11}
+        className="fill-muted-foreground"
+      >
+        {t.histogramXAxis(mode === 'lerp')}
+      </text>
     </svg>
   );
 }

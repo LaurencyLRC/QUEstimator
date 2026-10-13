@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import {
   Dialog,
@@ -13,14 +14,16 @@ import { levelLabel, getCensoredDisplayBound } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import { GrmCurveChart } from "@/components/questimator/GrmCurveChart";
+import { LampBadge } from "@/components/questimator/LampBadge";
 import { Check, Copy, ExternalLink, Video, Download } from "lucide-react";
 
 interface Props {
   chart: Chart | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  activePlayer?: { id: string; data: PlayerData } | null;
+  activePlayer?: { id: string; data: PlayerData; isCustom?: boolean } | null;
   chartMaxTheta?: Map<number, number> | null;
+  onClearStatusChange?: (chartId: number, status: number) => void;
 }
 
 function fmtRaw(v: number | null, digits = 3): string {
@@ -36,15 +39,7 @@ function seColorClass(se: number | null): string {
   return "text-rose-400";
 }
 
-function getClearBadge(status?: number) {
-  if (status === 3) return <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono border-lamp-vhard/40 bg-lamp-vhard/10 text-lamp-vhard ml-2">V-HARD</Badge>;
-  if (status === 2) return <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono border-lamp-hard/40 bg-lamp-hard/10 text-lamp-hard ml-2">HARD</Badge>;
-  if (status === 1) return <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono border-lamp-normal/40 bg-lamp-normal/10 text-lamp-normal ml-2">NORMAL</Badge>;
-  if (status === 0) return <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono border-lamp-failed/40 bg-lamp-failed/10 text-lamp-failed ml-2">FAILED</Badge>;
-  return null;
-}
-
-export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, chartMaxTheta }: Props) {
+export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, chartMaxTheta, onClearStatusChange }: Props) {
   const { t } = useLang();
   const { format, mode } = useScale();
   const [copiedMd5, setCopiedMd5] = useState(false);
@@ -56,12 +51,20 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
     return `[${format(lo, digits)}, ${format(hi, digits)}]`;
   };
 
+  const pStar = (theta: number, a: number, b: number) => 1 / (1 + Math.exp(-a * (theta - b)));
+  const playerProbHard = activePlayer?.data.t != null && chart.a != null && chart.b_hard != null
+    ? pStar(activePlayer.data.t, chart.a, chart.b_hard)
+    : null;
+  const playerProbVhard = activePlayer?.data.t != null && chart.a != null && chart.b_vhard != null
+    ? pStar(activePlayer.data.t, chart.a, chart.b_vhard)
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border/80 text-foreground p-6 rounded-lg">
         <DialogHeader className="border-b border-border/60 pb-4">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="font-mono text-xs px-2 py-0.5 border-border/80 bg-background/60">
                 {levelLabel(chart.level)}
               </Badge>
@@ -73,8 +76,20 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
                   {t.provisional}
                 </Badge>
               )}
-              {activePlayer && activePlayer.data.c?.[chart.id.toString()] !== undefined && (
-                getClearBadge(activePlayer.data.c?.[chart.id.toString()])
+              {activePlayer && (
+                <div className="ml-1">
+                  <LampBadge
+                    status={activePlayer.data.c?.[chart.id.toString()]}
+                    editable={!!(activePlayer.isCustom && onClearStatusChange)}
+                    onStatusChange={
+                      onClearStatusChange
+                        ? (newStatus) => onClearStatusChange(chart.id, newStatus)
+                        : undefined
+                    }
+                    variant="full"
+                    showEmptyAsButton={!!activePlayer.isCustom}
+                  />
+                </div>
               )}
             </div>
 
@@ -178,6 +193,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
               fmtCIFn={fmtCI}
               color="var(--color-lamp-hard)"
               title="Difficulty threshold b_hard (50% HARD clear probability)"
+              playerProb={playerProbHard}
             />
             <ParamCard
               label={t.vhardClear}
@@ -187,6 +203,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
               fmtCIFn={fmtCI}
               color="var(--color-lamp-vhard)"
               title="Difficulty threshold b_vhard (50% V-HARD clear probability)"
+              playerProb={playerProbVhard}
             />
             <ParamCard
               label={t.discrimination}
@@ -203,14 +220,58 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
             />
           </div>
 
+          {/* Clear Distribution Breakdown */}
+          {chart.n > 0 && (
+            <div className="rounded-lg border border-border/80 p-3 bg-muted/15 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-sans font-medium text-muted-foreground">{t.clearBreakdown}</span>
+                <span className="font-mono text-muted-foreground text-[11px]">{chart.n.toLocaleString()} submissions</span>
+              </div>
+              <div className="w-full h-2 rounded overflow-hidden flex bg-muted/40 border border-border/40">
+                <div style={{ width: `${(chart.n_vhard / chart.n) * 100}%` }} className="h-full bg-lamp-vhard" title={`V-HARD: ${chart.n_vhard}`} />
+                <div style={{ width: `${(chart.n_hard / chart.n) * 100}%` }} className="h-full bg-lamp-hard" title={`HARD: ${chart.n_hard}`} />
+                <div style={{ width: `${((chart.n_normal + chart.n_failed) / chart.n) * 100}%` }} className="h-full bg-lamp-failed" title={`NORMAL+FAILED: ${chart.n_normal + chart.n_failed}`} />
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono pt-1">
+                <div className="rounded p-1.5 bg-muted/30 border border-border/40">
+                  <div className="text-[10px] text-lamp-vhard font-sans font-medium">V-HARD</div>
+                  <div className="font-semibold text-foreground mt-0.5">{chart.n_vhard}</div>
+                  <div className="text-[10px] text-muted-foreground">{((chart.n_vhard / chart.n) * 100).toFixed(0)}%</div>
+                </div>
+                <div className="rounded p-1.5 bg-muted/30 border border-border/40">
+                  <div className="text-[10px] text-lamp-hard font-sans font-medium">HARD</div>
+                  <div className="font-semibold text-foreground mt-0.5">{chart.n_hard}</div>
+                  <div className="text-[10px] text-muted-foreground">{((chart.n_hard / chart.n) * 100).toFixed(0)}%</div>
+                </div>
+                <div className="rounded p-1.5 bg-muted/30 border border-border/40">
+                  <div className="text-[10px] text-amber-400 font-sans font-medium">NORMAL</div>
+                  <div className="font-semibold text-foreground mt-0.5">{chart.n_normal}</div>
+                  <div className="text-[10px] text-muted-foreground">{((chart.n_normal / chart.n) * 100).toFixed(0)}%</div>
+                </div>
+                <div className="rounded p-1.5 bg-muted/30 border border-border/40">
+                  <div className="text-[10px] text-muted-foreground font-sans font-medium">FAILED</div>
+                  <div className="font-semibold text-foreground mt-0.5">{chart.n_failed}</div>
+                  <div className="text-[10px] text-muted-foreground">{((chart.n_failed / chart.n) * 100).toFixed(0)}%</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {chart.a != null && chart.b_hard != null && chart.b_vhard != null && (
             <div className="rounded-lg border border-border/80 p-4 bg-background/50">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div className="text-xs font-sans font-medium text-muted-foreground">
                   {t.lang === "en" ? "GRM Cumulative Survival Probabilities" : "GRM 누적 생존 확률 곡선"}
                 </div>
-                <div className="text-xs font-mono text-muted-foreground/80">
-                  P*(θ) Logistic Fit
+                <div className="flex items-center gap-3 text-xs font-mono">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-1 rounded-sm" style={{ background: "var(--color-lamp-hard)" }} />
+                    <span className="text-muted-foreground font-sans text-[11px]">HARD</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-1 rounded-sm" style={{ background: "var(--color-lamp-vhard)" }} />
+                    <span className="text-muted-foreground font-sans text-[11px]">V-HARD</span>
+                  </span>
                 </div>
               </div>
               <GrmCurveChart
@@ -244,6 +305,7 @@ function ParamCard({
   fmtCIFn,
   color,
   title,
+  playerProb,
 }: {
   label: string;
   value: string;
@@ -252,27 +314,37 @@ function ParamCard({
   fmtCIFn?: (center: number, se: number) => string;
   color?: string;
   title?: string;
+  playerProb?: number | null;
 }) {
   return (
     <div
       title={title}
       className="rounded-lg border border-border/80 bg-background/50 px-3 py-2.5 flex flex-col justify-between"
     >
-      <div className="flex items-center gap-1.5">
-        {color && (
-          <span
-            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ background: color }}
-          />
+      <div>
+        <div className="flex items-center gap-1.5">
+          {color && (
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ background: color }}
+            />
+          )}
+          <span className="text-xs text-muted-foreground whitespace-nowrap truncate">
+            {label}
+          </span>
+        </div>
+        <div className="font-mono text-base font-bold tabular-nums text-foreground mt-1">{value}</div>
+        {seValue != null && ciCenter != null && fmtCIFn && !Number.isNaN(ciCenter) && !Number.isNaN(seValue) && (
+          <div className={`text-[10px] font-mono tabular-nums ${seColorClass(seValue)} mt-0.5`}>
+            95% CI {fmtCIFn(ciCenter, seValue)}
+          </div>
         )}
-        <span className="text-xs text-muted-foreground whitespace-nowrap truncate">
-          {label}
-        </span>
       </div>
-      <div className="font-mono text-base font-bold tabular-nums text-foreground mt-1">{value}</div>
-      {seValue != null && ciCenter != null && fmtCIFn && !Number.isNaN(ciCenter) && !Number.isNaN(seValue) && (
-        <div className={`text-[10px] font-mono tabular-nums ${seColorClass(seValue)} mt-0.5`}>
-          95% CI {fmtCIFn(ciCenter, seValue)}
+
+      {playerProb != null && (
+        <div className="text-[10px] font-mono tabular-nums text-telemetry-cyan font-medium mt-1.5 pt-1.5 border-t border-border/40 flex items-center justify-between">
+          <span className="text-muted-foreground">Est. Clear</span>
+          <span className="font-semibold">{(playerProb * 100).toFixed(0)}%</span>
         </div>
       )}
     </div>

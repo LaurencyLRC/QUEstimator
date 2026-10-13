@@ -74,6 +74,12 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
     setHovered(level);
   }, []);
 
+  const handleFocus = useCallback((level: string, target: SVGRectElement) => {
+    setHovered(level);
+    const rect = target.getBoundingClientRect();
+    setTipPos({ x: rect.left + rect.width / 2, y: rect.top + 30 });
+  }, []);
+
   const handleMove = useCallback((e: React.MouseEvent) => {
     setTipPos({ x: e.clientX + 12, y: e.clientY + 12 });
   }, []);
@@ -167,8 +173,8 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                 style={{ cursor: "pointer" }}
                 onClick={() => onSelectLevel?.(d.level)}
                 onMouseEnter={() => handleEnter(d.level)}
-                onFocus={() => handleEnter(d.level)}
-                onBlur={() => setHovered(null)}
+                onFocus={(e) => handleFocus(d.level, e.currentTarget)}
+                onBlur={handleLeave}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
@@ -186,9 +192,9 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                     y={yScale(d.vhard_q3!)}
                     width={singleBoxW}
                     height={Math.max(2, yScale(d.vhard_q1!) - yScale(d.vhard_q3!))}
-                    fill="oklch(0.62 0.22 305)"
+                    fill="var(--color-lamp-vhard)"
                     fillOpacity={0.55}
-                    stroke="oklch(0.70 0.22 305)"
+                    stroke="var(--color-lamp-vhard)"
                     strokeWidth={1.2}
                     rx={2}
                   />
@@ -197,7 +203,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                     y1={yScale(d.vhard_median!)}
                     x2={vhardX + singleBoxW + 1}
                     y2={yScale(d.vhard_median!)}
-                    stroke="oklch(0.92 0.10 305)"
+                    stroke="white"
                     strokeWidth={2}
                   />
                 </g>
@@ -211,9 +217,9 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                     y={yScale(d.hard_q3!)}
                     width={singleBoxW}
                     height={Math.max(2, yScale(d.hard_q1!) - yScale(d.hard_q3!))}
-                    fill="oklch(0.62 0.22 25)"
+                    fill="var(--color-lamp-hard)"
                     fillOpacity={0.55}
-                    stroke="oklch(0.70 0.22 25)"
+                    stroke="var(--color-lamp-hard)"
                     strokeWidth={1.2}
                     rx={2}
                   />
@@ -222,7 +228,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                     y1={yScale(d.hard_median!)}
                     x2={hardX + singleBoxW + 1}
                     y2={yScale(d.hard_median!)}
-                    stroke="oklch(0.95 0.10 25)"
+                    stroke="white"
                     strokeWidth={2}
                   />
                 </g>
@@ -255,38 +261,6 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
           {t.xAxisLabel}
         </text>
 
-        {/* Legend */}
-        <g transform={`translate(${PAD.left}, 12)`}>
-          <rect
-            x={0}
-            y={0}
-            width={18}
-            height={12}
-            fill="oklch(0.62 0.22 25)"
-            fillOpacity={0.55}
-            stroke="oklch(0.70 0.22 25)"
-            strokeWidth={1.2}
-            rx={2}
-          />
-          <text x={24} y={10} fontSize={11} className="fill-foreground">
-            {t.legendHard}
-          </text>
-          <rect
-            x={110}
-            y={0}
-            width={18}
-            height={12}
-            fill="oklch(0.62 0.22 305)"
-            fillOpacity={0.55}
-            stroke="oklch(0.70 0.22 305)"
-            strokeWidth={1.2}
-            rx={2}
-          />
-          <text x={134} y={10} fontSize={11} className="fill-foreground">
-            {t.legendVhard}
-          </text>
-        </g>
-
         {/* Axes */}
         <line
           x1={PAD.left}
@@ -309,18 +283,26 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
       {/* Floating tooltip using the original Raw data, mapped via format() */}
       {hovered && hoveredRawData && tipPos && (
         <div
-          className="fixed z-50 pointer-events-none rounded-lg border border-border/60 bg-card/95 backdrop-blur-sm px-3 py-2.5 text-xs"
-          style={{ left: tipPos.x, top: tipPos.y }}
+          className="fixed z-50 pointer-events-none rounded-lg border border-border/80 bg-card/95 backdrop-blur-sm px-3.5 py-2.5 text-xs shadow-lg"
+          style={{
+            left: tipPos.x > (typeof window !== "undefined" ? window.innerWidth - 240 : 1000)
+              ? tipPos.x - 230
+              : tipPos.x,
+            top: tipPos.y,
+          }}
         >
-          <div className="font-semibold text-foreground mb-1.5 font-mono">
-            {hoveredRawData.level}
+          <div className="font-semibold text-foreground mb-1.5 font-mono flex items-center justify-between gap-3 border-b border-border/40 pb-1">
+            <span>U_E {hoveredRawData.level}</span>
+            <span className="text-[11px] text-muted-foreground font-normal">
+              {hoveredRawData.n_charts_valid}/{hoveredRawData.n_charts_total}
+            </span>
           </div>
           
           {hoveredRawData.vhard_median != null && (
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "var(--color-lamp-vhard)" }} />
-              <span className="text-muted-foreground w-12">V-HARD</span>
-              <span className="font-mono text-foreground">{format(hoveredRawData.vhard_median)}</span>
+              <span className="text-muted-foreground w-14 font-medium">V-HARD</span>
+              <span className="font-mono text-foreground font-semibold">{format(hoveredRawData.vhard_median)}</span>
               <span className="font-mono text-muted-foreground text-[10px]">
                 [{format(hoveredRawData.vhard_q1)}, {format(hoveredRawData.vhard_q3)}]
               </span>
@@ -330,8 +312,8 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
           {hoveredRawData.hard_median != null && (
             <div className="flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: "var(--color-lamp-hard)" }} />
-              <span className="text-muted-foreground w-12">HARD</span>
-              <span className="font-mono text-foreground">{format(hoveredRawData.hard_median)}</span>
+              <span className="text-muted-foreground w-14 font-medium">HARD</span>
+              <span className="font-mono text-foreground font-semibold">{format(hoveredRawData.hard_median)}</span>
               <span className="font-mono text-muted-foreground text-[10px]">
                 [{format(hoveredRawData.hard_q1)}, {format(hoveredRawData.hard_q3)}]
               </span>

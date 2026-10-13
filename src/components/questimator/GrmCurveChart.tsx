@@ -44,8 +44,20 @@ export function GrmCurveChart({
   const innerW = width - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
 
-  const thetaMin = -4;
-  const thetaMax = 4;
+  const bn = b_normal ?? (showNormal ? b_hard - 1.2 : undefined);
+  const minThreshold = Math.min(b_hard, bn ?? b_hard);
+  const maxThreshold = b_vhard;
+
+  const effectiveMin = playerTheta != null && Number.isFinite(playerTheta)
+    ? Math.min(minThreshold, playerTheta)
+    : minThreshold;
+  const effectiveMax = playerTheta != null && Number.isFinite(playerTheta)
+    ? Math.max(maxThreshold, playerTheta)
+    : maxThreshold;
+
+  const thetaMin = Math.min(-4, Math.floor(effectiveMin - 0.5));
+  const thetaMax = Math.max(4, Math.ceil(effectiveMax + 0.5));
+
   const xScale = (t: number) =>
     PAD.left + ((t - thetaMin) / (thetaMax - thetaMin)) * innerW;
   const yScale = (p: number) => PAD.top + innerH - p * innerH;
@@ -53,7 +65,6 @@ export function GrmCurveChart({
   const N = 80;
   const pts = useMemo(() => {
     const arr: { t: number; pn?: number; ph: number; pv: number }[] = [];
-    const bn = b_normal ?? (showNormal ? b_hard - 1.2 : undefined);
     for (let i = 0; i <= N; i++) {
       const t = thetaMin + (i / N) * (thetaMax - thetaMin);
       arr.push({
@@ -64,7 +75,7 @@ export function GrmCurveChart({
       });
     }
     return arr;
-  }, [a, b_hard, b_vhard, b_normal, showNormal]);
+  }, [a, b_hard, b_vhard, bn, showNormal, thetaMin, thetaMax]);
 
   const pathFor = (key: "pn" | "ph" | "pv") =>
     pts
@@ -73,7 +84,16 @@ export function GrmCurveChart({
       .join(" ");
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1];
-  const xTicks = [-4, -3, -2, -1, 0, 1, 2, 3, 4];
+  const xTicks = useMemo(() => {
+    const span = thetaMax - thetaMin;
+    const step = span > 9 ? 2 : 1;
+    const ticks: number[] = [];
+    const start = Math.ceil(thetaMin / step) * step;
+    for (let t = start; t <= thetaMax; t += step) {
+      ticks.push(t);
+    }
+    return ticks;
+  }, [thetaMin, thetaMax]);
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
@@ -123,7 +143,7 @@ export function GrmCurveChart({
               className="fill-muted-foreground"
               fontFamily="var(--font-geist-mono)"
             >
-              {mode === "lerp" ? format(tk, 0) : (tk >= 0 ? `+${tk}` : tk)}
+              {mode === "lerp" ? format(tk, 1) : (tk >= 0 ? `+${tk}` : tk)}
             </text>
           </g>
         );
@@ -146,8 +166,8 @@ export function GrmCurveChart({
         y1={PAD.top}
         x2={xScale(b_hard)}
         y2={height - PAD.bottom}
-        stroke="oklch(0.70 0.22 25)"
-        strokeOpacity={0.4}
+        stroke="var(--color-lamp-hard)"
+        strokeOpacity={0.5}
         strokeDasharray="3 3"
       />
       <line
@@ -155,14 +175,12 @@ export function GrmCurveChart({
         y1={PAD.top}
         x2={xScale(b_vhard)}
         y2={height - PAD.bottom}
-        stroke="oklch(0.70 0.22 305)"
-        strokeOpacity={0.4}
+        stroke="var(--color-lamp-vhard)"
+        strokeOpacity={0.5}
         strokeDasharray="3 3"
       />
 
-      {/* Player θ marker (overlay). Clamped to the visible range so extreme
-          players (|θ| > 4) still render on the chart edge rather than
-          spilling outside the plot area. */}
+      {/* Player θ marker (overlay). Clamped to the visible range */}
       {playerTheta != null && Number.isFinite(playerTheta) && (
         <g>
           {(() => {
@@ -179,7 +197,7 @@ export function GrmCurveChart({
                   y1={PAD.top}
                   x2={x}
                   y2={height - PAD.bottom}
-                  stroke="oklch(0.85 0.20 200)"
+                  stroke="var(--color-telemetry-cyan)"
                   strokeWidth={1.8}
                 />
                 {/* P*(HARD) dot on the HARD curve */}
@@ -187,7 +205,7 @@ export function GrmCurveChart({
                   cx={x}
                   cy={yH}
                   r={3.5}
-                  fill="oklch(0.70 0.22 25)"
+                  fill="var(--color-lamp-hard)"
                   stroke="white"
                   strokeWidth={1}
                 />
@@ -196,7 +214,7 @@ export function GrmCurveChart({
                   cx={x}
                   cy={yV}
                   r={3.5}
-                  fill="oklch(0.70 0.22 305)"
+                  fill="var(--color-lamp-vhard)"
                   stroke="white"
                   strokeWidth={1}
                 />
@@ -205,7 +223,7 @@ export function GrmCurveChart({
                   y={PAD.top - 2}
                   textAnchor="middle"
                   fontSize={10}
-                  className="fill-foreground"
+                  className="fill-foreground font-semibold"
                   fontFamily="var(--font-geist-mono)"
                 >
                   {mode === "lerp" ? format(playerTheta, 1) : `θ=${playerTheta >= 0 ? `+${playerTheta.toFixed(2)}` : playerTheta.toFixed(2)}`}
@@ -218,10 +236,10 @@ export function GrmCurveChart({
 
       {/* Curves */}
       {showNormal && (
-        <path d={pathFor("pn")} fill="none" stroke="oklch(0.72 0.16 95)" strokeWidth={2} />
+        <path d={pathFor("pn")} fill="none" stroke="var(--color-lamp-normal)" strokeWidth={2} />
       )}
-      <path d={pathFor("ph")} fill="none" stroke="oklch(0.70 0.22 25)" strokeWidth={2.2} />
-      <path d={pathFor("pv")} fill="none" stroke="oklch(0.70 0.22 305)" strokeWidth={2.2} />
+      <path d={pathFor("ph")} fill="none" stroke="var(--color-lamp-hard)" strokeWidth={2.2} />
+      <path d={pathFor("pv")} fill="none" stroke="var(--color-lamp-vhard)" strokeWidth={2.2} />
 
       {/* Axis lines */}
       <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={height - PAD.bottom} stroke="currentColor" strokeOpacity={0.3} />
@@ -239,29 +257,8 @@ export function GrmCurveChart({
         className="fill-muted-foreground"
         transform={`rotate(-90 14 ${height / 2})`}
       >
-        P*(θ, k) survival probability
+        {t.grmSurvivalProb}
       </text>
-
-      {/* Legend */}
-      <g transform={`translate(${PAD.left + 10}, ${PAD.top + 4})`}>
-        {showNormal ? (
-          <>
-            <line x1={0} y1={6} x2={14} y2={6} stroke="oklch(0.72 0.16 95)" strokeWidth={2} />
-            <text x={18} y={9} fontSize={10} className="fill-foreground font-mono">NORMAL</text>
-            <line x1={78} y1={6} x2={92} y2={6} stroke="oklch(0.70 0.22 25)" strokeWidth={2.2} />
-            <text x={96} y={9} fontSize={10} className="fill-foreground font-mono">HARD</text>
-            <line x1={146} y1={6} x2={160} y2={6} stroke="oklch(0.70 0.22 305)" strokeWidth={2.2} />
-            <text x={164} y={9} fontSize={10} className="fill-foreground font-mono">V-HARD</text>
-          </>
-        ) : (
-          <>
-            <line x1={0} y1={6} x2={14} y2={6} stroke="oklch(0.70 0.22 25)" strokeWidth={2.2} />
-            <text x={18} y={9} fontSize={10} className="fill-foreground font-mono">HARD</text>
-            <line x1={64} y1={6} x2={78} y2={6} stroke="oklch(0.70 0.22 305)" strokeWidth={2.2} />
-            <text x={82} y={9} fontSize={10} className="fill-foreground font-mono">V-HARD</text>
-          </>
-        )}
-      </g>
     </svg>
   );
 }
