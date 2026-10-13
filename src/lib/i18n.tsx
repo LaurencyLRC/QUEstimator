@@ -55,6 +55,8 @@ export const STRINGS = {
       b_vhard: "V-HARD difficulty",
       a: "discrimination",
       n: "sample size",
+      delta: "skill gain",
+      expected: "expected gain",
     },
     sortDirs: {
       asc: "ascending",
@@ -144,6 +146,16 @@ export const STRINGS = {
     preset80: "≥ 80%",
     resetFilter: "Reset",
     horizonSearchPlaceholder: "Search title, artist, or diff...",
+    signatureClears: "Signature Clears (Peak Upsets)",
+    signatureClearsDesc: "Cleared charts with the lowest expected pass probability at your skill level — your biggest overperformances.",
+    noSignatureClears: "Log HARD or V-HARD clears to surface your peak signature upsets.",
+    odds: (n: number) => `1 in ${n} odds`,
+    ratingDrags: "Rating Recovery Targets",
+    ratingDragsDesc: "Past FAILED or NORMAL plays dragging your posterior rating down, but which you now have a high probability of passing (P* ≥ 40%).",
+    noRatingDrags: "No lingering failure records dragging your rating down.",
+    skillGain: "Gain",
+    expectedGain: "Expected",
+    recoveryBoost: "Recovery",
 
     // Ranking tab
     rankingTitle: "Player Ranking",
@@ -231,6 +243,8 @@ export const STRINGS = {
       b_vhard: "V-HARD 난이도",
       a: "변별도",
       n: "표본 수",
+      delta: "실력 상승치",
+      expected: "기대 상승치",
     },
     sortDirs: {
       asc: "오름차순",
@@ -320,6 +334,16 @@ export const STRINGS = {
     preset80: "≥ 80%",
     resetFilter: "초기화",
     horizonSearchPlaceholder: "곡명, 아티스트, 차분명 검색...",
+    signatureClears: "대표 성과 (이변 클리어)",
+    signatureClearsDesc: "현재 실력 대비 통계적 클리어 확률이 가장 낮았던 채보 목록입니다. 기대를 뛰어넘은 최고의 성과를 확인하세요.",
+    noSignatureClears: "HARD 또는 V-HARD 클리어 기록을 추가하면 대표 성과가 표시됩니다.",
+    odds: (n: number) => `1/${n} 확률`,
+    ratingDrags: "평점 회복 목표 (정체 기록 극복)",
+    ratingDragsDesc: "과거 FAILED 또는 NORMAL 기록으로 인해 잠재 실력이 억제되어 있으나, 현재는 무난히 클리어 가능한 채보(P* ≥ 40%)입니다.",
+    noRatingDrags: "평점을 억제하는 과거 실패 기록이 없습니다.",
+    skillGain: "상승량",
+    expectedGain: "기대치",
+    recoveryBoost: "회복량",
 
     // Ranking tab
     rankingTitle: "플레이어 랭킹",

@@ -54,6 +54,8 @@ import {
   RotateCcw,
   RotateCw,
   Database,
+  Trophy,
+  Zap,
 } from "lucide-react";
 import { LampBadge } from "./LampBadge";
 import { useLang } from "@/lib/i18n";
@@ -65,6 +67,8 @@ import {
   type PlayersDict,
   type SamplePlayers,
   type LeaderboardResult,
+  type SignatureClear,
+  type RatingDrag,
   pStar,
   levelSortKey,
   levelLabel,
@@ -72,6 +76,9 @@ import {
   computeTopPercentile,
   formatTopPercentile,
   estimateTheta,
+  computeBaseLogLik,
+  estimateThetaWithBase,
+  computePlayerDiagnostics,
   getNextLampStatus,
   getPrevLampStatus,
   getCensoredDisplayBound,
@@ -171,7 +178,7 @@ export function PlayerTab({
   chartMaxTheta: propChartMaxTheta,
 }: Props) {
   const { t } = useLang();
-  const { mode, format } = useScale();
+  const { mode, format, toScale } = useScale();
   const [query, setQuery] = useState("");
   const [submittedID, setSubmittedID] = useState("");
   const [isCustomProfile, setIsCustomProfile] = useState(false);
@@ -194,7 +201,7 @@ export function PlayerTab({
   const [showExclamation, setShowExclamation] = useState(false);
   const [showDiamond, setShowDiamond] = useState(false);
   const [horizonSearch, setHorizonSearch] = useState("");
-  const [horizonSortKey, setHorizonSortKey] = useState<"p" | "b" | "a" | "level" | "title" | "lamp">("p");
+  const [horizonSortKey, setHorizonSortKey] = useState<"p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected">("p");
   const [horizonSortDir, setHorizonSortDir] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exported, setExported] = useState(false);
@@ -257,7 +264,7 @@ export function PlayerTab({
     setHorizonSortDir("desc");
   };
 
-  const handleHorizonSort = (key: "p" | "b" | "a" | "level" | "title" | "lamp") => {
+  const handleHorizonSort = (key: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected") => {
     if (horizonSortKey === key) {
       setHorizonSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -424,6 +431,18 @@ export function PlayerTab({
     }
   };
 
+  const baseLogLik = useMemo(() => {
+    if (!currentPlayer?.c) return new Float64Array(0);
+    return computeBaseLogLik(charts, currentPlayer.c);
+  }, [charts, currentPlayer?.c]);
+
+  const diagnostics = useMemo(() => {
+    if (!currentPlayer || baseLogLik.length === 0) {
+      return { signatureClears: [], ratingDrags: [] };
+    }
+    return computePlayerDiagnostics(charts, currentPlayer.c || {}, currentPlayer.t, baseLogLik);
+  }, [charts, currentPlayer, baseLogLik]);
+
   const analytics = useMemo(() => {
     if (!currentPlayer) return null;
 
@@ -441,6 +460,8 @@ export function PlayerTab({
       chart: Chart;
       p: number;
       lamp: number | null;
+      deltaTheta: number;
+      expectedGain: number;
     };
 
     const targetThreshold = targetStatus === "HARD" ? 2 : 3;
@@ -453,10 +474,17 @@ export function PlayerTab({
       const rawStatus = currentPlayer.c?.[String(c.id)];
       if (rawStatus !== undefined && rawStatus >= targetThreshold) continue;
 
+      const deltaTheta = baseLogLik.length > 0
+        ? Math.max(0, estimateThetaWithBase(baseLogLik, c, targetThreshold, rawStatus) - theta)
+        : 0;
+      const expectedGain = p * deltaTheta;
+
       allCandidates.push({
         chart: c,
         p,
         lamp: rawStatus !== undefined ? rawStatus : null,
+        deltaTheta,
+        expectedGain,
       });
     }
 
@@ -495,6 +523,12 @@ export function PlayerTab({
       switch (horizonSortKey) {
         case "p":
           cmp = a.p - b.p;
+          break;
+        case "delta":
+          cmp = a.deltaTheta - b.deltaTheta;
+          break;
+        case "expected":
+          cmp = a.expectedGain - b.expectedGain;
           break;
         case "lamp":
           cmp = (a.lamp ?? -1) - (b.lamp ?? -1);
@@ -575,6 +609,7 @@ export function PlayerTab({
     horizonSortKey,
     horizonSortDir,
     chartMaxTheta,
+    baseLogLik,
   ]);
 
   const rank = useMemo(() => {
@@ -1159,6 +1194,175 @@ export function PlayerTab({
               </p>
             </div>
           </div>
+
+          {/* Person-Fit Diagnostics: Signature Clears & Rating Recovery Targets */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Signature Clears (Peak Upsets) */}
+            <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+              <div>
+                <div className="flex items-center justify-between pb-2.5 border-b border-border/40">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    <h4 className="text-sm font-semibold tracking-tight text-foreground">
+                      {t.signatureClears}
+                    </h4>
+                  </div>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    Top {diagnostics.signatureClears.length}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 font-sans">
+                  {t.signatureClearsDesc}
+                </p>
+
+                <div className="mt-3 divide-y divide-border/30">
+                  {diagnostics.signatureClears.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-6 text-center font-sans">
+                      {t.noSignatureClears}
+                    </p>
+                  ) : (
+                    diagnostics.signatureClears.map((item) => (
+                      <div
+                        key={item.chart.md5}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View chart details for ${item.chart.title}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSelectChart(item.chart);
+                          }
+                        }}
+                        onClick={() => onSelectChart(item.chart)}
+                        className="py-2.5 px-2 -mx-2 rounded hover:bg-muted/40 cursor-pointer transition-colors flex items-center justify-between gap-3 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-telemetry-cyan"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <LampBadge
+                            status={item.status}
+                            variant="short"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-medium font-jp truncate text-foreground leading-snug">
+                              {item.chart.title}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground font-jp truncate">
+                              <span className="font-mono text-amber-400 font-semibold mr-1.5">
+                                {levelLabel(item.chart.level)}
+                              </span>
+                              {item.chart.artist || "unknown"}
+                              {item.chart.name_diff && ` · ${item.chart.name_diff}`}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end shrink-0 font-mono text-right">
+                          <span className="text-xs font-bold text-amber-400 tabular-nums">
+                            {t.odds(Math.round(item.odds))}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">
+                            P = {fmtPct(item.p)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Rating Recovery Targets (Rating Drags) */}
+            <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+              <div>
+                <div className="flex items-center justify-between pb-2.5 border-b border-border/40">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <h4 className="text-sm font-semibold tracking-tight text-foreground">
+                      {t.ratingDrags}
+                    </h4>
+                  </div>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    Top {diagnostics.ratingDrags.length}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 font-sans">
+                  {t.ratingDragsDesc}
+                </p>
+
+                <div className="mt-3 divide-y divide-border/30">
+                  {diagnostics.ratingDrags.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-6 text-center font-sans">
+                      {t.noRatingDrags}
+                    </p>
+                  ) : (
+                    diagnostics.ratingDrags.map((item) => {
+                      const gainStr = (() => {
+                        if (mode === "lerp" && currentPlayer) {
+                          const s0 = toScale(currentPlayer.t);
+                          const s1 = toScale(currentPlayer.t + item.recoveryGain);
+                          if (s0 != null && s1 != null) return (s1 - s0).toFixed(2);
+                        }
+                        return item.recoveryGain.toFixed(2);
+                      })();
+                      const expStr = (() => {
+                        if (mode === "lerp" && currentPlayer) {
+                          const s0 = toScale(currentPlayer.t);
+                          const s1 = toScale(currentPlayer.t + item.recoveryGain);
+                          if (s0 != null && s1 != null) return (item.pHard * (s1 - s0)).toFixed(2);
+                        }
+                        return item.expectedRecovery.toFixed(2);
+                      })();
+
+                      return (
+                        <div
+                          key={item.chart.md5}
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`View chart details for ${item.chart.title}`}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              onSelectChart(item.chart);
+                            }
+                          }}
+                          onClick={() => onSelectChart(item.chart)}
+                          className="py-2.5 px-2 -mx-2 rounded hover:bg-muted/40 cursor-pointer transition-colors flex items-center justify-between gap-3 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-telemetry-cyan"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <LampBadge
+                              status={item.currentStatus}
+                              variant="short"
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-medium font-jp truncate text-foreground leading-snug">
+                                {item.chart.title}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground font-jp truncate">
+                                <span className="font-mono text-muted-foreground mr-1.5">
+                                  {levelLabel(item.chart.level)}
+                                </span>
+                                {item.chart.artist || "unknown"}
+                                {item.chart.name_diff && ` · ${item.chart.name_diff}`}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end shrink-0 font-mono text-right">
+                            <span className="text-xs font-bold text-emerald-400 tabular-nums">
+                              +{gainStr} {mode === "lerp" ? "U_E" : "θ"}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground tabular-nums">
+                              P(HARD) {fmtPct(item.pHard)} · exp +{expStr}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Unified Training Horizon Console */}
           <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6 space-y-5">
             {/* Master Header: Title + Target Status Toggle */}
@@ -1472,12 +1676,14 @@ export function PlayerTab({
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {analytics.recommendations.map(({ chart, p, lamp }) => (
+                  {analytics.recommendations.map(({ chart, p, lamp, deltaTheta, expectedGain }) => (
                     <RecommendationCard
                       key={chart.md5}
                       chart={chart}
                       p={p}
                       lamp={lamp}
+                      deltaTheta={deltaTheta}
+                      expectedGain={expectedGain}
                       onClick={() => onSelectChart(chart)}
                       formatFn={format}
                       t={t}
@@ -1485,6 +1691,8 @@ export function PlayerTab({
                       targetStatus={targetStatus}
                       chartMaxTheta={chartMaxTheta}
                       onClearStatusChange={isCustomProfile && onSaveCustomProfile ? handleClearStatusChange : undefined}
+                      toScaleFn={toScale}
+                      playerTheta={currentPlayer?.t}
                     />
                   ))}
                 </div>
@@ -1500,7 +1708,7 @@ export function PlayerTab({
 
               <div className="rounded-md border border-border/80 overflow-hidden font-mono text-xs">
                 <div ref={horizonScrollRef} className="max-h-[500px] overflow-auto">
-                  <Table className="w-full min-w-[620px]">
+                  <Table className="w-full min-w-[720px]">
                     <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 border-b border-border">
                       <TableRow className="border-b border-border hover:bg-transparent">
                         <HorizonSortHead
@@ -1539,6 +1747,15 @@ export function PlayerTab({
                           className="w-[120px]"
                         />
                         <HorizonSortHead
+                          label={mode === "lerp" ? "+ΔU_E" : "+Δθ"}
+                          sortKey="delta"
+                          currentKey={horizonSortKey}
+                          currentDir={horizonSortDir}
+                          onSort={handleHorizonSort}
+                          align="right"
+                          className="w-[110px]"
+                        />
+                        <HorizonSortHead
                           label={`b_${targetStatus === "HARD" ? "hard" : "vhard"}`}
                           sortKey="b"
                           currentKey={horizonSortKey}
@@ -1561,7 +1778,7 @@ export function PlayerTab({
                     <TableBody className="divide-y divide-border/30">
                       {horizonCandidates.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="py-10 text-center">
+                          <TableCell colSpan={7} className="py-10 text-center">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <p className="text-sm font-sans text-muted-foreground">
                                 {t.noRecommendations}
@@ -1582,11 +1799,11 @@ export function PlayerTab({
                         <>
                           {horizonPaddingTop > 0 && (
                             <TableRow aria-hidden className="border-0 hover:bg-transparent">
-                              <TableCell colSpan={6} style={{ height: `${horizonPaddingTop}px`, padding: 0, border: 0 }} />
+                              <TableCell colSpan={7} style={{ height: `${horizonPaddingTop}px`, padding: 0, border: 0 }} />
                             </TableRow>
                           )}
                           {horizonVirtualItems.map((virtualRow) => {
-                            const { chart, p, lamp } = horizonCandidates[virtualRow.index];
+                            const { chart, p, lamp, deltaTheta, expectedGain } = horizonCandidates[virtualRow.index];
                             return (
                               <TableRow
                                 key={chart.md5}
@@ -1635,16 +1852,40 @@ export function PlayerTab({
                                   <ProbabilityBadge p={p} targetStatus={targetStatus} />
                                 </TableCell>
                                 <TableCell className="text-right font-mono text-xs py-2.5">
+                                  <div className="flex flex-col items-end leading-none gap-0.5">
+                                    <span className="text-emerald-400 font-semibold tabular-nums">
+                                      +{(() => {
+                                        if (mode === "lerp" && currentPlayer) {
+                                          const s0 = toScale(currentPlayer.t);
+                                          const s1 = toScale(currentPlayer.t + deltaTheta);
+                                          if (s0 != null && s1 != null) return (s1 - s0).toFixed(2);
+                                        }
+                                        return deltaTheta.toFixed(2);
+                                      })()}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                                      exp: +{(() => {
+                                        if (mode === "lerp" && currentPlayer) {
+                                          const s0 = toScale(currentPlayer.t);
+                                          const s1 = toScale(currentPlayer.t + deltaTheta);
+                                          if (s0 != null && s1 != null) return (p * (s1 - s0)).toFixed(2);
+                                        }
+                                        return expectedGain.toFixed(2);
+                                      })()}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right font-mono text-xs py-2.5">
                                   <span
                                     className={cn(
                                       "tabular-nums",
                                       targetStatus === "HARD"
                                         ? chart.n_hard + chart.n_vhard === 0
-                                          ? "text-amber-500/80"
-                                          : "text-lamp-hard font-medium"
-                                        : chart.n_vhard === 0
-                                        ? "text-purple-400/80"
-                                        : "text-lamp-vhard font-medium"
+                                           ? "text-amber-500/80"
+                                           : "text-lamp-hard font-medium"
+                                         : chart.n_vhard === 0
+                                         ? "text-purple-400/80"
+                                         : "text-lamp-vhard font-medium"
                                     )}
                                   >
                                     {targetStatus === "HARD"
@@ -1664,7 +1905,7 @@ export function PlayerTab({
                           })}
                           {horizonPaddingBottom > 0 && (
                             <TableRow aria-hidden className="border-0 hover:bg-transparent">
-                              <TableCell colSpan={6} style={{ height: `${horizonPaddingBottom}px`, padding: 0, border: 0 }} />
+                              <TableCell colSpan={7} style={{ height: `${horizonPaddingBottom}px`, padding: 0, border: 0 }} />
                             </TableRow>
                           )}
                         </>
@@ -1700,10 +1941,10 @@ function HorizonSortHead({
   className,
 }: {
   label: React.ReactNode;
-  sortKey: "p" | "b" | "a" | "level" | "title" | "lamp";
-  currentKey: "p" | "b" | "a" | "level" | "title" | "lamp";
+  sortKey: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected";
+  currentKey: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected";
   currentDir: "asc" | "desc";
-  onSort: (key: "p" | "b" | "a" | "level" | "title" | "lamp") => void;
+  onSort: (key: "p" | "b" | "a" | "level" | "title" | "lamp" | "delta" | "expected") => void;
   align?: "left" | "center" | "right";
   className?: string;
 }) {
@@ -1743,6 +1984,8 @@ function RecommendationCard({
   chart,
   p,
   lamp,
+  deltaTheta,
+  expectedGain,
   onClick,
   formatFn,
   t,
@@ -1750,10 +1993,14 @@ function RecommendationCard({
   targetStatus,
   chartMaxTheta,
   onClearStatusChange,
+  toScaleFn,
+  playerTheta,
 }: {
   chart: Chart;
   p: number;
   lamp?: number | null;
+  deltaTheta?: number;
+  expectedGain?: number;
   onClick: () => void;
   formatFn: (val: number | null | undefined) => string;
   t: any;
@@ -1761,6 +2008,8 @@ function RecommendationCard({
   targetStatus: "HARD" | "V-HARD";
   chartMaxTheta?: Map<number, number> | null;
   onClearStatusChange?: (chartId: number, status: number) => void;
+  toScaleFn?: (val: number | null | undefined) => number | null;
+  playerTheta?: number;
 }) {
   return (
     <button
@@ -1839,6 +2088,34 @@ function RecommendationCard({
         </span>
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>
+      {deltaTheta !== undefined && deltaTheta > 0.0001 && (
+        <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-[10px] font-mono">
+          <div className="flex items-center gap-1 text-emerald-400 font-semibold">
+            <Zap className="w-3 h-3 text-emerald-400 shrink-0" />
+            <span className="tabular-nums">
+              +{(() => {
+                if (mode === "lerp" && toScaleFn && playerTheta != null) {
+                  const s0 = toScaleFn(playerTheta);
+                  const s1 = toScaleFn(playerTheta + deltaTheta);
+                  if (s0 != null && s1 != null) return (s1 - s0).toFixed(2);
+                }
+                return deltaTheta.toFixed(2);
+              })()}{" "}
+              <span className="text-[9px] text-muted-foreground font-normal">{mode === "lerp" ? "U_E" : "θ"}</span>
+            </span>
+          </div>
+          <span className="text-muted-foreground tabular-nums">
+            exp: +{(() => {
+              if (mode === "lerp" && toScaleFn && playerTheta != null) {
+                const s0 = toScaleFn(playerTheta);
+                const s1 = toScaleFn(playerTheta + deltaTheta);
+                if (s0 != null && s1 != null) return (p * (s1 - s0)).toFixed(2);
+              }
+              return (expectedGain ?? p * deltaTheta).toFixed(2);
+            })()}
+          </span>
+        </div>
+      )}
     </button>
   );
 }
