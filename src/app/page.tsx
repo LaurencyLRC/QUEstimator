@@ -105,7 +105,17 @@ export default function Home() {
   }, [playersData, charts]);
 
   const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
-  const { profiles: customProfiles, saveProfile, deleteProfile } = useCustomProfiles();
+  const { profiles: customProfiles, saveProfile, deleteProfile } = useCustomProfiles(charts);
+
+  // Keep activePlayer in sync if custom profile theta is recomputed
+  useEffect(() => {
+    if (activePlayer?.isCustom && customProfiles[activePlayer.id]) {
+      const updated = customProfiles[activePlayer.id];
+      if (Math.abs(updated.t - activePlayer.data.t) > 0.0001) {
+        setActivePlayer({ id: activePlayer.id, data: updated, isCustom: true });
+      }
+    }
+  }, [customProfiles, activePlayer]);
 
   useEffect(() => {
     (async () => {

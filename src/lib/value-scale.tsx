@@ -52,17 +52,34 @@ export function ScaleProvider({ children, levels }: { children: ReactNode; level
 
     const val = logit;
     if (val <= anchors[0].val) {
-      const a = anchors[0], b = anchors[1];
-      return a.num + ((val - a.val) * (b.num - a.num)) / (b.val - a.val);
+      const a = anchors[0];
+      // Find a reference anchor with at least 0.2 logit span to avoid noise slopes
+      let refIdx = 1;
+      while (refIdx < anchors.length - 1 && anchors[refIdx].val - a.val < 0.2) {
+        refIdx++;
+      }
+      const b = anchors[refIdx];
+      const dVal = b.val - a.val;
+      const slope = dVal > 0.05 ? (b.num - a.num) / dVal : 5.0;
+      return a.num + (val - a.val) * slope;
     }
     if (val >= anchors[anchors.length - 1].val) {
-      const a = anchors[anchors.length - 2], b = anchors[anchors.length - 1];
-      return a.num + ((val - a.val) * (b.num - a.num)) / (b.val - a.val);
+      const last = anchors[anchors.length - 1];
+      // Walk backwards to find an anchor with at least 0.2 logit span
+      let refIdx = anchors.length - 2;
+      while (refIdx > 0 && last.val - anchors[refIdx].val < 0.2) {
+        refIdx--;
+      }
+      const ref = anchors[refIdx];
+      const dVal = last.val - ref.val;
+      const slope = dVal > 0.05 ? (last.num - ref.num) / dVal : 5.0;
+      return last.num + (val - last.val) * slope;
     }
     for (let i = 0; i < anchors.length - 1; i++) {
       const a = anchors[i], b = anchors[i + 1];
       if (val >= a.val && val <= b.val) {
-        return a.num + ((val - a.val) * (b.num - a.num)) / (b.val - a.val);
+        const dVal = b.val - a.val;
+        return a.num + ((val - a.val) * (b.num - a.num)) / (dVal > 0.0001 ? dVal : 0.0001);
       }
     }
     return val;

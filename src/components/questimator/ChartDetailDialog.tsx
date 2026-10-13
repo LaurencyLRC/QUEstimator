@@ -9,11 +9,11 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
-import { levelLabel } from "@/lib/questimator-types";
+import { levelLabel, getCensoredDisplayBound } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import { GrmCurveChart } from "@/components/questimator/GrmCurveChart";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink, Video, Download } from "lucide-react";
 
 interface Props {
   chart: Chart | null;
@@ -78,15 +78,53 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
               )}
             </div>
 
-            <a
-              href={`https://ez2pattern.kr/bms/chart?md5=${chart.md5}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline ml-auto"
-            >
-              <span>{t.ez2pattern}</span>
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            <div className="flex items-center gap-3 flex-wrap ml-auto">
+              {chart.video2 && (
+                <a
+                  href={chart.video2.startsWith("http") ? chart.video2 : `https://www.youtube.com/watch?v=${chart.video2}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline"
+                  title="Watch chart video preview"
+                >
+                  <Video className="h-3 w-3" />
+                  <span>Video</span>
+                </a>
+              )}
+              {chart.url && (
+                <a
+                  href={chart.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline"
+                  title="Download BMS package"
+                >
+                  <Download className="h-3 w-3" />
+                  <span>BMS</span>
+                </a>
+              )}
+              {chart.url_diff && (
+                <a
+                  href={chart.url_diff}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline"
+                  title="Download sabun differential"
+                >
+                  <Download className="h-3 w-3" />
+                  <span>Sabun</span>
+                </a>
+              )}
+              <a
+                href={`https://ez2pattern.kr/bms/chart?md5=${chart.md5}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-mono text-telemetry-cyan hover:underline"
+              >
+                <span>{t.ez2pattern}</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
           </div>
 
           <DialogTitle className="text-xl font-bold font-jp leading-snug tracking-tight text-foreground">
@@ -134,7 +172,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
             <ParamCard
               label={t.hardClear}
-              value={chart.n_hard + chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}
+              value={chart.n_hard + chart.n_vhard === 0 ? `>${format(getCensoredDisplayBound(chart.b_hard_display, chartMaxTheta?.get(chart.id)), mode === "lerp" ? 2 : 3)}?` : format(chart.b_hard_display, mode === "lerp" ? 2 : 3)}
               ciCenter={chart.n_hard + chart.n_vhard === 0 ? null : chart.b_hard}
               seValue={chart.n_hard + chart.n_vhard === 0 ? null : chart.se_b_hard}
               fmtCIFn={fmtCI}
@@ -143,7 +181,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, cha
             />
             <ParamCard
               label={t.vhardClear}
-              value={chart.n_vhard === 0 ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display, mode === "lerp" ? 2 : 3)}?` : format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}
+              value={chart.n_vhard === 0 ? `>${format(getCensoredDisplayBound(chart.b_vhard_display, chartMaxTheta?.get(chart.id)), mode === "lerp" ? 2 : 3)}?` : format(chart.b_vhard_display, mode === "lerp" ? 2 : 3)}
               ciCenter={chart.n_vhard === 0 ? null : chart.b_vhard}
               seValue={chart.n_vhard === 0 ? null : chart.se_b_vhard}
               fmtCIFn={fmtCI}

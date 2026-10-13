@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
-import { levelLabel, levelSortKey, isSpecialLevel, pStar } from "@/lib/questimator-types";
+import { levelLabel, levelSortKey, isSpecialLevel, pStar, getCensoredDisplayBound } from "@/lib/questimator-types";
 import { LampBadge } from "./LampBadge";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
@@ -169,12 +169,12 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
           bv = b.title.toLowerCase();
           break;
         case "b_vhard":
-          av = a.n_vhard === 0 ? (chartMaxTheta?.get(a.id) ?? a.b_vhard_display ?? -99) : (a.b_vhard_display ?? -99);
-          bv = b.n_vhard === 0 ? (chartMaxTheta?.get(b.id) ?? b.b_vhard_display ?? -99) : (b.b_vhard_display ?? -99);
+          av = a.n_vhard === 0 ? (getCensoredDisplayBound(a.b_vhard_display, chartMaxTheta?.get(a.id)) ?? -99) : (a.b_vhard_display ?? -99);
+          bv = b.n_vhard === 0 ? (getCensoredDisplayBound(b.b_vhard_display, chartMaxTheta?.get(b.id)) ?? -99) : (b.b_vhard_display ?? -99);
           break;
         case "b_hard":
-          av = (a.n_hard + a.n_vhard === 0) ? (chartMaxTheta?.get(a.id) ?? a.b_hard_display ?? -99) : (a.b_hard_display ?? -99);
-          bv = (b.n_hard + b.n_vhard === 0) ? (chartMaxTheta?.get(b.id) ?? b.b_hard_display ?? -99) : (b.b_hard_display ?? -99);
+          av = (a.n_hard + a.n_vhard === 0) ? (getCensoredDisplayBound(a.b_hard_display, chartMaxTheta?.get(a.id)) ?? -99) : (a.b_hard_display ?? -99);
+          bv = (b.n_hard + b.n_vhard === 0) ? (getCensoredDisplayBound(b.b_hard_display, chartMaxTheta?.get(b.id)) ?? -99) : (b.b_hard_display ?? -99);
           break;
         case "a":
           av = a.a ?? -99;
@@ -206,7 +206,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
   const rowVirtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 104,
+    estimateSize: () => 56,
     overscan: 10,
     getItemKey: (index) => filtered[index]?.md5 ?? index,
   });
@@ -429,7 +429,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                       <TableCell className="text-right font-mono text-sm tabular-nums">
                         <div className="flex flex-col items-end leading-tight">
                           <span className={c.n_hard + c.n_vhard === 0 ? "text-lamp-hard/60" : "text-lamp-hard font-semibold"}>
-                            {(c.n_hard + c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_hard_display)}?` : format(c.b_hard_display)}
+                            {(c.n_hard + c.n_vhard === 0) ? `>${format(getCensoredDisplayBound(c.b_hard_display, chartMaxTheta?.get(c.id)))}?` : format(c.b_hard_display)}
                           </span>
                           {activePlayer && c.a != null && c.b_hard != null && (
                             <span
@@ -444,7 +444,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                       <TableCell className="text-right font-mono text-sm tabular-nums">
                         <div className="flex flex-col items-end leading-tight">
                           <span className={c.n_vhard === 0 ? "text-lamp-vhard/60" : "text-lamp-vhard font-semibold"}>
-                            {(c.n_vhard === 0) ? `>${format(chartMaxTheta?.get(c.id) ?? c.b_vhard_display)}?` : format(c.b_vhard_display)}
+                            {(c.n_vhard === 0) ? `>${format(getCensoredDisplayBound(c.b_vhard_display, chartMaxTheta?.get(c.id)))}?` : format(c.b_vhard_display)}
                           </span>
                           {activePlayer && c.a != null && c.b_vhard != null && (
                             <span

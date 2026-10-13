@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { type PlayerData } from "@/lib/questimator-types";
+import { type PlayerData, type Chart, estimateTheta } from "@/lib/questimator-types";
 
-export function useCustomProfiles() {
+export function useCustomProfiles(charts?: Chart[]) {
   const [profiles, setProfiles] = useState<Record<string, PlayerData>>({});
   const [loaded, setLoaded] = useState(false);
 
@@ -27,6 +27,25 @@ export function useCustomProfiles() {
     }
     setLoaded(true);
   }, []);
+
+  // When charts are available, recompute theta for all custom profiles so they reflect latest chart calibrations
+  useEffect(() => {
+    if (!charts || charts.length === 0) return;
+    setProfiles((prev) => {
+      let changed = false;
+      const updated: Record<string, PlayerData> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        const calculatedTheta = estimateTheta(charts, v.c || {});
+        if (Math.abs(calculatedTheta - v.t) > 0.0001) {
+          changed = true;
+          updated[k] = { ...v, t: calculatedTheta };
+        } else {
+          updated[k] = v;
+        }
+      }
+      return changed ? updated : prev;
+    });
+  }, [charts]);
 
   const saveProfile = useCallback((id: string, data: PlayerData) => {
     setProfiles((prev) => {

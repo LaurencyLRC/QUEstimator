@@ -141,11 +141,13 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
         {mapped.map((d, i) => {
           const cx = xCenter(i);
           
-          const hardX = cx - boxW / 2;
-          const vhardX = cx - boxW / 2;
-          
           const hasHard = d.hard_median != null && d.hard_q1 != null && d.hard_q3 != null;
           const hasVhard = d.vhard_median != null && d.vhard_q1 != null && d.vhard_q3 != null;
+
+          const pairGap = 3;
+          const singleBoxW = Math.min(slotW * 0.36, 16);
+          const hardX = cx - singleBoxW - pairGap / 2;
+          const vhardX = cx + pairGap / 2;
           
           const isDimmed = hovered !== null && hovered !== d.level;
           const dimOpacity = isDimmed ? 0.2 : 1;
@@ -182,7 +184,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                   <rect
                     x={vhardX}
                     y={yScale(d.vhard_q3!)}
-                    width={boxW}
+                    width={singleBoxW}
                     height={Math.max(2, yScale(d.vhard_q1!) - yScale(d.vhard_q3!))}
                     fill="oklch(0.62 0.22 305)"
                     fillOpacity={0.55}
@@ -191,9 +193,9 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                     rx={2}
                   />
                   <line
-                    x1={vhardX - 2}
+                    x1={vhardX - 1}
                     y1={yScale(d.vhard_median!)}
-                    x2={vhardX + boxW + 2}
+                    x2={vhardX + singleBoxW + 1}
                     y2={yScale(d.vhard_median!)}
                     stroke="oklch(0.92 0.10 305)"
                     strokeWidth={2}
@@ -207,7 +209,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                   <rect
                     x={hardX}
                     y={yScale(d.hard_q3!)}
-                    width={boxW}
+                    width={singleBoxW}
                     height={Math.max(2, yScale(d.hard_q1!) - yScale(d.hard_q3!))}
                     fill="oklch(0.62 0.22 25)"
                     fillOpacity={0.55}
@@ -216,9 +218,9 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
                     rx={2}
                   />
                   <line
-                    x1={hardX - 2}
+                    x1={hardX - 1}
                     y1={yScale(d.hard_median!)}
-                    x2={hardX + boxW + 2}
+                    x2={hardX + singleBoxW + 1}
                     y2={yScale(d.hard_median!)}
                     stroke="oklch(0.95 0.10 25)"
                     strokeWidth={2}

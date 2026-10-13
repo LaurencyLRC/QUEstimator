@@ -190,15 +190,21 @@ export async function parseQwilightDb(buffer: ArrayBuffer): Promise<QwilightImpo
         if (chartId !== undefined) {
           const lamp = QWILIGHT_HANDLED_TO_LAMP[rawHandled];
           if (lamp !== undefined) {
-            clears[String(chartId)] = lamp;
-            matchedUeCharts++;
-
-            if (lamp === 0) breakdown.failed++;
-            else if (lamp === 1) breakdown.normal++;
-            else if (lamp === 2) breakdown.hard++;
-            else if (lamp === 3) breakdown.vhard++;
+            const key = String(chartId);
+            const prev = clears[key];
+            if (prev === undefined || lamp > prev) {
+              clears[key] = lamp;
+            }
           }
         }
+      }
+
+      matchedUeCharts = Object.keys(clears).length;
+      for (const lamp of Object.values(clears)) {
+        if (lamp === 0) breakdown.failed++;
+        else if (lamp === 1) breakdown.normal++;
+        else if (lamp === 2) breakdown.hard++;
+        else if (lamp === 3) breakdown.vhard++;
       }
     }
 

@@ -230,7 +230,7 @@ export function RankingTab({
 
                         {virtualItems.map((virtualRow) => {
                           const r = filtered[virtualRow.index];
-                          const gRank = ranked.indexOf(r) + 1;
+                          const gRank = globalRankById.get(r.id) ?? (virtualRow.index + 1);
                           const medalColor = rankBadgeColor(gRank);
 
                           return (

@@ -220,8 +220,9 @@ export function computeLeaderboard(players: PlayersDict, charts: Chart[]): Leade
     }
   });
 
-  const sortedThetas = Object.values(players)
-    .map((p) => p.t)
+  const sortedThetas = rows
+    .filter((r) => r.eligible)
+    .map((r) => r.data.t)
     .filter((t) => typeof t === "number" && Number.isFinite(t))
     .sort((a, b) => a - b);
 
@@ -232,6 +233,21 @@ export function computeLeaderboard(players: PlayersDict, charts: Chart[]): Leade
     totalPlayers: rows.length,
     sortedThetas,
   };
+}
+
+/**
+ * Returns the effective lower bound for a 0-clear threshold.
+ * Prevents a low-ability challenger failed attempt from pulling the displayed bound
+ * below the Bayesian prior estimate.
+ */
+export function getCensoredDisplayBound(
+  bDisplay: number | null | undefined,
+  challengerMaxTheta?: number | null
+): number | null {
+  if (bDisplay != null && challengerMaxTheta != null) {
+    return Math.max(bDisplay, challengerMaxTheta);
+  }
+  return bDisplay ?? challengerMaxTheta ?? null;
 }
 
 /**

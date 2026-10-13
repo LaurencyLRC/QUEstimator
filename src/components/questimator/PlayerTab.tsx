@@ -74,6 +74,7 @@ import {
   estimateTheta,
   getNextLampStatus,
   getPrevLampStatus,
+  getCensoredDisplayBound,
 } from "@/lib/questimator-types";
 import { PlayerSkillHistogram } from "@/components/questimator/PlayerSkillHistogram";
 import { fetchPlayersData } from "@/lib/players-cache";
@@ -512,11 +513,11 @@ export function PlayerTab({
           break;
         case "b": {
           const aVal = targetStatus === "HARD"
-            ? ((a.chart.n_hard + a.chart.n_vhard === 0) ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_hard_display ?? -99) : a.chart.b_hard_display)
-            : (a.chart.n_vhard === 0 ? (chartMaxTheta?.get(a.chart.id) ?? a.chart.b_vhard_display ?? -99) : a.chart.b_vhard_display);
+            ? ((a.chart.n_hard + a.chart.n_vhard === 0) ? (getCensoredDisplayBound(a.chart.b_hard_display, chartMaxTheta?.get(a.chart.id)) ?? -99) : a.chart.b_hard_display)
+            : (a.chart.n_vhard === 0 ? (getCensoredDisplayBound(a.chart.b_vhard_display, chartMaxTheta?.get(a.chart.id)) ?? -99) : a.chart.b_vhard_display);
           const bVal = targetStatus === "HARD"
-            ? ((b.chart.n_hard + b.chart.n_vhard === 0) ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_hard_display ?? -99) : b.chart.b_hard_display)
-            : (b.chart.n_vhard === 0 ? (chartMaxTheta?.get(b.chart.id) ?? b.chart.b_vhard_display ?? -99) : b.chart.b_vhard_display);
+            ? ((b.chart.n_hard + b.chart.n_vhard === 0) ? (getCensoredDisplayBound(b.chart.b_hard_display, chartMaxTheta?.get(b.chart.id)) ?? -99) : b.chart.b_hard_display)
+            : (b.chart.n_vhard === 0 ? (getCensoredDisplayBound(b.chart.b_vhard_display, chartMaxTheta?.get(b.chart.id)) ?? -99) : b.chart.b_vhard_display);
           cmp = (aVal ?? -99) - (bVal ?? -99);
           break;
         }
@@ -1648,10 +1649,10 @@ export function PlayerTab({
                                   >
                                     {targetStatus === "HARD"
                                       ? chart.n_hard + chart.n_vhard === 0
-                                        ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?`
+                                        ? `>${format(getCensoredDisplayBound(chart.b_hard_display, chartMaxTheta?.get(chart.id)))}?`
                                         : format(chart.b_hard_display)
                                       : chart.n_vhard === 0
-                                      ? `>${format(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?`
+                                      ? `>${format(getCensoredDisplayBound(chart.b_vhard_display, chartMaxTheta?.get(chart.id)))}?`
                                       : format(chart.b_vhard_display)}
                                   </span>
                                 </TableCell>
@@ -1829,10 +1830,10 @@ function RecommendationCard({
           >
             {targetStatus === "HARD"
               ? chart.n_hard + chart.n_vhard === 0
-                ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_hard_display)}?`
+                ? `>${formatFn(getCensoredDisplayBound(chart.b_hard_display, chartMaxTheta?.get(chart.id)))}?`
                 : formatFn(chart.b_hard_display)
               : chart.n_vhard === 0
-              ? `>${formatFn(chartMaxTheta?.get(chart.id) ?? chart.b_vhard_display)}?`
+              ? `>${formatFn(getCensoredDisplayBound(chart.b_vhard_display, chartMaxTheta?.get(chart.id)))}?`
               : formatFn(chart.b_vhard_display)}
           </span>
         </span>

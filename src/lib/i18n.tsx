@@ -50,6 +50,7 @@ export const STRINGS = {
     sortBy: (key: string, dir: string) => `sorted by ${key} (${dir})`,
     sortKeys: {
       title: "title",
+      level: "level",
       b_hard: "HARD difficulty",
       b_vhard: "V-HARD difficulty",
       a: "discrimination",
@@ -222,6 +223,7 @@ export const STRINGS = {
     sortBy: (key: string, dir: string) => `${key}순 정렬 (${dir})`,
     sortKeys: {
       title: "제목",
+      level: "레벨",
       b_hard: "HARD 난이도",
       b_vhard: "V-HARD 난이도",
       a: "변별도",
@@ -377,6 +379,12 @@ export function LangProvider({ children }: { children: ReactNode }) {
     setLangState(l);
     localStorage.setItem("questimator_lang", l);
   };
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = lang;
+    }
+  }, [lang]);
 
   const value: LangContextValue = {
     lang,
