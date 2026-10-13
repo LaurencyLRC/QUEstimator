@@ -121,7 +121,7 @@ export function PlayerSkillHistogram({
             fontSize={9}
             className="fill-telemetry-cyan font-bold font-mono"
           >
-            {mode === "lerp" ? `θ=${format(playerTheta!, 2)}` : `θ=${format(playerTheta!, 3)}`}
+            {mode === "lerp" ? `U_E ${format(playerTheta!, 2)}` : `θ=${format(playerTheta!, 3)}`}
           </text>
         </g>
       )}
@@ -153,7 +153,7 @@ export function PlayerSkillHistogram({
                   className="fill-amber-400 font-bold font-mono"
                 >
                   {rivalName ? `${rivalName} ` : "Rival "}
-                  {mode === "lerp" ? `θ=${format(rivalTheta, 2)}` : `θ=${format(rivalTheta, 3)}`}
+                  {mode === "lerp" ? `U_E ${format(rivalTheta, 2)}` : `θ=${format(rivalTheta, 3)}`}
                 </text>
               </>
             );

@@ -3,7 +3,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { getNextLampStatus, getPrevLampStatus } from "@/lib/questimator-types";
-import { RotateCw, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 
 export interface LampBadgeProps {
@@ -152,13 +152,12 @@ export function LampBadge({
       title={tooltip}
       aria-label={tooltip}
       className={cn(
-        "group/lamp inline-flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border transition-all cursor-pointer active:scale-95 shrink-0 select-none hover:brightness-110 hover:border-telemetry-cyan/70 hover:ring-1 hover:ring-telemetry-cyan/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan",
+        "group/lamp inline-flex items-center justify-center font-mono text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border transition-all cursor-pointer active:scale-95 shrink-0 select-none hover:brightness-110 hover:border-telemetry-cyan/70 hover:ring-1 hover:ring-telemetry-cyan/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan",
         config.className,
         className
       )}
     >
       <span>{config.label}</span>
-      <RotateCw className="w-2.5 h-2.5 opacity-60 group-hover/lamp:opacity-100 group-hover/lamp:rotate-180 transition-all duration-300 shrink-0 text-current" />
     </button>
   );
 }

@@ -129,6 +129,13 @@ function fmtPct(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
 }
 
+export function formatSkillGain(gain: number): string {
+  if (gain <= 0.00005) return "+0.00";
+  if (gain < 0.005) return `+${gain.toFixed(4)}`;
+  if (gain < 0.05) return `+${gain.toFixed(3)}`;
+  return `+${gain.toFixed(2)}`;
+}
+
 function pHard(theta: number, c: Chart): number | null {
   if (c.a == null || c.b_hard == null) return null;
   return pStar(theta, c.a, c.b_hard);
@@ -872,7 +879,7 @@ export function PlayerTab({
                   <span className="text-foreground font-semibold text-sm">
                     {currentPlayer.n ?? activePlayerExternal?.id ?? submittedID}
                   </span>
-                  {currentPlayer.n && (
+                  {currentPlayer.n && currentPlayer.n !== (activePlayerExternal?.id ?? submittedID) && (
                     <span className="text-muted-foreground text-xs font-mono">
                       ({activePlayerExternal?.id ?? submittedID})
                     </span>
@@ -915,6 +922,30 @@ export function PlayerTab({
                   title={`FAILED: ${analytics.statusCounts[0]}`}
                   className="h-full bg-lamp-failed"
                 />
+              </div>
+
+              {/* Status counts legend below header gauge */}
+              <div className="flex items-center gap-3 mt-1.5 text-[10px] font-mono text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-lamp-vhard" />
+                  <span className="text-lamp-vhard font-bold">VH</span>
+                  <span className="text-foreground tabular-nums">{analytics.statusCounts[3]}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-lamp-hard" />
+                  <span className="text-lamp-hard font-bold">H</span>
+                  <span className="text-foreground tabular-nums">{analytics.statusCounts[2]}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-lamp-normal" />
+                  <span className="text-lamp-normal font-bold">N</span>
+                  <span className="text-foreground tabular-nums">{analytics.statusCounts[1]}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-lamp-failed" />
+                  <span className="text-muted-foreground font-bold">F</span>
+                  <span className="text-foreground tabular-nums">{analytics.statusCounts[0]}</span>
+                </span>
               </div>
             </div>
           )}
@@ -1332,16 +1363,18 @@ export function PlayerTab({
                         <span>{t.rival}</span>
                       </Button>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onSetRival(submittedID, currentPlayer, isCustomProfile)}
-                        className="h-6 text-[11px] font-mono gap-1 px-2 bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted"
-                        title={t.setRival}
-                      >
-                        <Swords className="w-3 h-3 text-amber-400" />
-                        <span>{t.setRival}</span>
-                      </Button>
+                      !isCustomProfile && activePlayerExternal?.id !== submittedID ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onSetRival(submittedID, currentPlayer, isCustomProfile)}
+                          className="h-6 text-[11px] font-mono gap-1 px-2 bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted"
+                          title={t.setRival}
+                        >
+                          <Swords className="w-3 h-3 text-amber-400" />
+                          <span>{t.setRival}</span>
+                        </Button>
+                      ) : null
                     )
                   )}
                   {rank != null && (
@@ -1369,17 +1402,12 @@ export function PlayerTab({
               </div>
 
               {samplePlayers && (
-                <div>
-                  <PlayerSkillHistogram
-                    data={samplePlayers}
-                    playerTheta={currentPlayer.t}
-                    rivalTheta={rivalPlayer?.data?.t ?? null}
-                    rivalName={rivalPlayer?.data?.n || rivalPlayer?.id}
-                  />
-                  <div className="text-[10px] font-mono text-muted-foreground text-center mt-1">
-                    {t.histogramXAxis(mode === 'lerp')}
-                  </div>
-                </div>
+                <PlayerSkillHistogram
+                  data={samplePlayers}
+                  playerTheta={currentPlayer.t}
+                  rivalTheta={rivalPlayer?.data?.t ?? null}
+                  rivalName={rivalPlayer?.data?.n || rivalPlayer?.id}
+                />
               )}
 
               {/* Status pills */}
@@ -1402,6 +1430,24 @@ export function PlayerTab({
                   );
                 })}
               </div>
+
+              {samplePlayers && (
+                <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/40 font-sans">
+                  {t.lang === "en" ? (
+                    mode === "lerp" ? (
+                      <>Population: <span className="font-mono tabular-nums">μ={format(playerThetaMean, 2)} (U_E), σ={playerThetaStd.toFixed(3)} (θ)</span> (n=<span className="font-mono tabular-nums">{samplePlayers.n_players}</span>).</>
+                    ) : (
+                      <>Population: <span className="font-mono tabular-nums">μ={format(playerThetaMean, 3)}, σ={playerThetaStd.toFixed(3)}</span> (n=<span className="font-mono tabular-nums">{samplePlayers.n_players}</span>).</>
+                    )
+                  ) : (
+                    mode === "lerp" ? (
+                      <>모집단: <span className="font-mono tabular-nums">μ={format(playerThetaMean, 2)} (U_E), σ={playerThetaStd.toFixed(3)} (θ)</span> (n=<span className="font-mono tabular-nums">{samplePlayers.n_players}</span>).</>
+                    ) : (
+                      <>모집단: <span className="font-mono tabular-nums">μ={format(playerThetaMean, 3)}, σ={playerThetaStd.toFixed(3)}</span> (n=<span className="font-mono tabular-nums">{samplePlayers.n_players}</span>).</>
+                    )
+                  )}
+                </p>
+              )}
             </div>
 
             {/* Right: Folder Lamp Matrix */}
@@ -1422,7 +1468,7 @@ export function PlayerTab({
                     : "클리어 기록이 없습니다."}
                 </p>
               ) : (
-                <ScrollArea className="max-h-[240px] pr-2">
+                <ScrollArea className="h-[240px] overflow-hidden pr-3">
                   <div className="space-y-2">
                     {analytics.levelStats.map((s) => (
                       <div
@@ -1483,13 +1529,12 @@ export function PlayerTab({
                 </ScrollArea>
               )}
 
-              <p className="text-xs text-muted-foreground pt-2 border-t border-border/40 font-sans">
-                {t.lang === "en" ? (
-                  <>Population: <span className="font-mono tabular-nums">μ={format(playerThetaMean)}, σ={playerThetaStd.toFixed(3)}</span> (n=<span className="font-mono tabular-nums">{samplePlayers?.n_players ?? 0}</span>).</>
-                ) : (
-                  <>모집단: <span className="font-mono tabular-nums">μ={format(playerThetaMean)}, σ={playerThetaStd.toFixed(3)}</span> (n=<span className="font-mono tabular-nums">{samplePlayers?.n_players ?? 0}</span>).</>
-                )}
-              </p>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2 border-t border-border/40 font-mono">
+                <span>{analytics.levelStats.length} active folders</span>
+                <span className="tabular-nums">
+                  <span className="text-foreground font-semibold">{analytics.levelStats.reduce((sum, s) => sum + s.cleared, 0)}</span> clears logged
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1603,22 +1648,22 @@ export function PlayerTab({
                     </p>
                   ) : (
                     diagnostics.ratingDrags.map((item) => {
-                      const gainStr = (() => {
+                      const gainVal = (() => {
                         if (mode === "lerp" && currentPlayer) {
                           const s0 = toScale(currentPlayer.t);
                           const s1 = toScale(currentPlayer.t + item.recoveryGain);
-                          if (s0 != null && s1 != null) return (s1 - s0).toFixed(2);
+                          if (s0 != null && s1 != null) return s1 - s0;
                         }
-                        return item.recoveryGain.toFixed(2);
+                        return item.recoveryGain;
                       })();
-                      const expStr = (() => {
+                      const expVal = (() => {
                         if (mode === "lerp" && currentPlayer) {
-                          const s0 = toScale(currentPlayer.t);
-                          const s1 = toScale(currentPlayer.t + item.recoveryGain);
-                          if (s0 != null && s1 != null) return (item.pHard * (s1 - s0)).toFixed(2);
+                          return item.pHard * gainVal;
                         }
-                        return item.expectedRecovery.toFixed(2);
+                        return item.expectedRecovery;
                       })();
+                      const gainStr = formatSkillGain(gainVal);
+                      const expStr = formatSkillGain(expVal);
 
                       return (
                         <div
@@ -2228,23 +2273,23 @@ export function PlayerTab({
                                 <TableCell className="text-right font-mono text-xs py-2.5">
                                   <div className="flex flex-col items-end leading-none gap-0.5">
                                     <span className="text-emerald-400 font-semibold tabular-nums">
-                                      +{(() => {
+                                      {(() => {
                                         if (mode === "lerp" && currentPlayer) {
                                           const s0 = toScale(currentPlayer.t);
                                           const s1 = toScale(currentPlayer.t + deltaTheta);
-                                          if (s0 != null && s1 != null) return (s1 - s0).toFixed(2);
+                                          if (s0 != null && s1 != null) return formatSkillGain(s1 - s0);
                                         }
-                                        return deltaTheta.toFixed(2);
+                                        return formatSkillGain(deltaTheta);
                                       })()}
                                     </span>
                                     <span className="text-[10px] text-muted-foreground tabular-nums">
-                                      exp: +{(() => {
+                                      exp: {(() => {
                                         if (mode === "lerp" && currentPlayer) {
                                           const s0 = toScale(currentPlayer.t);
                                           const s1 = toScale(currentPlayer.t + deltaTheta);
-                                          if (s0 != null && s1 != null) return (p * (s1 - s0)).toFixed(2);
+                                          if (s0 != null && s1 != null) return formatSkillGain(p * (s1 - s0));
                                         }
-                                        return expectedGain.toFixed(2);
+                                        return formatSkillGain(expectedGain);
                                       })()}
                                     </span>
                                   </div>
@@ -2435,7 +2480,13 @@ function RecommendationCard({
         <span
           className={cn(
             "font-mono font-bold text-xs tabular-nums",
-            targetStatus === "HARD" ? "text-lamp-hard" : "text-lamp-vhard"
+            p >= 0.8
+              ? "text-emerald-400"
+              : p >= 0.5
+              ? "text-cyan-400"
+              : p >= 0.2
+              ? "text-amber-400"
+              : "text-muted-foreground"
           )}
         >
           {fmtPct(p)}
@@ -2445,7 +2496,13 @@ function RecommendationCard({
         <div
           className={cn(
             "h-full rounded-sm transition-all",
-            targetStatus === "HARD" ? "bg-lamp-hard" : "bg-lamp-vhard"
+            p >= 0.8
+              ? "bg-emerald-400"
+              : p >= 0.5
+              ? "bg-cyan-400"
+              : p >= 0.2
+              ? "bg-amber-400"
+              : "bg-muted-foreground"
           )}
           style={{
             width: `${Math.min(100, Math.max(0, p * 100))}%`,
@@ -2483,25 +2540,25 @@ function RecommendationCard({
           <div className="flex items-center gap-1 text-emerald-400 font-semibold">
             <Zap className="w-3 h-3 text-emerald-400 shrink-0" />
             <span className="tabular-nums">
-              +{(() => {
+              {(() => {
                 if (mode === "lerp" && toScaleFn && playerTheta != null) {
                   const s0 = toScaleFn(playerTheta);
                   const s1 = toScaleFn(playerTheta + deltaTheta);
-                  if (s0 != null && s1 != null) return (s1 - s0).toFixed(2);
+                  if (s0 != null && s1 != null) return formatSkillGain(s1 - s0);
                 }
-                return deltaTheta.toFixed(2);
+                return formatSkillGain(deltaTheta);
               })()}{" "}
               <span className="text-[9px] text-muted-foreground font-normal">{mode === "lerp" ? "U_E" : "θ"}</span>
             </span>
           </div>
           <span className="text-muted-foreground tabular-nums">
-            exp: +{(() => {
+            exp: {(() => {
               if (mode === "lerp" && toScaleFn && playerTheta != null) {
                 const s0 = toScaleFn(playerTheta);
                 const s1 = toScaleFn(playerTheta + deltaTheta);
-                if (s0 != null && s1 != null) return (p * (s1 - s0)).toFixed(2);
+                if (s0 != null && s1 != null) return formatSkillGain(p * (s1 - s0));
               }
-              return (expectedGain ?? p * deltaTheta).toFixed(2);
+              return formatSkillGain(expectedGain ?? p * deltaTheta);
             })()}
           </span>
         </div>
@@ -2512,32 +2569,28 @@ function RecommendationCard({
 
 function ProbabilityBadge({
   p,
-  targetStatus,
 }: {
   p: number;
-  targetStatus: "HARD" | "V-HARD";
+  targetStatus?: "HARD" | "V-HARD";
 }) {
-  const colorClass =
+  const meta =
     p >= 0.8
-      ? "text-emerald-400"
+      ? { text: "text-emerald-400", bar: "bg-emerald-400" }
       : p >= 0.5
-      ? "text-cyan-400"
+      ? { text: "text-cyan-400", bar: "bg-cyan-400" }
       : p >= 0.2
-      ? "text-lamp-normal"
-      : "text-muted-foreground";
+      ? { text: "text-amber-400", bar: "bg-amber-400" }
+      : { text: "text-muted-foreground", bar: "bg-muted-foreground" };
 
   return (
     <div className="flex items-center justify-end gap-2">
-      <div className="hidden sm:block w-12 h-1 bg-muted/60 rounded-full overflow-hidden border border-border/30">
+      <div className="hidden sm:block w-10 h-1.5 bg-muted/70 rounded-full overflow-hidden border border-border/40">
         <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            targetStatus === "HARD" ? "bg-lamp-hard" : "bg-lamp-vhard"
-          )}
+          className={cn("h-full rounded-full transition-all", meta.bar)}
           style={{ width: `${Math.min(100, Math.max(0, p * 100))}%` }}
         />
       </div>
-      <span className={cn("font-mono font-semibold tabular-nums text-xs", colorClass)}>
+      <span className={cn("font-mono font-semibold tabular-nums text-xs", meta.text)}>
         {fmtPct(p)}
       </span>
     </div>
