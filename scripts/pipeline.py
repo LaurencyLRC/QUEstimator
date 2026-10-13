@@ -142,7 +142,7 @@ OUT_DIR = _PROJECT_ROOT / "public" / "data"
 # leaving room for data refresh + build.  Raise these on a bigger/local machine.
 MCMC_WARMUP = 500           # per chain
 MCMC_SAMPLES = 500          # per chain
-N_QUAD = 11                 # Gauss–Hermite nodes for the θ integral (validated; 15–21 if time allows)
+N_QUAD = 41                 # Gauss–Hermite nodes for the θ integral (41 nodes eliminates grid snapping)
 TARGET_ACCEPT = 0.90
 MAX_TREE_DEPTH = 8
 
@@ -170,11 +170,12 @@ def load_charts() -> pd.DataFrame:
     with open(INPUT_PATH, "r", encoding="utf-8") as f:
         raw = json.load(f)
     rows = []
-    for c in raw:
+    for i, c in enumerate(raw):
         md5 = (c.get("md5") or "").strip()
         if not md5:
             continue
         rows.append({
+            "id": int(c["id"]) if "id" in c and c["id"] is not None else i,
             "md5": md5,
             "sha512": (c.get("sha512") or "").strip(),
             "title": (c.get("title") or "").strip(),
@@ -240,7 +241,7 @@ def run_mcmc(clears: np.ndarray, df: pd.DataFrame, n_players: int):
         prior_b = numpyro.sample("prior_b", dist.Normal(0.2, 0.2))
         loc = prior_a + prior_b * level_num
         loc = jnp.where(is_gimmick, 0.0, loc)
-        delta_scale = jnp.where(is_gimmick, 3.0, 0.5)
+        delta_scale = jnp.where(is_gimmick, 3.0, 1.2)
 
         with numpyro.plate("charts", n_charts):
             delta = numpyro.sample("delta", dist.Normal(loc, delta_scale))
@@ -542,13 +543,19 @@ def aggregate_by_level(df: pd.DataFrame) -> list:
                          "hard_median": None, "hard_q1": None, "hard_q3": None,
                          "vhard_median": None, "vhard_q1": None, "vhard_q3": None})
             continue
-        bh, bv = valid["b_hard"].to_numpy(), valid["b_vhard"].to_numpy()
+        # Exclude 0-clear censored thresholds from empirical folder summaries
+        valid_hard = valid[(valid["n_hard"] + valid["n_vhard"]) > 0]
+        valid_vhard = valid[valid["n_vhard"] > 0]
+        bh = valid_hard["b_hard"].to_numpy() if len(valid_hard) > 0 else np.array([])
+        bv = valid_vhard["b_vhard"].to_numpy() if len(valid_vhard) > 0 else np.array([])
         rows.append({
             "level": level, "n_charts_total": int(len(sub)), "n_charts_valid": int(len(valid)),
-            "hard_median": float(np.median(bh)), "hard_q1": float(np.percentile(bh, 25)),
-            "hard_q3": float(np.percentile(bh, 75)),
-            "vhard_median": float(np.median(bv)), "vhard_q1": float(np.percentile(bv, 25)),
-            "vhard_q3": float(np.percentile(bv, 75)),
+            "hard_median": float(np.median(bh)) if len(bh) > 0 else None,
+            "hard_q1": float(np.percentile(bh, 25)) if len(bh) > 0 else None,
+            "hard_q3": float(np.percentile(bh, 75)) if len(bh) > 0 else None,
+            "vhard_median": float(np.median(bv)) if len(bv) > 0 else None,
+            "vhard_q1": float(np.percentile(bv, 25)) if len(bv) > 0 else None,
+            "vhard_q3": float(np.percentile(bv, 75)) if len(bv) > 0 else None,
         })
     rows.sort(key=lambda r: level_sort_key(r["level"]))
     return rows
@@ -575,13 +582,18 @@ def main():
         print("[*] Fast EAP recovery: computing player θ from public/data/charts.json (101-point quadrature)...")
         with open(OUT_DIR / "charts.json", "r", encoding="utf-8") as f:
             charts_data = json.load(f)
+        def _get_val(c, key, default):
+            v = c.get(key)
+            return default if v is None else float(v)
+
         chart_by_md5 = {c["md5"]: c for c in charts_data}
-        a_mean = np.array([chart_by_md5.get(r["md5"], {}).get("a") or 1.0 for _, r in df.iterrows()])
-        b_hard = np.array([chart_by_md5.get(r["md5"], {}).get("b_hard") or 0.0 for _, r in df.iterrows()])
-        b_vhard = np.array([chart_by_md5.get(r["md5"], {}).get("b_vhard") or 0.8 for _, r in df.iterrows()])
+        a_mean = np.array([_get_val(chart_by_md5.get(r["md5"], {}), "a", 1.0) for _, r in df.iterrows()])
+        b_hard = np.array([_get_val(chart_by_md5.get(r["md5"], {}), "b_hard", 0.0) for _, r in df.iterrows()])
+        b_vhard = np.array([_get_val(chart_by_md5.get(r["md5"], {}), "b_vhard", 0.8) for _, r in df.iterrows()])
+        b_normal = np.array([_get_val(chart_by_md5.get(r["md5"], {}), "b_normal", -0.8) for _, r in df.iterrows()])
         delta_mean = b_vhard
         tau2_mean = b_vhard - b_hard
-        tau1_mean = tau2_mean
+        tau1_mean = b_hard - b_normal
 
         order = np.argsort(clears[:, 1], kind="stable")
         clears_s = clears[order]
@@ -606,6 +618,7 @@ def main():
         for pid, group in tqdm(p_clears, total=len(p_clears), desc="      Building players.json"):
             player_data[inv_player_map[pid]] = {
                 "t": round(float(theta_eap[pid]), 3),
+                "se": round(float(theta_se[pid]), 3),
                 "n": player_names.get(pid, ""),
                 "c": {str(int(r["chart"])): int(r["status"]) for _, r in group.iterrows()},
             }
@@ -682,7 +695,7 @@ def main():
     df["n_vhard"] = [counts.get(ci, {}).get("n_vhard", 0) for ci in df.index]
     df["n"] = [counts.get(ci, {}).get("n_total", 0) for ci in df.index]
 
-    PROVISIONAL_MIN_N, PROVISIONAL_MAX_SE = 10, 1.0
+    PROVISIONAL_MIN_N, PROVISIONAL_MAX_SE = 10, 0.55
     df["provisional"] = (
         (df["n"] < PROVISIONAL_MIN_N) | (df["se_b_hard"] > PROVISIONAL_MAX_SE)
         | (df["se_b_hard"].isna()))
@@ -708,6 +721,7 @@ def main():
                            bar_format="{desc}: {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"):
         player_data[inv_player_map[pid]] = {
             "t": round(float(theta_eap[pid]), 3),
+            "se": round(float(theta_se[pid]), 3),
             "n": player_names.get(pid, ""),
             "c": {str(int(r["chart"])): int(r["status"]) for _, r in group.iterrows()},
         }
@@ -719,14 +733,15 @@ def main():
     for i, r in tqdm(df.iterrows(), total=len(df), desc="      Building charts.json",
                      bar_format="{desc}: {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"):
         f = lambda v: None if (v is None or math.isnan(v)) else round(float(v), 4)
+        chart_id = int(r["id"]) if "id" in r and pd.notna(r["id"]) else i
         charts_out.append({
-            "id": i, "md5": r["md5"], "title": r["title"], "artist": r["artist"],
+            "id": chart_id, "md5": r["md5"], "title": r["title"], "artist": r["artist"],
             "level": r["level"], "name_diff": r["name_diff"], "video2": r["video2"],
             "url": r["url"], "url_diff": r["url_diff"], "comment": r["comment"],
             "state": r["state"], "n": int(r["n"]),
             "n_failed": int(r["n_failed"]), "n_normal": int(r["n_normal"]),
             "n_hard": int(r["n_hard"]), "n_vhard": int(r["n_vhard"]),
-            "a": f(r["a"]), "b_hard": f(r["b_hard"]), "b_vhard": f(r["b_vhard"]),
+            "a": f(r["a"]), "b_normal": f(r["b_normal"]), "b_hard": f(r["b_hard"]), "b_vhard": f(r["b_vhard"]),
             "b_hard_display": f(r["b_hard_display"]), "b_vhard_display": f(r["b_vhard_display"]),
             "se_a": f(r["se_a"]), "se_b_hard": f(r["se_b_hard"]), "se_b_vhard": f(r["se_b_vhard"]),
             "provisional": bool(r["provisional"]),
@@ -782,6 +797,9 @@ def main():
         json.dump(meta, fh, ensure_ascii=False, indent=2)
     with open(OUT_DIR / "players.json", "w", encoding="utf-8") as fh:
         json.dump(player_data, fh, separators=(",", ":"))
+    sha512_to_id = {c["sha512"]: c["id"] for c in charts_out if c.get("sha512")}
+    with open(OUT_DIR / "sha512-to-id.json", "w", encoding="utf-8") as fh:
+        json.dump(sha512_to_id, fh, separators=(",", ":"))
 
     rhat_disp = f"{final_rhat:.4f}" if np.isfinite(final_rhat) else "N/A (needs ≥2 chains)"
     print("\n=== Pipeline complete (real IR data) ===")

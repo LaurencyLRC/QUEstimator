@@ -56,3 +56,7 @@ server.log
 # local databases
 *.db
 DB.db
+
+# python
+__pycache__/
+*.pyc

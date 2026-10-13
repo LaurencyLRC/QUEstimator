@@ -60,10 +60,11 @@ async def fetch_chart_leaderboard(
             try:
                 response = await client.get(url)
                 if response.status_code == 200:
-                    data = response.json()
-                    # Write to file
-                    with open(save_path, "w", encoding="utf-8") as out_f:
+                    # Write to temporary file then atomic rename
+                    tmp_path = save_path.with_suffix(".tmp")
+                    with open(tmp_path, "w", encoding="utf-8") as out_f:
                         json.dump(data, out_f, ensure_ascii=False)
+                    os.replace(tmp_path, save_path)
                     stats["fetched"] += 1
                     break
                 elif response.status_code in (429, 500, 502, 503, 504):
