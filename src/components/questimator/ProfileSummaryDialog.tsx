@@ -16,6 +16,7 @@ import {
   type Chart,
   type SignatureClear,
   formatTopPercentile,
+  levelSortKey,
 } from "@/lib/questimator-types";
 import {
   Share2,
@@ -78,8 +79,7 @@ export function ProfileSummaryDialog({
   const totalClears = statusCounts[3] + statusCounts[2];
   const totalPlayed = totalClears + statusCounts[1] + statusCounts[0];
 
-  const heroValue = mode === "lerp" ? (toScale(playerTheta) ?? playerTheta) : playerTheta;
-  const heroFormatted = format(heroValue, mode === "lerp" ? 2 : 3);
+  const heroFormatted = format(playerTheta, mode === "lerp" ? 2 : 3);
   const heroUnit = mode === "lerp" ? "U_E LEVEL" : "LATENT SKILL θ";
 
   const renderCard = useCallback(() => {
@@ -273,6 +273,12 @@ export function ProfileSummaryDialog({
     }
 
     if (totalPlayed > 0) {
+      ctx.save();
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, barW, barH, 5);
+        ctx.clip();
+      }
       let curX = barX;
       const lamps = [
         { count: statusCounts[3], color: "#a855f7" }, // V-HARD
@@ -288,6 +294,7 @@ export function ProfileSummaryDialog({
         ctx.fillRect(curX, barY, segmentW, barH);
         curX += segmentW;
       }
+      ctx.restore();
     }
 
     // Status pill chips below bar
@@ -380,8 +387,9 @@ export function ProfileSummaryDialog({
         ctx.fillText(lampLabel, colRightX + 98, itemY + 48);
 
         const oddsStr = `${(peak.p * 100).toFixed(1)}% odds`;
+        const oddsInt = Math.max(1, Math.round(peak.odds));
         ctx.fillStyle = "#f59e0b";
-        ctx.fillText(`· ${oddsStr} (1 in ${peak.odds})`, colRightX + 98 + ctx.measureText(lampLabel).width + 8, itemY + 48);
+        ctx.fillText(`· ${oddsStr} (1 in ${oddsInt})`, colRightX + 98 + ctx.measureText(lampLabel).width + 8, itemY + 48);
       });
     }
 
@@ -399,7 +407,22 @@ export function ProfileSummaryDialog({
     ctx.font = "bold 12px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.fillText("TOP FOLDER COVERAGE", colRightX + 24, 494);
 
-    const topFolders = levelStats.slice(0, 5);
+    const candidateFolders = [...levelStats].filter((f) => f.cleared > 0);
+    const sourceFolders = candidateFolders.length > 0 ? candidateFolders : levelStats;
+    const topFolders = [...sourceFolders]
+      .sort((a, b) => {
+        const ratioA = a.total > 0 ? a.cleared / a.total : 0;
+        const ratioB = b.total > 0 ? b.cleared / b.total : 0;
+        if (Math.abs(ratioB - ratioA) > 0.001) return ratioB - ratioA;
+        return b.cleared - a.cleared;
+      })
+      .slice(0, 5)
+      .sort((a, b) => {
+        const [ax, ay] = levelSortKey(a.level);
+        const [bx, by] = levelSortKey(b.level);
+        return ax - bx || ay - by;
+      });
+
     if (topFolders.length === 0) {
       ctx.fillStyle = "#64748b";
       ctx.font = "12px system-ui, sans-serif";
@@ -415,11 +438,26 @@ export function ProfileSummaryDialog({
         // Mini bar
         const miniW = folderSlotW - 14;
         ctx.fillStyle = "rgba(51, 65, 85, 0.5)";
-        ctx.fillRect(fx, 534, miniW, 8);
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(fx, 534, miniW, 8, 3);
+          ctx.fill();
+        } else {
+          ctx.fillRect(fx, 534, miniW, 8);
+        }
 
         const clearedRatio = f.total > 0 ? f.cleared / f.total : 0;
-        ctx.fillStyle = "#06b6d4";
-        ctx.fillRect(fx, 534, miniW * clearedRatio, 8);
+        if (clearedRatio > 0) {
+          ctx.save();
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(fx, 534, miniW, 8, 3);
+            ctx.clip();
+          }
+          ctx.fillStyle = "#06b6d4";
+          ctx.fillRect(fx, 534, miniW * clearedRatio, 8);
+          ctx.restore();
+        }
 
         ctx.fillStyle = "#94a3b8";
         ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
