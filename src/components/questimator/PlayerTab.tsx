@@ -80,6 +80,7 @@ import {
   formatTopPercentile,
   estimateTheta,
   computeBaseLogLik,
+  eapFromLogLik,
   estimateThetaWithBase,
   computePlayerDiagnostics,
   getNextLampStatus,
@@ -490,6 +491,7 @@ export function PlayerTab({
     const totalClears = statusCounts[0] + statusCounts[1] + statusCounts[2] + statusCounts[3];
 
     const theta = currentPlayer.t;
+    const baseTheta = baseLogLik.length > 0 ? eapFromLogLik(baseLogLik) : theta;
 
     // Count how many charts rival has cleared (lamp >= 2) that current player hasn't or has lower lamp
     let rivalAheadCount = 0;
@@ -529,7 +531,7 @@ export function PlayerTab({
       const isRivalAhead = rivalLamp !== null && rivalLamp >= 2 && (rawStatus === undefined || rawStatus < rivalLamp);
 
       const deltaTheta = baseLogLik.length > 0
-        ? Math.max(0, estimateThetaWithBase(baseLogLik, c, targetThreshold, rawStatus) - theta)
+        ? Math.max(0, estimateThetaWithBase(baseLogLik, c, targetThreshold, rawStatus) - baseTheta)
         : 0;
       const expectedGain = p * deltaTheta;
 
@@ -2565,7 +2567,7 @@ function RecommendationCard({
         </span>
         <span>a: {chart.a != null ? chart.a.toFixed(2) : "–"}</span>
       </div>
-      {deltaTheta !== undefined && deltaTheta > 0.0001 && (
+      {deltaTheta !== undefined && deltaTheta > 0.00005 && (
         <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-[10px] font-mono">
           <div className="flex items-center gap-1 text-emerald-400 font-semibold">
             <Zap className="w-3 h-3 text-emerald-400 shrink-0" />

@@ -571,6 +571,7 @@ export function computePlayerDiagnostics(
 
   const signatureList: SignatureClear[] = [];
   const dragList: RatingDrag[] = [];
+  const baseTheta = baseLogLik.length > 0 ? eapFromLogLik(baseLogLik) : currentTheta;
 
   for (const [idStr, s] of Object.entries(clears)) {
     const c = chartById.get(Number(idStr));
@@ -592,8 +593,8 @@ export function computePlayerDiagnostics(
       const pH = pHard(currentTheta, c);
       if (pH != null && pH >= 0.40) {
         const newTheta = estimateThetaWithBase(baseLogLik, c, 2, s);
-        const gain = Math.max(0, newTheta - currentTheta);
-        if (gain > 0.0001) {
+        const gain = Math.max(0, newTheta - baseTheta);
+        if (gain > 0.00005) {
           dragList.push({
             chart: c,
             currentStatus: s,
