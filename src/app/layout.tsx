@@ -21,9 +21,11 @@ const geistMono = Geist_Mono({
 // ensures correct glyph shapes regardless of the selected UI language.
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
-  subsets: ["latin"],
   weight: ["400", "500", "700"],
+  preload: false,
 });
+
+const basePath = process.env.NODE_ENV === "production" ? "/QUEstimator" : "";
 
 export const metadata: Metadata = {
   title: "QUEstimator · 6K U_E Scale Difficulty Estimator",
@@ -41,9 +43,9 @@ export const metadata: Metadata = {
   authors: [{ name: "Laurency" }],
   icons: {
     icon: [
-      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: `${basePath}/favicon-48x48.png`, sizes: "48x48", type: "image/png" },
+      { url: `${basePath}/favicon-32x32.png`, sizes: "32x32", type: "image/png" },
+      { url: `${basePath}/favicon-16x16.png`, sizes: "16x16", type: "image/png" },
     ],
   },
 };

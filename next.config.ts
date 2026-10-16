@@ -20,9 +20,9 @@ const nextConfig: NextConfig = {
     ? { basePath: GITHUB_BASE_PATH, assetPrefix: GITHUB_BASE_PATH + "/" }
     : {}),
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
-  reactStrictMode: false,
+  reactStrictMode: true,
 };
 
 export default nextConfig;

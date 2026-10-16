@@ -237,7 +237,7 @@ export function SkillProgressionChart({
         {/* Hover Snapshot Tooltip Card */}
         {activePoint && (
           <div
-            className="pointer-events-none absolute top-3 right-3 rounded border border-telemetry-cyan/50 bg-card/95 backdrop-blur p-2.5 font-mono shadow-md text-xs space-y-1 z-10"
+            className="pointer-events-none absolute top-3 right-3 rounded border border-telemetry-cyan/50 bg-card/95 backdrop-blur p-2.5 font-mono text-xs space-y-1 z-10"
           >
             <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground border-b border-border/40 pb-1">
               <span className="flex items-center gap-1">

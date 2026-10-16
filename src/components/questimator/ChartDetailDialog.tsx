@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
-import { levelLabel, getCensoredDisplayBound } from "@/lib/questimator-types";
+import { levelLabel, getCensoredDisplayBound, pStar } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import { GrmCurveChart } from "@/components/questimator/GrmCurveChart";
@@ -52,12 +52,20 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, riv
     return `[${format(lo, digits)}, ${format(hi, digits)}]`;
   };
 
-  const pStar = (theta: number, a: number, b: number) => 1 / (1 + Math.exp(-a * (theta - b)));
-  const playerProbHard = activePlayer?.data.t != null && chart.a != null && chart.b_hard != null
-    ? pStar(activePlayer.data.t, chart.a, chart.b_hard)
+  const isHardCensored = chart.n_hard + chart.n_vhard === 0;
+  const effBHard = isHardCensored
+    ? (getCensoredDisplayBound(chart.b_hard_display, chartMaxTheta?.get(chart.id)) ?? chart.b_hard)
+    : chart.b_hard;
+  const playerProbHard = activePlayer?.data.t != null && chart.a != null && effBHard != null
+    ? pStar(activePlayer.data.t, chart.a, effBHard)
     : null;
-  const playerProbVhard = activePlayer?.data.t != null && chart.a != null && chart.b_vhard != null
-    ? pStar(activePlayer.data.t, chart.a, chart.b_vhard)
+
+  const isVhardCensored = chart.n_vhard === 0;
+  const effBVhard = isVhardCensored
+    ? (getCensoredDisplayBound(chart.b_vhard_display, chartMaxTheta?.get(chart.id)) ?? chart.b_vhard)
+    : chart.b_vhard;
+  const playerProbVhard = activePlayer?.data.t != null && chart.a != null && effBVhard != null
+    ? pStar(activePlayer.data.t, chart.a, effBVhard)
     : null;
 
   return (
@@ -195,6 +203,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, riv
               color="var(--color-lamp-hard)"
               title={t.lang === "en" ? "Difficulty threshold b_hard (50% HARD clear probability)" : "난이도 임계값 b_hard (HARD 클리어 확률 50% 지점)"}
               playerProb={playerProbHard}
+              isProbCensored={isHardCensored}
             />
             <ParamCard
               label={t.vhardClear}
@@ -205,6 +214,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, riv
               color="var(--color-lamp-vhard)"
               title={t.lang === "en" ? "Difficulty threshold b_vhard (50% V-HARD clear probability)" : "난이도 임계값 b_vhard (V-HARD 클리어 확률 50% 지점)"}
               playerProb={playerProbVhard}
+              isProbCensored={isVhardCensored}
             />
             <ParamCard
               label={t.discrimination}
@@ -300,6 +310,7 @@ function ParamCard({
   color,
   title,
   playerProb,
+  isProbCensored,
 }: {
   label: string;
   value: string;
@@ -309,6 +320,7 @@ function ParamCard({
   color?: string;
   title?: string;
   playerProb?: number | null;
+  isProbCensored?: boolean;
 }) {
   const { t } = useLang();
   return (
@@ -339,7 +351,7 @@ function ParamCard({
       {playerProb != null && (
         <div className="text-[10px] font-mono tabular-nums text-telemetry-cyan font-medium mt-1.5 pt-1.5 border-t border-border/40 flex items-center justify-between">
           <span className="text-muted-foreground">{t.lang === "en" ? "Est. Clear" : "예상 확률"}</span>
-          <span className="font-semibold">{(playerProb * 100).toFixed(0)}%</span>
+          <span className="font-semibold">{isProbCensored ? "<" : ""}{(playerProb * 100).toFixed(0)}%</span>
         </div>
       )}
     </div>

@@ -433,14 +433,22 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                           <span className={c.n_hard + c.n_vhard === 0 ? "text-lamp-hard/60" : "text-lamp-hard font-semibold"}>
                             {(c.n_hard + c.n_vhard === 0) ? `>${format(getCensoredDisplayBound(c.b_hard_display, chartMaxTheta?.get(c.id)))}?` : format(c.b_hard_display)}
                           </span>
-                          {activePlayer && c.a != null && c.b_hard != null && (
-                            <span
-                              className="text-[10px] font-semibold tabular-nums text-lamp-hard"
-                              title={t.lang === "en" ? "Your HARD clear probability" : "HARD 클리어 예상 확률"}
-                            >
-                              {(pStar(activePlayer.data.t, c.a, c.b_hard) * 100).toFixed(1)}%
-                            </span>
-                          )}
+                          {activePlayer && c.a != null && (() => {
+                            const isCensored = c.n_hard + c.n_vhard === 0;
+                            const effB = isCensored
+                              ? (getCensoredDisplayBound(c.b_hard_display, chartMaxTheta?.get(c.id)) ?? c.b_hard)
+                              : c.b_hard;
+                            if (effB == null) return null;
+                            const p = pStar(activePlayer.data.t, c.a, effB);
+                            return (
+                              <span
+                                className="text-[10px] font-semibold tabular-nums text-lamp-hard"
+                                title={t.lang === "en" ? "Your HARD clear probability" : "HARD 클리어 예상 확률"}
+                              >
+                                {isCensored ? "<" : ""}{(p * 100).toFixed(1)}%
+                              </span>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm tabular-nums">
@@ -448,14 +456,22 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                           <span className={c.n_vhard === 0 ? "text-lamp-vhard/60" : "text-lamp-vhard font-semibold"}>
                             {(c.n_vhard === 0) ? `>${format(getCensoredDisplayBound(c.b_vhard_display, chartMaxTheta?.get(c.id)))}?` : format(c.b_vhard_display)}
                           </span>
-                          {activePlayer && c.a != null && c.b_vhard != null && (
-                            <span
-                              className="text-[10px] font-semibold tabular-nums text-lamp-vhard"
-                              title={t.lang === "en" ? "Your V-HARD clear probability" : "V-HARD 클리어 예상 확률"}
-                            >
-                              {(pStar(activePlayer.data.t, c.a, c.b_vhard) * 100).toFixed(1)}%
-                            </span>
-                          )}
+                          {activePlayer && c.a != null && (() => {
+                            const isCensored = c.n_vhard === 0;
+                            const effB = isCensored
+                              ? (getCensoredDisplayBound(c.b_vhard_display, chartMaxTheta?.get(c.id)) ?? c.b_vhard)
+                              : c.b_vhard;
+                            if (effB == null) return null;
+                            const p = pStar(activePlayer.data.t, c.a, effB);
+                            return (
+                              <span
+                                className="text-[10px] font-semibold tabular-nums text-lamp-vhard"
+                                title={t.lang === "en" ? "Your V-HARD clear probability" : "V-HARD 클리어 예상 확률"}
+                              >
+                                {isCensored ? "<" : ""}{(p * 100).toFixed(1)}%
+                              </span>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">

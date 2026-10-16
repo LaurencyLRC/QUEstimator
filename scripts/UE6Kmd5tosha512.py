@@ -15,6 +15,7 @@ Usage:
 Paths are resolved relative to the project root (two levels up from scripts/).
 """
 
+import asyncio
 import json
 import sys
 import time
@@ -32,6 +33,46 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INPUT_PATH = _PROJECT_ROOT / "upload" / "UEtable.json"
 OUTPUT_PATH = _PROJECT_ROOT / "upload" / "UEtable_enriched.json"
+
+
+async def fetch_sha512_batch(to_query: list, sha512_cache: dict) -> int:
+    semaphore = asyncio.Semaphore(8)
+    newly_mapped = 0
+
+    async with httpx.AsyncClient(
+        timeout=15.0, headers={"User-Agent": "QUEstimator Data Pipeline / 1.0"}
+    ) as client:
+        async def fetch_single(chart: dict, idx: int, total: int):
+            nonlocal newly_mapped
+            md5_hash = chart.get("md5", "")
+            url = f"https://ez2pattern.kr/api/bms/v1/_internal_/md5_or_sha256_to_sha512.json?md5={md5_hash}"
+            title_display = chart.get("title", "?")[:30].encode("ascii", "replace").decode("ascii")
+            async with semaphore:
+                for attempt in range(1, 4):
+                    try:
+                        resp = await client.get(url)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            sha = data.get("sha512", "")
+                            if sha:
+                                sha512_cache[md5_hash] = sha
+                                newly_mapped += 1
+                                print(f"  [New] Mapped {title_display} -> {sha[:16]}...")
+                            break
+                        elif resp.status_code in (429, 500, 502, 503, 504):
+                            await asyncio.sleep(0.5 * attempt)
+                        else:
+                            break
+                    except Exception as e:
+                        if attempt < 3:
+                            await asyncio.sleep(0.5 * attempt)
+                        else:
+                            print(f"  [{idx}/{total}] Failed to map {title_display}: {e}")
+
+        tasks = [fetch_single(chart, i, len(to_query)) for i, chart in enumerate(to_query, start=1)]
+        await asyncio.gather(*tasks)
+
+    return newly_mapped
 
 
 def main():
@@ -66,66 +107,47 @@ def main():
 
     max_id = max(id_cache.values(), default=-1)
 
-    enriched_table = []
-    mapped = 0
-    cached = 0
-    newly_mapped = 0
-    failed = 0
-
     to_query = [c for c in ue_table if c.get("md5") and c["md5"] not in sha512_cache]
     print(f"Charts to query from EZ2PATTERN API: {len(to_query)}")
 
-    with httpx.Client(timeout=15.0, headers={"User-Agent": "QUEstimator Data Pipeline / 1.0"}) as client:
-        for index, chart in enumerate(ue_table, start=1):
-            md5_hash = chart.get("md5")
-            chart["sha512"] = ""
+    newly_mapped = 0
+    if to_query:
+        newly_mapped = asyncio.run(fetch_sha512_batch(to_query, sha512_cache))
 
-            # Preserve existing persistent integer ID or assign next monotonic ID
-            if md5_hash and md5_hash in id_cache:
-                chart["id"] = id_cache[md5_hash]
-            else:
-                max_id += 1
-                chart["id"] = max_id
-                if md5_hash:
-                    id_cache[md5_hash] = max_id
+    enriched_table = []
+    mapped = 0
+    cached = 0
+    failed = 0
 
-            if not md5_hash:
-                enriched_table.append(chart)
-                failed += 1
-                continue
+    for index, chart in enumerate(ue_table, start=1):
+        md5_hash = chart.get("md5")
+        chart["sha512"] = ""
 
-            if md5_hash in sha512_cache:
-                chart["sha512"] = sha512_cache[md5_hash]
-                mapped += 1
-                cached += 1
-            else:
-                try:
-                    url = f"https://ez2pattern.kr/api/bms/v1/_internal_/md5_or_sha256_to_sha512.json?md5={md5_hash}"
-                    response = client.get(url)
+        # Preserve existing persistent integer ID or assign next monotonic ID
+        if md5_hash and md5_hash in id_cache:
+            chart["id"] = id_cache[md5_hash]
+        else:
+            max_id += 1
+            chart["id"] = max_id
+            if md5_hash:
+                id_cache[md5_hash] = max_id
 
-                    if response.status_code == 200:
-                        data = response.json()
-                        sha = data.get("sha512", "")
-                        chart["sha512"] = sha
-                        if sha:
-                            mapped += 1
-                            newly_mapped += 1
-                            sha512_cache[md5_hash] = sha
-                            title_display = chart.get("title", "?")[:30].encode("ascii", "replace").decode("ascii")
-                            print(f"  [New] Mapped {title_display} -> {sha[:16]}...")
-                        else:
-                            failed += 1
-                    else:
-                        failed += 1
-                except Exception as e:
-                    title_display = chart.get("title", "?")[:30].encode("ascii", "replace").decode("ascii")
-                    print(f"  [{index}/{len(ue_table)}] Failed to map {title_display}: {e}")
-                    failed += 1
-
-                # Polite rate limiting for external API
-                time.sleep(0.05)
-
+        if not md5_hash:
             enriched_table.append(chart)
+            failed += 1
+            continue
+
+        if md5_hash in sha512_cache:
+            chart["sha512"] = sha512_cache[md5_hash]
+            mapped += 1
+            if chart in to_query:
+                pass
+            else:
+                cached += 1
+        else:
+            failed += 1
+
+        enriched_table.append(chart)
 
     # Save the enriched data
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

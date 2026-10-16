@@ -797,7 +797,11 @@ def main():
         json.dump(meta, fh, ensure_ascii=False, indent=2)
     with open(OUT_DIR / "players.json", "w", encoding="utf-8") as fh:
         json.dump(player_data, fh, separators=(",", ":"))
-    sha512_to_id = {c["sha512"]: c["id"] for c in charts_out if c.get("sha512")}
+    sha512_to_id = {
+        r["sha512"]: int(r["id"])
+        for _, r in df.iterrows()
+        if r.get("sha512") and pd.notna(r.get("id"))
+    }
     with open(OUT_DIR / "sha512-to-id.json", "w", encoding="utf-8") as fh:
         json.dump(sha512_to_id, fh, separators=(",", ":"))
 

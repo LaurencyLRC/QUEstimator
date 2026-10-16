@@ -283,7 +283,7 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
       {/* Floating tooltip using the original Raw data, mapped via format() */}
       {hovered && hoveredRawData && tipPos && (
         <div
-          className="fixed z-50 pointer-events-none rounded-lg border border-border/80 bg-card/95 backdrop-blur-sm px-3.5 py-2.5 text-xs shadow-lg"
+          className="fixed z-50 pointer-events-none rounded-lg border border-border/80 bg-card/95 backdrop-blur-sm px-3.5 py-2.5 text-xs"
           style={{
             left: tipPos.x > (typeof window !== "undefined" ? window.innerWidth - 240 : 1000)
               ? tipPos.x - 230

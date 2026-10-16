@@ -155,7 +155,7 @@ export function ProfileSummaryDialog({
 
     // 2. Player Name & Badge
     ctx.fillStyle = "#f8fafc";
-    ctx.font = "900 36px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.font = "900 36px 'Noto Sans JP', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     const displayName = playerName || "Qwilight Player";
     ctx.fillText(displayName, 48, 142);
 
@@ -282,8 +282,8 @@ export function ProfileSummaryDialog({
       let curX = barX;
       const lamps = [
         { count: statusCounts[3], color: "#a855f7" }, // V-HARD
-        { count: statusCounts[2], color: "#06b6d4" }, // HARD
-        { count: statusCounts[1], color: "#10b981" }, // NORMAL
+        { count: statusCounts[2], color: "#f43f5e" }, // HARD (crimson coral)
+        { count: statusCounts[1], color: "#f59e0b" }, // NORMAL (amber gold)
         { count: statusCounts[0], color: "#64748b" }, // FAILED
       ];
 
@@ -302,8 +302,8 @@ export function ProfileSummaryDialog({
     const chipW = (barW - 30) / 4;
     const chipData = [
       { label: "V-HARD", count: statusCounts[3], color: "#c084fc", bg: "rgba(168, 85, 247, 0.15)" },
-      { label: "HARD", count: statusCounts[2], color: "#22d3ee", bg: "rgba(6, 182, 212, 0.15)" },
-      { label: "NORMAL", count: statusCounts[1], color: "#34d399", bg: "rgba(16, 185, 129, 0.15)" },
+      { label: "HARD", count: statusCounts[2], color: "#fb7185", bg: "rgba(244, 63, 94, 0.15)" },
+      { label: "NORMAL", count: statusCounts[1], color: "#fbbf24", bg: "rgba(245, 158, 11, 0.15)" },
       { label: "FAILED", count: statusCounts[0], color: "#94a3b8", bg: "rgba(100, 116, 139, 0.15)" },
     ];
 
@@ -374,14 +374,14 @@ export function ProfileSummaryDialog({
 
         // Chart Title (truncated)
         ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 14px system-ui, -apple-system, sans-serif";
+        ctx.font = "bold 14px 'Noto Sans JP', system-ui, -apple-system, sans-serif";
         let title = peak.chart.title;
         if (title.length > 32) title = title.slice(0, 30) + "...";
         ctx.fillText(title, colRightX + 98, itemY + 28);
 
         // Chart Lamp + Survival Odds
         const lampLabel = peak.status === 3 ? "V-HARD CLEAR" : "HARD CLEAR";
-        const lampColor = peak.status === 3 ? "#c084fc" : "#22d3ee";
+        const lampColor = peak.status === 3 ? "#c084fc" : "#fb7185";
         ctx.fillStyle = lampColor;
         ctx.font = "bold 11px ui-monospace, SFMono-Regular, Menlo, monospace";
         ctx.fillText(lampLabel, colRightX + 98, itemY + 48);
@@ -479,7 +479,7 @@ export function ProfileSummaryDialog({
 
     ctx.textAlign = "right";
     ctx.fillStyle = "#06b6d4";
-    ctx.fillText("QUEstimator // https://questimator.vercel.app", width - 48, 628);
+    ctx.fillText("QUEstimator // https://laurencylrc.github.io/QUEstimator", width - 48, 628);
     ctx.textAlign = "left";
   }, [playerName, playerTheta, clears, isCustomProfile, rank, topPercentile, signatureClears, levelStats, mode, toScale, format]);
 
@@ -552,7 +552,7 @@ export function ProfileSummaryDialog({
         <div className="my-2 flex flex-col items-center justify-center bg-black/40 rounded-lg p-2 border border-border/40 overflow-hidden">
           <canvas
             ref={canvasRef}
-            className="w-full max-h-[55vh] object-contain rounded shadow-2xl border border-border/40"
+            className="w-full max-h-[55vh] object-contain rounded border border-border/40"
           />
         </div>
 
