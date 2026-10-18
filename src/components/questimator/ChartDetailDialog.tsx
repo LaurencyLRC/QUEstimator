@@ -222,7 +222,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, riv
               ciCenter={chart.a}
               seValue={chart.se_a}
               fmtCIFn={(c, se) => `[${fmtRaw(c - 1.96 * se, 2)}, ${fmtRaw(c + 1.96 * se, 2)}]`}
-              title={t.lang === "en" ? "Item discrimination parameter (a-parameter / slope) — indicates how sharply the chart separates player skill levels" : "문항 변별도 파라미터(a) — 플레이어 실력 격차를 얼마나 민감하게 구분하는지 나타냅니다"}
+              title={t.lang === "en" ? "Item discrimination parameter (a-parameter / slope): indicates how sharply the chart separates player skill levels" : "문항 변별도 파라미터(a): 플레이어 실력 격차를 얼마나 민감하게 구분하는지 나타냅니다"}
             />
             <ParamCard
               label={t.sampleSize}

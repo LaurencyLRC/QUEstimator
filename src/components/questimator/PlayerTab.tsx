@@ -451,7 +451,7 @@ export function PlayerTab({
       setNotFound(false);
       setSearchResults(null);
     } else {
-      // Multiple matches — show disambiguation list, sorted by activity
+      // Multiple matches: show disambiguation list, sorted by activity
       matches.sort((a, b) => b.clears - a.clears);
       setSearchResults(matches);
       setSubmittedID("");

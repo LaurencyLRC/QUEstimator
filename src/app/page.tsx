@@ -511,7 +511,7 @@ export default function Home() {
                         : "text-amber-400"
                     )}
                   >
-                    R̂ = {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "—"}
+                    R̂ = {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "–"}
                   </div>
                 </div>
 

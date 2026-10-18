@@ -175,7 +175,7 @@ export const STRINGS = {
     resetFilter: "Reset",
     horizonSearchPlaceholder: "Search title, artist, or diff...",
     signatureClears: "Signature Clears (Peak Upsets)",
-    signatureClearsDesc: "Cleared charts with the lowest expected pass probability at your skill level — your biggest overperformances.",
+    signatureClearsDesc: "Cleared charts with the lowest expected pass probability at your skill level (your biggest overperformances).",
     noSignatureClears: "Log HARD or V-HARD clears to surface your peak signature upsets.",
     odds: (n: number) => `1 in ${n} odds`,
     ratingDrags: "Rating Recovery Targets",
@@ -189,7 +189,7 @@ export const STRINGS = {
     unpinRival: "Remove Rival",
     rivalComparison: "Head-to-Head Rival Telemetry",
     rivalDiff: "Rival Diff",
-    rivalDiffDesc: "Charts your rival has cleared that you haven't — sorted by your easiest snipes first.",
+    rivalDiffDesc: "Charts your rival has cleared that you haven't (sorted by your easiest snipes first).",
     noRivalDiff: "You have matched or surpassed all of your rival's clears!",
     rivalLead: "Lead",
     rivalDeficit: "Deficit",
@@ -199,7 +199,7 @@ export const STRINGS = {
 
     // Ranking tab
     rankingTitle: "Player Ranking",
-    rankingDesc: "All tracked players sorted by estimated latent skill θ. Click any row to load that player into the Player tab. Eligibility requires ≥ 10 plays AND ≥ 1 HARD-or-better clear on valid U_E 20+ charts (or Ω) — plays on lower levels, provisional charts, and -_- / ?! / ◆ do not count.",
+    rankingDesc: "All tracked players sorted by estimated latent skill θ. Click any row to load that player into the Player tab. Eligibility requires ≥ 10 plays AND ≥ 1 HARD-or-better clear on valid U_E 20+ charts (or Ω). Plays on lower levels, provisional charts, and -_- / ?! / ◆ do not count.",
     rankingSearchPlaceholder: "Search by player name or Avatar ID...",
     grmSurvivalProb: "P*(θ, k) survival probability",
     predictedClearProb: (pct: number) => `${pct}% predicted clear chance`,
