@@ -19,9 +19,17 @@ export function SkillProgressionChart({
   width = 600,
   height = 220,
 }: Props) {
-  const { mode, toScale, format } = useScale();
+  const { mode, toScale } = useScale();
   const { t } = useLang();
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  const formatVal = (v: number, digits: number) => {
+    if (mode === "raw") {
+      const sign = v >= 0 ? "+" : "";
+      return `${sign}${v.toFixed(digits)}`;
+    }
+    return v.toFixed(digits);
+  };
 
   if (!history || history.length < 2) {
     return null;
@@ -155,7 +163,7 @@ export function SkillProgressionChart({
                   textAnchor="end"
                   className="fill-muted-foreground text-[10px] font-mono tabular-nums"
                 >
-                  {format(yTickVal, mode === "lerp" ? 1 : 2)}
+                  {formatVal(yTickVal, mode === "lerp" ? 1 : 2)}
                 </text>
               </g>
             );
@@ -253,7 +261,7 @@ export function SkillProgressionChart({
                 {t.progressionTooltipAbility}:
               </span>
               <span className="text-sm font-bold text-telemetry-cyan tabular-nums">
-                {format(activePoint.val, mode === "lerp" ? 2 : 3)}
+                {formatVal(activePoint.val, mode === "lerp" ? 2 : 3)}
                 <span className="text-[10px] font-normal text-muted-foreground ml-1">
                   {mode === "lerp" ? "Level" : "θ"}
                 </span>

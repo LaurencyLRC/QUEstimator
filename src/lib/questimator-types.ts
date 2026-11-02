@@ -20,6 +20,7 @@ export interface Chart {
   n_hard: number;
   n_vhard: number;
   a: number | null;
+  b_normal?: number | null;
   b_hard: number | null;
   b_vhard: number | null;
   b_hard_display: number | null;
@@ -156,6 +157,7 @@ export interface RankRow {
   id: string;
   data: PlayerData;
   nClears: number;
+  nPlays: number;
   nVhard: number;
   nHard: number;
   eligible: boolean;
@@ -206,11 +208,12 @@ export function computeLeaderboard(players: PlayersDict, charts: Chart[]): Leade
       }
     }
 
-    const nClears = nVhard + nHard + nNormal + nFailed;
+    const nClears = nVhard + nHard + nNormal;
+    const nPlays = nClears + nFailed;
     const eligible =
       eligPlays >= MIN_RANKING_PLAYS && eligHardOrBetter >= MIN_RANKING_HARD_OR_BETTER;
 
-    return { id, data, nClears, nVhard, nHard, eligible };
+    return { id, data, nClears, nPlays, nVhard, nHard, eligible };
   });
 
   rows.sort((a, b) => {
@@ -435,11 +438,14 @@ export function computeBaseLogLik(
   for (const c of played) {
     const a = c.a as number;
     const s = clears[String(c.id)];
-    // tau2 = b_vhard - b_hard; tau1 assumed = tau2 (NORMAL spacing not stored).
-    const tau2 = (c.b_vhard as number) - (c.b_hard as number);
-    const cp1 = a * ((c.b_hard as number) - tau2); // a * beta1 (beta1 = b_hard - tau1)
-    const cp2 = a * (c.b_hard as number);          // a * beta2
-    const cp3 = a * (c.b_vhard as number);         // a * beta3
+    const bHard = c.b_hard as number;
+    const bVhard = c.b_vhard as number;
+    const bNorm = c.b_normal != null && !Number.isNaN(c.b_normal)
+      ? (c.b_normal as number)
+      : bHard - (bVhard - bHard);
+    const cp1 = a * bNorm;
+    const cp2 = a * bHard;
+    const cp3 = a * bVhard;
     for (let q = 0; q < EAP_NODES.length; q++) {
       const loc = a * EAP_NODES[q];
       const c1 = _sigmoid(cp1 - loc);
@@ -484,10 +490,14 @@ export function estimateThetaWithBase(
     return eapFromLogLik(baseLogLik);
   }
   const a = chart.a;
-  const tau2 = chart.b_vhard - chart.b_hard;
-  const cp1 = a * (chart.b_hard - tau2);
-  const cp2 = a * chart.b_hard;
-  const cp3 = a * chart.b_vhard;
+  const bHard = chart.b_hard;
+  const bVhard = chart.b_vhard;
+  const bNorm = chart.b_normal != null && !Number.isNaN(chart.b_normal)
+    ? chart.b_normal
+    : bHard - (bVhard - bHard);
+  const cp1 = a * bNorm;
+  const cp2 = a * bHard;
+  const cp3 = a * bVhard;
 
   let maxLogL = -Infinity;
   const logL = new Float64Array(EAP_NODES.length);

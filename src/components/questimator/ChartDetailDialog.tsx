@@ -221,7 +221,7 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, riv
               value={fmtRaw(chart.a, 3)}
               ciCenter={chart.a}
               seValue={chart.se_a}
-              fmtCIFn={(c, se) => `[${fmtRaw(c - 1.96 * se, 2)}, ${fmtRaw(c + 1.96 * se, 2)}]`}
+              fmtCIFn={(c, se) => `[${fmtRaw(Math.max(0, c - 1.96 * se), 2)}, ${fmtRaw(c + 1.96 * se, 2)}]`}
               title={t.lang === "en" ? "Item discrimination parameter (a-parameter / slope): indicates how sharply the chart separates player skill levels" : "문항 변별도 파라미터(a): 플레이어 실력 격차를 얼마나 민감하게 구분하는지 나타냅니다"}
             />
             <ParamCard
@@ -275,11 +275,11 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, riv
               </div>
               <GrmCurveChart
                 a={chart.a}
-                b_hard={chart.b_hard}
-                b_vhard={chart.b_vhard}
+                b_hard={effBHard ?? chart.b_hard}
+                b_vhard={effBVhard ?? chart.b_vhard}
                 se_a={chart.se_a}
-                se_b_hard={chart.se_b_hard}
-                se_b_vhard={chart.se_b_vhard}
+                se_b_hard={isHardCensored ? null : chart.se_b_hard}
+                se_b_vhard={isVhardCensored ? null : chart.se_b_vhard}
                 playerTheta={activePlayer?.data.t}
                 rivalTheta={rivalPlayer?.data.t}
                 rivalName={rivalPlayer?.data.n || rivalPlayer?.id}

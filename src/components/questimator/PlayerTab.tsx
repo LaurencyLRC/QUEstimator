@@ -139,14 +139,22 @@ export function formatSkillGain(gain: number): string {
   return `+${gain.toFixed(2)}`;
 }
 
-function pHard(theta: number, c: Chart): number | null {
+function pHard(theta: number, c: Chart, chartMaxTheta?: Map<number, number> | null): number | null {
   if (c.a == null || c.b_hard == null) return null;
-  return pStar(theta, c.a, c.b_hard);
+  const isHardCensored = c.n_hard + c.n_vhard === 0;
+  const effB = isHardCensored
+    ? (getCensoredDisplayBound(c.b_hard_display, chartMaxTheta?.get(c.id)) ?? c.b_hard)
+    : c.b_hard;
+  return pStar(theta, c.a, effB);
 }
 
-function pVHard(theta: number, c: Chart): number | null {
+function pVHard(theta: number, c: Chart, chartMaxTheta?: Map<number, number> | null): number | null {
   if (c.a == null || c.b_vhard == null) return null;
-  return pStar(theta, c.a, c.b_vhard);
+  const isVhardCensored = c.n_vhard === 0;
+  const effB = isVhardCensored
+    ? (getCensoredDisplayBound(c.b_vhard_display, chartMaxTheta?.get(c.id)) ?? c.b_vhard)
+    : c.b_vhard;
+  return pStar(theta, c.a, effB);
 }
 
 function matchesLevel(
@@ -521,7 +529,7 @@ export function PlayerTab({
 
     for (const c of charts) {
       if (c.provisional) continue;
-      const p = targetStatus === "HARD" ? pHard(theta, c) : pVHard(theta, c);
+      const p = targetStatus === "HARD" ? pHard(theta, c, chartMaxTheta) : pVHard(theta, c, chartMaxTheta);
       if (p == null) continue;
       const rawStatus = currentPlayer.c?.[String(c.id)];
       if (rawStatus !== undefined && rawStatus >= targetThreshold) continue;
@@ -1087,9 +1095,10 @@ export function PlayerTab({
                           if (!currentPlayer) return;
                           // Do not store obsolete player ability levels (t).
                           // Ability is dynamically calculated from the chart IRT calibration.
-                          const exportData: { c: Record<string, number>; n?: string } = {
+                          const exportData: { c: Record<string, number>; n?: string; history?: PlayerHistoryPoint[] } = {
                             c: currentPlayer.c ?? {},
                             ...(currentPlayer.n ? { n: currentPlayer.n } : {}),
+                            ...(currentPlayer.history ? { history: currentPlayer.history } : {}),
                           };
                           const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
                           const url = URL.createObjectURL(blob);
@@ -1138,6 +1147,7 @@ export function PlayerTab({
                                 t: calculatedTheta,
                                 c: data.c,
                                 ...(typeof data.n === 'string' ? { n: data.n } : {}),
+                                ...(Array.isArray(data.history) ? { history: data.history } : {}),
                               };
                               if (onSaveCustomProfile) onSaveCustomProfile(name, profileData);
                               setIsCustomProfile(true);
@@ -1377,18 +1387,16 @@ export function PlayerTab({
                         <span>{t.rival}</span>
                       </Button>
                     ) : (
-                      !isCustomProfile && activePlayerExternal?.id !== submittedID ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onSetRival(submittedID, currentPlayer, isCustomProfile)}
-                          className="h-6 text-[11px] font-mono gap-1 px-2 bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted"
-                          title={t.setRival}
-                        >
-                          <Swords className="w-3 h-3 text-amber-400" />
-                          <span>{t.setRival}</span>
-                        </Button>
-                      ) : null
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onSetRival(submittedID, currentPlayer, isCustomProfile)}
+                        className="h-6 text-[11px] font-mono gap-1 px-2 bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted"
+                        title={t.setRival}
+                      >
+                        <Swords className="w-3 h-3 text-amber-400" />
+                        <span>{t.setRival}</span>
+                      </Button>
                     )
                   )}
                   {rank != null && (

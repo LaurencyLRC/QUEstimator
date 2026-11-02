@@ -121,7 +121,10 @@ export const STRINGS = {
     copyPath: "Copy path",
     copied: "Copied!",
     qwilightDbParsing: "Parsing SQLite database...",
-    qwilightDbSuccess: (matched: number, total: number) => `Matched ${matched} / ${total} U_E charts`,
+    qwilightDbSuccess: (matched: number, total: number, parsedTotal?: number) =>
+      parsedTotal
+        ? `Matched ${matched} / ${total} U_E charts (${parsedTotal.toLocaleString()} total records in DB)`
+        : `Matched ${matched} / ${total} U_E charts`,
     qwilightDbSaveNew: "Create Profile",
     qwilightDbMerge: "Merge into Active",
     historicalSnapshotsFound: (n: number) => `${n} historical snapshots found`,
@@ -349,7 +352,10 @@ export const STRINGS = {
     copyPath: "경로 복사",
     copied: "복사됨!",
     qwilightDbParsing: "SQLite 데이터베이스 분석 중...",
-    qwilightDbSuccess: (matched: number, total: number) => `U_E 채보 ${matched} / ${total}개 일치`,
+    qwilightDbSuccess: (matched: number, total: number, parsedTotal?: number) =>
+      parsedTotal
+        ? `U_E 채보 ${matched} / ${total}개 일치 (DB 내 총 ${parsedTotal.toLocaleString()}개 기록)`
+        : `U_E 채보 ${matched} / ${total}개 일치`,
     qwilightDbSaveNew: "새 프로필 생성",
     qwilightDbMerge: "현재 프로필에 병합",
     historicalSnapshotsFound: (n: number) => `${n}개 히스토리 스냅샷 발견`,

@@ -76,8 +76,8 @@ export function ProfileSummaryDialog({
       statusCounts[s as 0 | 1 | 2 | 3]++;
     }
   }
-  const totalClears = statusCounts[3] + statusCounts[2];
-  const totalPlayed = totalClears + statusCounts[1] + statusCounts[0];
+  const totalClears = statusCounts[3] + statusCounts[2] + statusCounts[1];
+  const totalPlayed = totalClears + statusCounts[0];
 
   const heroFormatted = format(playerTheta, mode === "lerp" ? 2 : 3);
   const heroUnit = mode === "lerp" ? "U_E LEVEL" : "LATENT SKILL θ";
@@ -142,7 +142,7 @@ export function ProfileSummaryDialog({
     ctx.textAlign = "right";
     ctx.fillStyle = "#64748b";
     ctx.fillText(`LOGGED: ${today}`, width - 48, 56);
-    ctx.fillText("1,544 U_E CHARTS CALIBRATED", width - 48, 74);
+    ctx.fillText(`${charts.length.toLocaleString()} U_E CHARTS CALIBRATED`, width - 48, 74);
     ctx.textAlign = "left";
 
     // Header divider line

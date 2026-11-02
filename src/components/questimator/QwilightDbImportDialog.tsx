@@ -304,7 +304,7 @@ export function QwilightDbImportDialog({
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-400" />
                     <span className="text-xs font-semibold text-foreground">
-                      {t.qwilightDbSuccess(result.matchedUeCharts, charts.length)}
+                      {t.qwilightDbSuccess(result.matchedUeCharts, charts.length, result.totalParsedNotes)}
                     </span>
                   </div>
                   <Button

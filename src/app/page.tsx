@@ -45,6 +45,30 @@ import {
   User
 } from "lucide-react";
 
+let appDataPromise: Promise<[Chart[], LevelSummary[], Meta]> | null = null;
+function fetchAppData(): Promise<[Chart[], LevelSummary[], Meta]> {
+  if (!appDataPromise) {
+    appDataPromise = Promise.all([
+      fetch("data/charts.json").then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status} fetching charts.json`);
+        return r.json() as Promise<Chart[]>;
+      }),
+      fetch("data/level-summary.json").then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status} fetching level-summary.json`);
+        return r.json() as Promise<LevelSummary[]>;
+      }),
+      fetch("data/meta.json").then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status} fetching meta.json`);
+        return r.json() as Promise<Meta>;
+      }),
+    ]).catch((err) => {
+      appDataPromise = null;
+      throw err;
+    });
+  }
+  return appDataPromise;
+}
+
 export default function Home() {
   const { t } = useLang();
   const [charts, setCharts] = useState<Chart[]>([]);
@@ -256,22 +280,18 @@ export default function Home() {
   }, [tab, selectedLevel, activePlayer?.id, rivalPlayer?.id, targetMode, detailOpen, selectedChart?.md5]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [c, l, m] = await Promise.all([
-          fetch("data/charts.json").then((r) => r.json()),
-          fetch("data/level-summary.json").then((r) => r.json()),
-          fetch("data/meta.json").then((r) => r.json()),
-        ]);
+    fetchAppData()
+      .then(([c, l, m]) => {
         setCharts(c);
         setLevels(l);
         setMeta(m);
-      } catch (e) {
+      })
+      .catch((e) => {
         setError(e instanceof Error ? e.message : String(e));
-      } finally {
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    })();
+      });
   }, []);
 
   const sortedLevels = useMemo(
@@ -356,17 +376,17 @@ export default function Home() {
     <ScaleProvider levels={levels}>
       <div className="min-h-screen flex flex-col bg-background">
         <header className="border-b border-border/80 bg-background/90 backdrop-blur-md sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded border border-telemetry-cyan/40 bg-telemetry-cyan/10 flex items-center justify-center text-telemetry-cyan font-mono font-bold text-xs tracking-tighter">
+          <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded border border-telemetry-cyan/40 bg-telemetry-cyan/10 flex items-center justify-center text-telemetry-cyan font-mono font-bold text-xs tracking-tighter shrink-0">
                 QE
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-base font-bold tracking-tight text-foreground">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <h1 className="text-sm sm:text-base font-bold tracking-tight text-foreground truncate">
                     QUEstimator
                   </h1>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase bg-telemetry-cyan/10 text-telemetry-cyan border border-telemetry-cyan/30">
+                  <span className="px-1 sm:px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-mono font-semibold uppercase bg-telemetry-cyan/10 text-telemetry-cyan border border-telemetry-cyan/30 shrink-0">
                     U_E 6K
                   </span>
                 </div>
@@ -401,7 +421,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <ScaleToggle />
               <LangToggle />
             </div>

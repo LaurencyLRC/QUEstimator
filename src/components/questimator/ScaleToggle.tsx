@@ -8,10 +8,10 @@ export function ScaleToggle() {
   const { t } = useLang();
 
   return (
-    <div className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80 text-xs">
+    <div className="inline-flex items-center p-0.5 rounded-md bg-muted/40 border border-border/80 text-[11px] sm:text-xs">
       <button
         onClick={() => setMode("lerp")}
-        className={`px-2.5 py-1 rounded transition-all font-medium border ${
+        className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded transition-all font-medium border ${
           mode === "lerp"
             ? "bg-card text-foreground border-border/80"
             : "text-muted-foreground hover:text-foreground border-transparent"
@@ -21,7 +21,7 @@ export function ScaleToggle() {
       </button>
       <button
         onClick={() => setMode("raw")}
-        className={`px-2.5 py-1 rounded transition-all font-medium border ${
+        className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded transition-all font-medium border ${
           mode === "raw"
             ? "bg-card text-foreground border-border/80"
             : "text-muted-foreground hover:text-foreground border-transparent"

@@ -72,7 +72,14 @@ export function useCustomProfiles(charts?: Chart[]) {
       const next = { ...prev };
       delete next[id];
       const toStore = Object.fromEntries(
-        Object.entries(next).map(([k, v]) => [k, { c: v.c, ...(v.n ? { n: v.n } : {}) }])
+        Object.entries(next).map(([k, v]) => [
+          k,
+          {
+            c: v.c,
+            ...(v.n ? { n: v.n } : {}),
+            ...(v.history ? { history: v.history } : {}),
+          },
+        ])
       );
       localStorage.setItem("questimator_custom_profiles", JSON.stringify(toStore));
       return next;
