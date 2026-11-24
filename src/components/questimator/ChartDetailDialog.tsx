@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
-import { levelLabel, getCensoredDisplayBound, pStar } from "@/lib/questimator-types";
+import { levelLabel, getCensoredDisplayBound, pStar, provisionalReason } from "@/lib/questimator-types";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
 import { GrmCurveChart } from "@/components/questimator/GrmCurveChart";
@@ -80,7 +80,8 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, riv
               {chart.provisional && (
                 <Badge
                   variant="outline"
-                  className="text-[10px] font-mono py-0 px-1.5 text-telemetry-cyan border-telemetry-cyan/40 bg-telemetry-cyan/10"
+                  title={provisionalReason(chart, t.lang)}
+                  className="text-[10px] font-mono py-0 px-1.5 text-telemetry-cyan border-telemetry-cyan/40 bg-telemetry-cyan/10 cursor-help"
                 >
                   {t.provisional}
                 </Badge>

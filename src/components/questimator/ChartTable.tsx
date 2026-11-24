@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
 import type { Chart, PlayerData } from "@/lib/questimator-types";
-import { levelLabel, levelSortKey, isSpecialLevel, pStar, getCensoredDisplayBound } from "@/lib/questimator-types";
+import { levelLabel, levelSortKey, isSpecialLevel, pStar, getCensoredDisplayBound, provisionalReason } from "@/lib/questimator-types";
 import { LampBadge } from "./LampBadge";
 import { useLang } from "@/lib/i18n";
 import { useScale } from "@/lib/value-scale";
@@ -140,6 +140,12 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
     0: { label: "F", className: "bg-lamp-failed/15 text-lamp-failed border-lamp-failed/40" },
   };
 
+  const allProvisional = useMemo(
+    () => charts.length > 0 && charts.every((c) => c.provisional),
+    [charts]
+  );
+  const effectiveShowProvisional = showProvisional || allProvisional;
+
   const filtered = useMemo(() => {
     let out = charts;
     if (query.trim()) {
@@ -152,7 +158,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
           c.md5.toLowerCase().includes(q)
       );
     }
-    if (!showProvisional) {
+    if (!effectiveShowProvisional) {
       out = out.filter((c) => !c.provisional);
     }
 
@@ -195,7 +201,7 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
         : (bv as number) - (av as number);
     });
     return sorted;
-  }, [charts, query, sortKey, sortDir, showProvisional, chartMaxTheta]);
+  }, [charts, query, sortKey, sortDir, effectiveShowProvisional, chartMaxTheta]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -245,17 +251,26 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
         </div>
         
         <Button
-          variant={showProvisional ? "default" : "outline"}
+          variant={effectiveShowProvisional ? "default" : "outline"}
           size="sm"
+          disabled={allProvisional}
           onClick={() => setShowProvisional(!showProvisional)}
           className="text-xs"
         >
-          {showProvisional ? t.showingAll : t.validOnly}
+          {effectiveShowProvisional ? t.showingAll : t.validOnly}
         </Button>
         <span className="text-xs text-muted-foreground">
           {t.ofCharts(filtered.length, charts.length)}
         </span>
       </div>
+
+      {allProvisional && (
+        <div className="rounded-md border border-telemetry-cyan/30 bg-telemetry-cyan/5 px-3 py-2 text-xs text-muted-foreground">
+          {t.lang === "en"
+            ? "All charts in this folder are provisional (most plays are V-HARD clears or n < 10, so HARD threshold estimates rely heavily on folder priors and carry SE > 1.0). Showing all charts automatically."
+            : "이 폴더의 모든 채보는 잠정(provisional) 상태입니다 (대부분의 기록이 V-HARD 클리어이거나 표본이 적어 HARD 추정치가 폴더 사전분포에 크게 의존하며 SE > 1.0입니다). 전체 채보를 자동으로 표시합니다."}
+        </div>
+      )}
 
       <div className="rounded-md border border-border/60 overflow-hidden">
         <div ref={scrollRef} className="max-h-[640px] overflow-y-auto">
@@ -416,7 +431,8 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
                             {c.provisional && (
                               <Badge
                                 variant="outline"
-                                className="text-[10px] py-0 px-1.5 text-telemetry-cyan border-telemetry-cyan/40 bg-telemetry-cyan/10 w-fit font-mono"
+                                title={provisionalReason(c, t.lang)}
+                                className="text-[10px] py-0 px-1.5 text-telemetry-cyan border-telemetry-cyan/40 bg-telemetry-cyan/10 w-fit font-mono cursor-help"
                               >
                                 {t.provisional}
                               </Badge>

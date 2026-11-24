@@ -1001,10 +1001,19 @@ function AboutTab({ meta }: { meta: Meta | null }) {
           {t.techStack}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-          <div><span className="text-foreground font-semibold">Inference Engine:</span> NumPyro NUTS MCMC · JAX</div>
-          <div><span className="text-foreground font-semibold">Quadrature:</span> 101-node Gauss–Hermite integration</div>
+          <div>
+            <span className="text-foreground font-semibold">Inference Engine:</span>{" "}
+            {meta?.model?.includes("C11") ? "C11 + OpenMP NUTS MCMC" : "NumPyro NUTS MCMC · JAX"}
+            {meta?.mcmc_chains && meta?.mcmc_samples_per_chain
+              ? ` (${meta.mcmc_chains}×${meta.mcmc_samples_per_chain})`
+              : ""}
+          </div>
+          <div>
+            <span className="text-foreground font-semibold">Quadrature:</span>{" "}
+            {meta?.identification?.quadrature_nodes ?? 41}-node MCMC · 101-node EAP Gauss-Hermite
+          </div>
           <div><span className="text-foreground font-semibold">Frontend:</span> Next.js 16 · React 19 · Tailwind CSS</div>
-          <div><span className="text-foreground font-semibold">Scale System:</span> Piecewise LERP · Posterior Medians</div>
+          <div><span className="text-foreground font-semibold">Scale System:</span> Weighted Whittaker + PAVA Isotonic PCHIP</div>
         </div>
       </div>
     </div>

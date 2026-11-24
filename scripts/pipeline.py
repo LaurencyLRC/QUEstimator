@@ -533,23 +533,26 @@ def check_convergence(mcmc) -> dict:
 # --------------------------------------------------------------------------- #
 # Stage 5 — per-level aggregation
 # --------------------------------------------------------------------------- #
-def aggregate_by_level(df: pd.DataFrame) -> list:
+def aggregate_by_level(df: pd.DataFrame, min_n: int = 10) -> list:
     rows = []
     for level, sub in df.groupby("level", sort=False):
         valid = sub.dropna(subset=["b_hard", "b_vhard"])
-        valid = valid[~valid["provisional"]]
-        if len(valid) == 0:
-            rows.append({"level": level, "n_charts_total": int(len(sub)), "n_charts_valid": 0,
+        # Filter folder anchors by sample size (n >= min_n) rather than se_b_hard to avoid
+        # directional survivorship bias at low (Lv 1-11) and high (Lv 29-Ω) ends of the table.
+        anchor_sub = valid[valid["n"] >= min_n]
+        n_valid_charts = int((~valid["provisional"]).sum())
+        if len(anchor_sub) == 0:
+            rows.append({"level": level, "n_charts_total": int(len(sub)), "n_charts_valid": n_valid_charts,
                          "hard_median": None, "hard_q1": None, "hard_q3": None,
                          "vhard_median": None, "vhard_q1": None, "vhard_q3": None})
             continue
         # Exclude 0-clear censored thresholds from empirical folder summaries
-        valid_hard = valid[(valid["n_hard"] + valid["n_vhard"]) > 0]
-        valid_vhard = valid[valid["n_vhard"] > 0]
+        valid_hard = anchor_sub[(anchor_sub["n_hard"] + anchor_sub["n_vhard"]) > 0]
+        valid_vhard = anchor_sub[anchor_sub["n_vhard"] > 0]
         bh = valid_hard["b_hard"].to_numpy() if len(valid_hard) > 0 else np.array([])
         bv = valid_vhard["b_vhard"].to_numpy() if len(valid_vhard) > 0 else np.array([])
         rows.append({
-            "level": level, "n_charts_total": int(len(sub)), "n_charts_valid": int(len(valid)),
+            "level": level, "n_charts_total": int(len(sub)), "n_charts_valid": n_valid_charts,
             "hard_median": float(np.median(bh)) if len(bh) > 0 else None,
             "hard_q1": float(np.percentile(bh, 25)) if len(bh) > 0 else None,
             "hard_q3": float(np.percentile(bh, 75)) if len(bh) > 0 else None,
@@ -695,7 +698,7 @@ def main():
     df["n_vhard"] = [counts.get(ci, {}).get("n_vhard", 0) for ci in df.index]
     df["n"] = [counts.get(ci, {}).get("n_total", 0) for ci in df.index]
 
-    PROVISIONAL_MIN_N, PROVISIONAL_MAX_SE = 10, 0.55
+    PROVISIONAL_MIN_N, PROVISIONAL_MAX_SE = 10, 1.0
     df["provisional"] = (
         (df["n"] < PROVISIONAL_MIN_N) | (df["se_b_hard"] > PROVISIONAL_MAX_SE)
         | (df["se_b_hard"].isna()))

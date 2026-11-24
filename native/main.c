@@ -162,7 +162,7 @@ static int write_charts_json(const Dataset *ds, const char *out_dir) {
     return close_and_commit(f, tmp, dst);
 }
 
-static int write_level_summary_json(const Dataset *ds, const char *out_dir) {
+static int write_level_summary_json(const Dataset *ds, int min_anchor_n, const char *out_dir) {
     int J = ds->n_charts;
     const char **uniq = (const char **)malloc((size_t)J * sizeof(const char *));
     int n_levels = 0;
@@ -190,8 +190,11 @@ static int write_level_summary_json(const Dataset *ds, const char *out_dir) {
             const ChartMeta *c = &ds->charts[i];
             if (strcmp(c->level, r->level) != 0) continue;
             r->n_total++;
-            if (c->provisional || !isfinite(c->b_hard) || !isfinite(c->b_vhard)) continue;
-            r->n_valid++;
+            if (!isfinite(c->b_hard) || !isfinite(c->b_vhard)) continue;
+            if (!c->provisional) r->n_valid++;
+            /* Filter folder anchors by play count (n >= min_anchor_n) rather than se_b_hard
+             * to avoid directional survivorship bias at low (Lv 1-11) and high (Lv 29-Omega) ends. */
+            if (c->n < min_anchor_n) continue;
             if (c->n_hard + c->n_vhard > 0) bh[n_bh++] = c->b_hard;
             if (c->n_vhard > 0) bv[n_bv++] = c->b_vhard;
         }
@@ -538,6 +541,61 @@ static int run_recover_theta_only(const Dataset *ds, const char *out_dir) {
 }
 
 /* --------------------------------------------------------------------------
+ * Fast --reaggregate-only mode (re-apply provisional rule & level-summary from charts.json)
+ * -------------------------------------------------------------------------- */
+static int run_reaggregate_only(Dataset *ds, const char *out_dir, int prov_min_n, double prov_max_se) {
+    char charts_path[512];
+    snprintf(charts_path, sizeof(charts_path), "%s/charts.json", out_dir);
+    char err[256];
+    JsonValue *root = json_parse_file(charts_path, err, sizeof(err));
+    if (!root || root->type != JSON_ARRAY) {
+        fprintf(stderr, "Error: cannot load %s (%s)\n", charts_path, err);
+        json_free(root);
+        return 1;
+    }
+
+    int J = ds->n_charts;
+    int matched = 0;
+    int n_prov = 0;
+    for (int j = 0; j < J; j++) {
+        ds->charts[j].a = ds->charts[j].b_normal = ds->charts[j].b_hard = ds->charts[j].b_vhard = NAN;
+        ds->charts[j].se_a = ds->charts[j].se_b_hard = ds->charts[j].se_b_vhard = NAN;
+    }
+
+    for (size_t i = 0; i < root->u.arr.count; i++) {
+        const JsonValue *c = root->u.arr.items[i];
+        const char *md5 = json_get_str(c, "md5", NULL);
+        if (!md5) continue;
+        for (int j = 0; j < J; j++) {
+            if (strcmp(ds->charts[j].md5, md5) == 0) {
+                ChartMeta *cm = &ds->charts[j];
+                cm->a          = json_get_num(c, "a", NAN, NULL);
+                cm->b_normal   = json_get_num(c, "b_normal", NAN, NULL);
+                cm->b_hard     = json_get_num(c, "b_hard", NAN, NULL);
+                cm->b_vhard    = json_get_num(c, "b_vhard", NAN, NULL);
+                cm->se_a       = json_get_num(c, "se_a", NAN, NULL);
+                cm->se_b_hard  = json_get_num(c, "se_b_hard", NAN, NULL);
+                cm->se_b_vhard = json_get_num(c, "se_b_vhard", NAN, NULL);
+                cm->provisional = (cm->n < prov_min_n || cm->se_b_hard > prov_max_se || !isfinite(cm->se_b_hard));
+                if (cm->provisional) n_prov++;
+                matched++;
+                break;
+            }
+        }
+    }
+    json_free(root);
+
+    printf("[reaggregate-only] matched %d/%d charts | provisional=%d (valid=%d) with rule: n < %d OR se_b_hard > %.2f\n",
+           matched, J, n_prov, J - n_prov, prov_min_n, prov_max_se);
+
+    if (!write_charts_json(ds, out_dir) || !write_level_summary_json(ds, prov_min_n, out_dir)) {
+        fprintf(stderr, "Error writing charts.json / level-summary.json\n");
+        return 1;
+    }
+    return 0;
+}
+
+/* --------------------------------------------------------------------------
  * Main entry point
  * -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
@@ -558,12 +616,14 @@ int main(int argc, char **argv) {
     int n_quad = 41;
     int check_grad = 0;
     int recover_only = 0;
+    int reaggregate_only = 0;
     int dry_run = 0;
     int allow_bad_conv = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--check-grad") == 0) check_grad = 1;
         else if (strcmp(argv[i], "--recover-theta-only") == 0) recover_only = 1;
+        else if (strcmp(argv[i], "--reaggregate-only") == 0) reaggregate_only = 1;
         else if (strcmp(argv[i], "--dry-run") == 0) dry_run = 1;
         else if (strcmp(argv[i], "--allow-bad-convergence") == 0) allow_bad_conv = 1;
         else if (strcmp(argv[i], "--quiet") == 0) cfg.verbose = 0;
@@ -623,6 +683,12 @@ int main(int argc, char **argv) {
 
     if (recover_only) {
         int rc = run_recover_theta_only(&ds, out_dir);
+        dataset_free(&ds);
+        return rc;
+    }
+
+    if (reaggregate_only) {
+        int rc = run_reaggregate_only(&ds, out_dir, 10, 1.0);
         dataset_free(&ds);
         return rc;
     }
@@ -727,7 +793,7 @@ int main(int argc, char **argv) {
     free(a_tmp);
 
     const int PROV_MIN_N = 10;
-    const double PROV_MAX_SE = 0.55;
+    const double PROV_MAX_SE = 1.0;
     double *b_normal = (double *)malloc((size_t)J * sizeof(double));
     double *b_hard   = (double *)malloc((size_t)J * sizeof(double));
     double *b_vhard  = (double *)malloc((size_t)J * sizeof(double));
@@ -781,7 +847,7 @@ int main(int argc, char **argv) {
         mkdir(out_dir, 0755);
 #endif
         int ok = write_charts_json(&ds, out_dir)
-              && write_level_summary_json(&ds, out_dir)
+              && write_level_summary_json(&ds, PROV_MIN_N, out_dir)
               && write_players_json(&ds, th_eap, th_se, out_dir)
               && write_sha512_to_id_json(&ds, out_dir)
               && write_meta_json(&ds, &cfg, &nuts_res, &conv, n_quad,

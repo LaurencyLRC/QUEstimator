@@ -86,6 +86,14 @@ export interface Meta {
     r_hat_threshold?: number;
     ess_threshold?: number;
   };
+  identification?: {
+    method?: string;
+    theta_prior?: string;
+    delta_parameterization?: string;
+    tau_prior?: string;
+    log_alpha_prior?: string;
+    quadrature_nodes?: number;
+  };
 }
 
 export interface SamplePlayers {
@@ -259,6 +267,26 @@ export function getCensoredDisplayBound(
     return Math.max(bDisplay, challengerMaxTheta);
   }
   return bDisplay ?? challengerMaxTheta ?? null;
+}
+
+/**
+ * Returns a human-readable explanation for why a chart is marked provisional.
+ */
+export function provisionalReason(c: Chart, lang: "en" | "ko"): string {
+  if (c.n < 10) {
+    return lang === "en"
+      ? `Low sample size (${c.n} plays; threshold is n >= 10)`
+      : `표본 부족 (${c.n}건; 기준 n >= 10)`;
+  }
+  if (c.n > 0 && c.n_vhard / c.n >= 0.85) {
+    const pct = Math.round((c.n_vhard / c.n) * 100);
+    return lang === "en"
+      ? `Prior-dominated estimate (${pct}% V-HARD clears leave few HARD/NORMAL boundaries; SE > 1.0)`
+      : `사전분포 의존 추정치 (V-HARD 클리어율 ${pct}%로 인해 HARD/NORMAL 경계 표본 부족; SE > 1.0)`;
+  }
+  return lang === "en"
+    ? "Wide posterior uncertainty (SE(b_hard) > 1.0)"
+    : "높은 사후 불확실성 (SE(b_hard) > 1.0)";
 }
 
 /**

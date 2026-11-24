@@ -1,13 +1,18 @@
 {
   "generated_at": "2026-11-24T02:21:20Z",
   "n_charts_total": 1544,
-  "n_charts_valid": 1101,
-  "n_charts_provisional": 443,
+  "n_charts_valid": 1381,
+  "n_charts_provisional": 163,
   "n_players": 3120,
   "n_clears": 191276,
-  "model": "Bayesian Graded Response Model (MCMC NUTS, \u03b8 marginalized, C11)",
-  "categories": ["FAILED", "NORMAL", "HARD", "V-HARD"],
-  "provisional_rule": "n < 10 OR se_b_hard > 0.55",
+  "model": "Bayesian Graded Response Model (MCMC NUTS, θ marginalized, C11)",
+  "categories": [
+    "FAILED",
+    "NORMAL",
+    "HARD",
+    "V-HARD"
+  ],
+  "provisional_rule": "n < 10 OR se_b_hard > 1.00",
   "player_theta_mean": 0.0468290931,
   "player_theta_std": 1.7357804194,
   "data_source": "Qwilight IR leaderboards (real player data)",
@@ -31,14 +36,14 @@
         "n_low_ess": 0
       },
       "prior_b": {
-        "r_hat_max": 0.999320,
+        "r_hat_max": 0.99932,
         "n_eff_min": 1671.0337,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "delta": {
         "r_hat_max": 1.002196,
-        "n_eff_min": 1797.7760,
+        "n_eff_min": 1797.776,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
@@ -49,23 +54,23 @@
         "n_low_ess": 0
       },
       "tau2": {
-        "r_hat_max": 1.002280,
+        "r_hat_max": 1.00228,
         "n_eff_min": 1798.6866,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "log_alpha_contrast": {
         "r_hat_max": 1.004564,
-        "n_eff_min": 1871.1560,
+        "n_eff_min": 1871.156,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       }
     },
     "nuts": {
       "divergences": 0,
-      "num_steps_mean": 63.00,
+      "num_steps_mean": 63.0,
       "num_steps_max": 63,
-      "tree_depth_mean": 6.00,
+      "tree_depth_mean": 6.0,
       "tree_depth_max": 6,
       "accept_prob_mean": 0.9115
     }
@@ -73,7 +78,7 @@
   "identification": {
     "method": "orthonormal zero-sum Householder log-alpha contrasts",
     "theta_prior": "Normal(0, 1), marginalized out of the sampler (recovered by EAP)",
-    "delta_parameterization": "centered (\u03b4 ~ Normal(loc, scale))",
+    "delta_parameterization": "centered (δ ~ Normal(loc, scale))",
     "tau_prior": "HalfNormal(1.0)",
     "log_alpha_prior": "isotropic Normal(0, 0.3) on the zero-sum subspace",
     "quadrature_nodes": 41

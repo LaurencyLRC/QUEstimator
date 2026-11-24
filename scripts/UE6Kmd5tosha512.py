@@ -108,6 +108,7 @@ def main():
     max_id = max(id_cache.values(), default=-1)
 
     to_query = [c for c in ue_table if c.get("md5") and c["md5"] not in sha512_cache]
+    to_query_md5s = {c["md5"] for c in to_query}
     print(f"Charts to query from EZ2PATTERN API: {len(to_query)}")
 
     newly_mapped = 0
@@ -140,9 +141,7 @@ def main():
         if md5_hash in sha512_cache:
             chart["sha512"] = sha512_cache[md5_hash]
             mapped += 1
-            if chart in to_query:
-                pass
-            else:
+            if md5_hash not in to_query_md5s:
                 cached += 1
         else:
             failed += 1
