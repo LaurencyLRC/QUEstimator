@@ -148,10 +148,12 @@ def main():
 
         enriched_table.append(chart)
 
-    # Save the enriched data
+    # Save the enriched data atomically
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+    tmp_path = OUTPUT_PATH.with_suffix(".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(enriched_table, f, indent=2, ensure_ascii=False)
+    tmp_path.replace(OUTPUT_PATH)
 
     print(f"\nDone! Total charts: {len(enriched_table)} | Mapped: {mapped} (Cached: {cached}, New: {newly_mapped}) | Failed: {failed}")
     print(f"Enriched table saved to {OUTPUT_PATH}")

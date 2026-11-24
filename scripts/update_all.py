@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -50,7 +51,22 @@ def main() -> None:
         run_step(cmd, "STEP 1: Refreshing U_E table & Qwilight IR leaderboards")
 
     if args.rebuild or not BINARY.exists():
-        run_step(["make", "-C", str(NATIVE_DIR)], "STEP 2a: Building native C11 calibration engine")
+        make_bin = shutil.which("make") or shutil.which("mingw32-make")
+        if make_bin:
+            if args.rebuild:
+                run_step([make_bin, "-C", str(NATIVE_DIR), "clean"], "STEP 2a: Cleaning native C11 build artifacts")
+            run_step([make_bin, "-C", str(NATIVE_DIR)], "STEP 2b: Building native C11 calibration engine")
+        else:
+            gcc_bin = shutil.which("gcc") or shutil.which("clang")
+            if not gcc_bin:
+                print("ERROR: Neither 'make' nor 'gcc'/'clang' found on PATH.", file=sys.stderr)
+                sys.exit(1)
+            srcs = [str(NATIVE_DIR / f) for f in ("main.c", "json.c", "data.c", "grm.c", "nuts.c", "diag.c")]
+            run_step(
+                [gcc_bin, "-O3", "-march=native", "-fopenmp", "-std=c11", "-Wall", "-Wextra",
+                 "-fno-math-errno", "-o", str(BINARY), *srcs, "-fopenmp", "-lm"],
+                "STEP 2a: Building native C11 calibration engine (direct compiler fallback)",
+            )
 
     calc_cmd = [str(BINARY)]
     if args.recover_only:

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-QUEstimator GRM pipeline — marginalized-θ, production version.
+QUEstimator GRM pipeline — archived Python / NumPyro reference implementation.
 
-Fits a Bayesian Graded Response Model to Qwilight IR clear data and writes the
-static JSON the dashboard consumes.  No environment variables are required;
-all settings live in the Configuration block below.
+NOTE: Production calibration now runs on the standalone C11 + OpenMP NUTS engine
+in `native/questimator_calc` (invoked via `scripts/update_all.py`), which runs
+in ~14 minutes on a multi-core CPU vs ~2-3 hours in Python/JAX. This script is
+retained as an independent NumPyro reference specification.
 
 Model
 -----
@@ -23,11 +24,11 @@ EAP (expected a posteriori).
 α is identified by an orthonormal zero-sum (Σ log α = 0) Householder contrast —
 no privileged reference chart and no dense J×J transform.  δ is centered:
     δ ~ Normal(loc, δ_scale),   loc = prior_a + prior_b·level   (0 for gimmicks)
-                                δ_scale = 0.5 normal, 3.0 gimmick folders
+                                δ_scale = 1.2 normal, 3.0 gimmick folders
 
 Outputs (frontend-compatible schemas, unchanged)
 ------------------------------------------------
-    public/data/charts.json, level-summary.json, meta.json, players.json
+    public/data/charts.json, level-summary.json, meta.json, players.json, sha512-to-id.json
 
 Safety
 ------

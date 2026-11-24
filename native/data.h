@@ -36,6 +36,9 @@ typedef struct {
     double se_a;
     double se_b_hard;
     double se_b_vhard;
+    double cov_a_bh;
+    double cov_a_bv;
+    double max_played_theta;
     int provisional;
 } ChartMeta;
 

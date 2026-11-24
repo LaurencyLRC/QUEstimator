@@ -63,5 +63,10 @@ __pycache__/
 
 # native C build artifacts
 native/*.o
+native/*.d
 native/questimator_calc
 native/questimator_calc.exe
+
+# raw scraped IR leaderboards (129 MB cache; regenerated via scripts/6keyLBcrawler.py)
+upload/6Kleaderboards/
+.impeccable/

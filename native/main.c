@@ -103,9 +103,16 @@ static int cmp_level_row(const void *a, const void *b) {
     return ra - rb;
 }
 
+#define DEFAULT_PROV_MIN_N  10
+#define DEFAULT_PROV_MAX_SE 1.0
+
 static FILE *open_tmp(const char *dir, const char *name, char *tmp_out, char *dst_out, size_t cap) {
-    snprintf(dst_out, cap, "%s/%s", dir, name);
-    snprintf(tmp_out, cap, "%s/%s.tmp", dir, name);
+    int n1 = snprintf(dst_out, cap, "%s/%s", dir, name);
+    int n2 = snprintf(tmp_out, cap, "%s/%s.tmp", dir, name);
+    if (n1 < 0 || (size_t)n1 >= cap || n2 < 0 || (size_t)n2 >= cap) {
+        fprintf(stderr, "Error: output path too long for buffer (%s/%s)\n", dir, name);
+        return NULL;
+    }
     return fopen(tmp_out, "wb");
 }
 
@@ -121,6 +128,7 @@ static int close_and_commit(FILE *f, const char *tmp_path, const char *dst_path)
 static int write_charts_json(const Dataset *ds, const char *out_dir) {
     int J = ds->n_charts;
     int *order = (int *)malloc((size_t)J * sizeof(int));
+    if (!order) return 0;
     for (int i = 0; i < J; i++) order[i] = i;
     g_sort_charts = ds->charts;
     qsort(order, (size_t)J, sizeof(int), cmp_chart_output);
@@ -155,6 +163,9 @@ static int write_charts_json(const Dataset *ds, const char *out_dir) {
         fputs(", \"se_a\": ", f); write_double_or_null(f, c->se_a, 4);
         fputs(", \"se_b_hard\": ", f); write_double_or_null(f, c->se_b_hard, 4);
         fputs(", \"se_b_vhard\": ", f); write_double_or_null(f, c->se_b_vhard, 4);
+        fputs(", \"cov_a_bh\": ", f); write_double_or_null(f, c->cov_a_bh, 4);
+        fputs(", \"cov_a_bv\": ", f); write_double_or_null(f, c->cov_a_bv, 4);
+        fputs(", \"max_played_theta\": ", f); write_double_or_null(f, c->max_played_theta, 3);
         fprintf(f, ", \"provisional\": %s}", c->provisional ? "true" : "false");
     }
     fputc(']', f);
@@ -165,6 +176,7 @@ static int write_charts_json(const Dataset *ds, const char *out_dir) {
 static int write_level_summary_json(const Dataset *ds, int min_anchor_n, const char *out_dir) {
     int J = ds->n_charts;
     const char **uniq = (const char **)malloc((size_t)J * sizeof(const char *));
+    if (!uniq) return 0;
     int n_levels = 0;
     for (int i = 0; i < J; i++) {
         const char *lvl = ds->charts[i].level;
@@ -178,6 +190,10 @@ static int write_level_summary_json(const Dataset *ds, int min_anchor_n, const c
     LevelRow *rows = (LevelRow *)calloc((size_t)n_levels, sizeof(LevelRow));
     double *bh = (double *)malloc((size_t)J * sizeof(double));
     double *bv = (double *)malloc((size_t)J * sizeof(double));
+    if (!rows || !bh || !bv) {
+        free(rows); free(bh); free(bv); free(uniq);
+        return 0;
+    }
 
     for (int u = 0; u < n_levels; u++) {
         LevelRow *r = &rows[u];
@@ -300,6 +316,7 @@ static int write_meta_json(
     int n_quad,
     int prov_min_n,
     double prov_max_se,
+    const double *th_eap,
     double theta_mean,
     double theta_std,
     double runtime_sec,
@@ -312,6 +329,29 @@ static int write_meta_json(
 
     int n_prov = 0;
     for (int i = 0; i < ds->n_charts; i++) if (ds->charts[i].provisional) n_prov++;
+
+    /* Precompute 35-bin player theta histogram matching questimator-types.ts:computeSamplePlayers */
+    const double bin_min = -6.0;
+    const double bin_max =  8.0;
+    const int num_bins = 35;
+    const double bin_step = (bin_max - bin_min) / (double)num_bins;
+    int hist[35];
+    memset(hist, 0, sizeof(hist));
+    int n_finite_p = 0;
+    for (int p = 0; p < ds->n_players; p++) {
+        double tv = th_eap[p];
+        if (!isfinite(tv)) continue;
+        n_finite_p++;
+        int idx;
+        if (tv < bin_min) idx = 0;
+        else if (tv >= bin_max) idx = num_bins - 1;
+        else {
+            idx = (int)floor((tv - bin_min) / bin_step);
+            if (idx < 0) idx = 0;
+            if (idx >= num_bins) idx = num_bins - 1;
+        }
+        hist[idx]++;
+    }
 
     char tmp[512], dst[512];
     FILE *f = open_tmp(out_dir, "meta.json", tmp, dst, sizeof(tmp));
@@ -335,8 +375,10 @@ static int write_meta_json(
     fprintf(f, "  \"mcmc_warmup\": %d,\n", cfg->num_warmup);
     fprintf(f, "  \"mcmc_samples_per_chain\": %d,\n", cfg->num_samples);
     fprintf(f, "  \"convergence\": {\n");
+    fprintf(f, "    \"r_hat_method\": \"split-rank (Vehtari et al. 2021)\",\n");
     fprintf(f, "    \"r_hat_max\": "); write_double_or_null(f, conv->r_hat_max, 4); fprintf(f, ",\n");
     fprintf(f, "    \"ess_min\": %d,\n", (int)conv->ess_min);
+    fprintf(f, "    \"tail_ess_min\": %d,\n", (int)conv->tail_ess_min);
     fprintf(f, "    \"convergence_ok\": %s,\n", conv->convergence_ok ? "true" : "false");
     fprintf(f, "    \"n_params_bad_rhat\": %d,\n", conv->n_bad_rhat);
     fprintf(f, "    \"n_params_low_ess\": %d,\n", conv->n_low_ess);
@@ -348,6 +390,7 @@ static int write_meta_json(
         fprintf(f, "      \"%s\": {\n", bd->name);
         fprintf(f, "        \"r_hat_max\": "); write_double_or_null(f, bd->r_hat_max, 6); fprintf(f, ",\n");
         fprintf(f, "        \"n_eff_min\": %.4f,\n", bd->n_eff_min);
+        fprintf(f, "        \"tail_ess_min\": %.4f,\n", bd->tail_ess_min);
         fprintf(f, "        \"n_bad_rhat\": %d,\n", bd->n_bad_rhat);
         fprintf(f, "        \"n_low_ess\": %d\n", bd->n_low_ess);
         fprintf(f, "      }%s\n", (b < 5) ? "," : "");
@@ -369,6 +412,17 @@ static int write_meta_json(
     fprintf(f, "    \"tau_prior\": \"HalfNormal(1.0)\",\n");
     fprintf(f, "    \"log_alpha_prior\": \"isotropic Normal(0, 0.3) on the zero-sum subspace\",\n");
     fprintf(f, "    \"quadrature_nodes\": %d\n", n_quad);
+    fprintf(f, "  },\n");
+    fprintf(f, "  \"player_distribution\": {\n");
+    fprintf(f, "    \"theta_histogram\": [");
+    for (int i = 0; i < num_bins; i++) fprintf(f, "%s%d", i ? ", " : "", hist[i]);
+    fprintf(f, "],\n");
+    fprintf(f, "    \"theta_edges\": [");
+    for (int i = 0; i <= num_bins; i++) fprintf(f, "%s%.2f", i ? ", " : "", bin_min + (double)i * bin_step);
+    fprintf(f, "],\n");
+    fprintf(f, "    \"theta_mean\": %.6f,\n", theta_mean);
+    fprintf(f, "    \"theta_std\": %.6f,\n", theta_std);
+    fprintf(f, "    \"n_players\": %d\n", n_finite_p);
     fprintf(f, "  }\n");
     fprintf(f, "}\n");
     return close_and_commit(f, tmp, dst);
@@ -467,11 +521,44 @@ static int run_check_grad(const Dataset *ds, int n_quad) {
 }
 
 /* --------------------------------------------------------------------------
+ * Fast O(J log J) md5 -> chart_idx index for offline post-processing modes
+ * -------------------------------------------------------------------------- */
+typedef struct {
+    const char *md5;
+    int idx;
+} Md5Idx;
+
+static int cmp_md5_idx(const void *a, const void *b) {
+    const Md5Idx *ma = (const Md5Idx *)a;
+    const Md5Idx *mb = (const Md5Idx *)b;
+    return strcmp(ma->md5, mb->md5);
+}
+
+static Md5Idx *build_md5_index(const Dataset *ds) {
+    int J = ds->n_charts;
+    Md5Idx *idx = (Md5Idx *)malloc((size_t)J * sizeof(Md5Idx));
+    if (!idx) return NULL;
+    for (int j = 0; j < J; j++) {
+        idx[j].md5 = ds->charts[j].md5;
+        idx[j].idx = j;
+    }
+    qsort(idx, (size_t)J, sizeof(Md5Idx), cmp_md5_idx);
+    return idx;
+}
+
+static int find_md5_index(const Md5Idx *idx, int J, const char *md5) {
+    Md5Idx key = { md5, -1 };
+    const Md5Idx *hit = (const Md5Idx *)bsearch(&key, idx, (size_t)J, sizeof(Md5Idx), cmp_md5_idx);
+    return hit ? hit->idx : -1;
+}
+
+/* --------------------------------------------------------------------------
  * Fast --recover-theta-only mode
  * -------------------------------------------------------------------------- */
 static int run_recover_theta_only(const Dataset *ds, const char *out_dir) {
     char charts_path[512];
-    snprintf(charts_path, sizeof(charts_path), "%s/charts.json", out_dir);
+    int pn = snprintf(charts_path, sizeof(charts_path), "%s/charts.json", out_dir);
+    if (pn < 0 || (size_t)pn >= sizeof(charts_path)) return 1;
     char err[256];
     JsonValue *root = json_parse_file(charts_path, err, sizeof(err));
     if (!root || root->type != JSON_ARRAY) {
@@ -485,6 +572,12 @@ static int run_recover_theta_only(const Dataset *ds, const char *out_dir) {
     double *bn = (double *)malloc((size_t)J * sizeof(double));
     double *bh = (double *)malloc((size_t)J * sizeof(double));
     double *bv = (double *)malloc((size_t)J * sizeof(double));
+    Md5Idx *md5_idx = build_md5_index(ds);
+    if (!a || !bn || !bh || !bv || !md5_idx) {
+        free(a); free(bn); free(bh); free(bv); free(md5_idx);
+        json_free(root);
+        return 1;
+    }
     for (int j = 0; j < J; j++) {
         a[j] = 1.0; bh[j] = 0.0; bv[j] = 0.8; bn[j] = -0.8;
     }
@@ -493,21 +586,24 @@ static int run_recover_theta_only(const Dataset *ds, const char *out_dir) {
         const JsonValue *c = root->u.arr.items[i];
         const char *md5 = json_get_str(c, "md5", NULL);
         if (!md5) continue;
-        for (int j = 0; j < J; j++) {
-            if (strcmp(ds->charts[j].md5, md5) == 0) {
-                int ok_bn = 0;
-                a[j]  = json_get_num(c, "a", 1.0, NULL);
-                bh[j] = json_get_num(c, "b_hard", 0.0, NULL);
-                bv[j] = json_get_num(c, "b_vhard", 0.8, NULL);
-                bn[j] = json_get_num(c, "b_normal", bh[j] - (bv[j] - bh[j]), &ok_bn);
-                break;
-            }
+        int j = find_md5_index(md5_idx, J, md5);
+        if (j >= 0) {
+            int ok_bn = 0;
+            a[j]  = json_get_num(c, "a", 1.0, NULL);
+            bh[j] = json_get_num(c, "b_hard", 0.0, NULL);
+            bv[j] = json_get_num(c, "b_vhard", 0.8, NULL);
+            bn[j] = json_get_num(c, "b_normal", bh[j] - (bv[j] - bh[j]), &ok_bn);
         }
     }
+    free(md5_idx);
     json_free(root);
 
     double *th_eap = (double *)malloc((size_t)ds->n_players * sizeof(double));
     double *th_se  = (double *)malloc((size_t)ds->n_players * sizeof(double));
+    if (!th_eap || !th_se) {
+        free(a); free(bn); free(bh); free(bv); free(th_eap); free(th_se);
+        return 1;
+    }
 
     double t0 = now_sec();
     grm_eap_theta(ds, a, bn, bh, bv, 101, th_eap, th_se);
@@ -540,12 +636,57 @@ static int run_recover_theta_only(const Dataset *ds, const char *out_dir) {
     return 0;
 }
 
+/* Update provisional counts & rule in existing meta.json without losing MCMC diagnostics */
+static int patch_meta_json_provisional(
+    const char *out_dir, int n_total, int n_prov, int prov_min_n, double prov_max_se
+) {
+    char meta_path[512];
+    int pn = snprintf(meta_path, sizeof(meta_path), "%s/meta.json", out_dir);
+    if (pn < 0 || (size_t)pn >= sizeof(meta_path)) return 0;
+
+    FILE *in = fopen(meta_path, "rb");
+    if (!in) return 1; /* meta.json not present yet; skip quietly */
+    if (fseek(in, 0, SEEK_END) != 0) { fclose(in); return 0; }
+    long sz = ftell(in);
+    if (sz < 0) { fclose(in); return 0; }
+    rewind(in);
+    char *buf = (char *)malloc((size_t)sz + 1);
+    if (!buf) { fclose(in); return 0; }
+    size_t rd = fread(buf, 1, (size_t)sz, in);
+    fclose(in);
+    buf[rd] = '\0';
+
+    char tmp[512], dst[512];
+    FILE *out = open_tmp(out_dir, "meta.json", tmp, dst, sizeof(tmp));
+    if (!out) { free(buf); return 0; }
+
+    /* Rewrite line-by-line, replacing only the 3 provisional metadata lines */
+    const char *cur = buf;
+    while (*cur) {
+        const char *nl = strchr(cur, '\n');
+        size_t line_len = nl ? (size_t)(nl - cur + 1) : strlen(cur);
+        if (strstr(cur, "\"n_charts_valid\":") && (!nl || strstr(cur, "\"n_charts_valid\":") < nl)) {
+            fprintf(out, "  \"n_charts_valid\": %d,\n", n_total - n_prov);
+        } else if (strstr(cur, "\"n_charts_provisional\":") && (!nl || strstr(cur, "\"n_charts_provisional\":") < nl)) {
+            fprintf(out, "  \"n_charts_provisional\": %d,\n", n_prov);
+        } else if (strstr(cur, "\"provisional_rule\":") && (!nl || strstr(cur, "\"provisional_rule\":") < nl)) {
+            fprintf(out, "  \"provisional_rule\": \"n < %d OR se_b_hard > %.2f\",\n", prov_min_n, prov_max_se);
+        } else {
+            fwrite(cur, 1, line_len, out);
+        }
+        cur += line_len;
+    }
+    free(buf);
+    return close_and_commit(out, tmp, dst);
+}
+
 /* --------------------------------------------------------------------------
- * Fast --reaggregate-only mode (re-apply provisional rule & level-summary from charts.json)
+ * Fast --reaggregate-only mode (re-apply provisional rule, level-summary & meta.json)
  * -------------------------------------------------------------------------- */
 static int run_reaggregate_only(Dataset *ds, const char *out_dir, int prov_min_n, double prov_max_se) {
     char charts_path[512];
-    snprintf(charts_path, sizeof(charts_path), "%s/charts.json", out_dir);
+    int pn = snprintf(charts_path, sizeof(charts_path), "%s/charts.json", out_dir);
+    if (pn < 0 || (size_t)pn >= sizeof(charts_path)) return 1;
     char err[256];
     JsonValue *root = json_parse_file(charts_path, err, sizeof(err));
     if (!root || root->type != JSON_ARRAY) {
@@ -555,41 +696,49 @@ static int run_reaggregate_only(Dataset *ds, const char *out_dir, int prov_min_n
     }
 
     int J = ds->n_charts;
+    Md5Idx *md5_idx = build_md5_index(ds);
+    if (!md5_idx) { json_free(root); return 1; }
+
     int matched = 0;
     int n_prov = 0;
     for (int j = 0; j < J; j++) {
         ds->charts[j].a = ds->charts[j].b_normal = ds->charts[j].b_hard = ds->charts[j].b_vhard = NAN;
         ds->charts[j].se_a = ds->charts[j].se_b_hard = ds->charts[j].se_b_vhard = NAN;
+        ds->charts[j].cov_a_bh = ds->charts[j].cov_a_bv = ds->charts[j].max_played_theta = NAN;
     }
 
     for (size_t i = 0; i < root->u.arr.count; i++) {
         const JsonValue *c = root->u.arr.items[i];
         const char *md5 = json_get_str(c, "md5", NULL);
         if (!md5) continue;
-        for (int j = 0; j < J; j++) {
-            if (strcmp(ds->charts[j].md5, md5) == 0) {
-                ChartMeta *cm = &ds->charts[j];
-                cm->a          = json_get_num(c, "a", NAN, NULL);
-                cm->b_normal   = json_get_num(c, "b_normal", NAN, NULL);
-                cm->b_hard     = json_get_num(c, "b_hard", NAN, NULL);
-                cm->b_vhard    = json_get_num(c, "b_vhard", NAN, NULL);
-                cm->se_a       = json_get_num(c, "se_a", NAN, NULL);
-                cm->se_b_hard  = json_get_num(c, "se_b_hard", NAN, NULL);
-                cm->se_b_vhard = json_get_num(c, "se_b_vhard", NAN, NULL);
-                cm->provisional = (cm->n < prov_min_n || cm->se_b_hard > prov_max_se || !isfinite(cm->se_b_hard));
-                if (cm->provisional) n_prov++;
-                matched++;
-                break;
-            }
+        int j = find_md5_index(md5_idx, J, md5);
+        if (j >= 0) {
+            ChartMeta *cm = &ds->charts[j];
+            cm->a                = json_get_num(c, "a", NAN, NULL);
+            cm->b_normal         = json_get_num(c, "b_normal", NAN, NULL);
+            cm->b_hard           = json_get_num(c, "b_hard", NAN, NULL);
+            cm->b_vhard          = json_get_num(c, "b_vhard", NAN, NULL);
+            cm->se_a             = json_get_num(c, "se_a", NAN, NULL);
+            cm->se_b_hard        = json_get_num(c, "se_b_hard", NAN, NULL);
+            cm->se_b_vhard       = json_get_num(c, "se_b_vhard", NAN, NULL);
+            cm->cov_a_bh         = json_get_num(c, "cov_a_bh", NAN, NULL);
+            cm->cov_a_bv         = json_get_num(c, "cov_a_bv", NAN, NULL);
+            cm->max_played_theta = json_get_num(c, "max_played_theta", NAN, NULL);
+            cm->provisional = (cm->n < prov_min_n || cm->se_b_hard > prov_max_se || !isfinite(cm->se_b_hard));
+            if (cm->provisional) n_prov++;
+            matched++;
         }
     }
+    free(md5_idx);
     json_free(root);
 
     printf("[reaggregate-only] matched %d/%d charts | provisional=%d (valid=%d) with rule: n < %d OR se_b_hard > %.2f\n",
            matched, J, n_prov, J - n_prov, prov_min_n, prov_max_se);
 
-    if (!write_charts_json(ds, out_dir) || !write_level_summary_json(ds, prov_min_n, out_dir)) {
-        fprintf(stderr, "Error writing charts.json / level-summary.json\n");
+    if (!write_charts_json(ds, out_dir) ||
+        !write_level_summary_json(ds, prov_min_n, out_dir) ||
+        !patch_meta_json_provisional(out_dir, J, n_prov, prov_min_n, prov_max_se)) {
+        fprintf(stderr, "Error writing charts.json / level-summary.json / meta.json\n");
         return 1;
     }
     return 0;
@@ -641,6 +790,7 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("Usage: questimator_calc [options]\n"
                    "  --chains N              Number of parallel MCMC chains (default: 4)\n"
+                   "  --inner-threads N       OpenMP threads per chain (default: auto, up to 4)\n"
                    "  --warmup N              Warmup iterations per chain (default: 500)\n"
                    "  --samples N             Posterior draws per chain (default: 500)\n"
                    "  --quad N                Gauss-Hermite nodes for MCMC (default: 41)\n"
@@ -652,8 +802,10 @@ int main(int argc, char **argv) {
                    "  --lb-dir PATH           6Kleaderboards directory path\n"
                    "  --check-grad            Verify analytic gradients via finite differences\n"
                    "  --recover-theta-only    Recompute players.json from existing charts.json\n"
+                   "  --reaggregate-only      Recompute provisional flags, level-summary.json & meta.json\n"
                    "  --dry-run               Run calibration without writing JSON files\n"
-                   "  --allow-bad-convergence Emit JSON even if R-hat/ESS thresholds fail\n");
+                   "  --allow-bad-convergence Emit JSON even if R-hat/ESS thresholds fail\n"
+                   "  --quiet                 Suppress per-chain NUTS progress logs\n");
             return 0;
         } else {
             fprintf(stderr, "Unknown argument: %s (try --help)\n", argv[i]);
@@ -688,7 +840,7 @@ int main(int argc, char **argv) {
     }
 
     if (reaggregate_only) {
-        int rc = run_reaggregate_only(&ds, out_dir, 10, 1.0);
+        int rc = run_reaggregate_only(&ds, out_dir, DEFAULT_PROV_MIN_N, DEFAULT_PROV_MAX_SE);
         dataset_free(&ds);
         return rc;
     }
@@ -721,16 +873,16 @@ int main(int argc, char **argv) {
            nuts_res.mean_tree_depth, nuts_res.mean_accept_prob,
            nuts_res.total_divergences);
 
-    printf("[4/6] Checking convergence (R-hat, Geyer ESS, divergences) ...\n");
+    printf("[4/6] Checking convergence (split-rank R-hat, bulk & tail ESS, divergences) ...\n");
     ConvergenceReport conv;
     compute_convergence(&nuts_res, ds.n_charts, model.level_mean, 1.05, 200.0, &conv);
-    printf("      R-hat max: %.4f (thresh 1.05, bad=%d) | ESS min: %.0f (thresh 200, low=%d) | %s\n",
-           conv.r_hat_max, conv.n_bad_rhat, conv.ess_min, conv.n_low_ess,
+    printf("      Split-rank R-hat max: %.4f (thresh 1.05, bad=%d) | Bulk ESS min: %.0f | Tail ESS min: %.0f | %s\n",
+           conv.r_hat_max, conv.n_bad_rhat, conv.ess_min, conv.tail_ess_min,
            conv.convergence_ok ? "OK" : "POOR");
     for (int b = 0; b < 6; b++) {
-        printf("        %-18s: R-hat max=%.4f, ESS min=%6.0f, bad_rhat=%d, low_ess=%d\n",
+        printf("        %-18s: R-hat max=%.4f, bulk ESS min=%6.0f, tail ESS min=%6.0f, bad_rhat=%d, low_ess=%d\n",
                conv.blocks[b].name, conv.blocks[b].r_hat_max, conv.blocks[b].n_eff_min,
-               conv.blocks[b].n_bad_rhat, conv.blocks[b].n_low_ess);
+               conv.blocks[b].tail_ess_min, conv.blocks[b].n_bad_rhat, conv.blocks[b].n_low_ess);
     }
 
     if (!dry_run && !allow_bad_conv) {
@@ -757,15 +909,22 @@ int main(int argc, char **argv) {
     const int D = model.dim;
     const int N_draws = cfg.num_chains * cfg.num_samples;
 
-    double *a_mean  = (double *)calloc((size_t)J, sizeof(double));
-    double *a_m2    = (double *)calloc((size_t)J, sizeof(double));
-    double *d_mean  = (double *)calloc((size_t)J, sizeof(double));
-    double *d_m2    = (double *)calloc((size_t)J, sizeof(double));
-    double *t1_mean = (double *)calloc((size_t)J, sizeof(double));
-    double *t2_mean = (double *)calloc((size_t)J, sizeof(double));
-    double *bh_mean = (double *)calloc((size_t)J, sizeof(double));
-    double *bh_m2   = (double *)calloc((size_t)J, sizeof(double));
-    double *a_tmp   = (double *)malloc((size_t)J * sizeof(double));
+    double *a_mean     = (double *)calloc((size_t)J, sizeof(double));
+    double *a_m2       = (double *)calloc((size_t)J, sizeof(double));
+    double *d_mean     = (double *)calloc((size_t)J, sizeof(double));
+    double *d_m2       = (double *)calloc((size_t)J, sizeof(double));
+    double *t1_mean    = (double *)calloc((size_t)J, sizeof(double));
+    double *t2_mean    = (double *)calloc((size_t)J, sizeof(double));
+    double *bh_mean    = (double *)calloc((size_t)J, sizeof(double));
+    double *bh_m2      = (double *)calloc((size_t)J, sizeof(double));
+    double *cov_abh_c  = (double *)calloc((size_t)J, sizeof(double));
+    double *cov_abv_c  = (double *)calloc((size_t)J, sizeof(double));
+    double *a_tmp      = (double *)malloc((size_t)J * sizeof(double));
+    if (!a_mean || !a_m2 || !d_mean || !d_m2 || !t1_mean || !t2_mean ||
+        !bh_mean || !bh_m2 || !cov_abh_c || !cov_abv_c || !a_tmp) {
+        fprintf(stderr, "Error: out of memory allocating posterior summary buffers\n");
+        return 1;
+    }
 
     for (int n = 0; n < N_draws; n++) {
         const double *s = nuts_res.samples + (size_t)n * (size_t)D;
@@ -783,20 +942,27 @@ int main(int argc, char **argv) {
             double t2j = exp(lt2[j]);
             double bhj = dj - t2j;
 
-            double da1 = aj - a_mean[j]; a_mean[j] += da1 * inv_n; a_m2[j] += da1 * (aj - a_mean[j]);
-            double dd1 = dj - d_mean[j]; d_mean[j] += dd1 * inv_n; d_m2[j] += dd1 * (dj - d_mean[j]);
-            double db1 = bhj - bh_mean[j]; bh_mean[j] += db1 * inv_n; bh_m2[j] += db1 * (bhj - bh_mean[j]);
+            /* Pebay/Welford online mean, variance, and covariance co-moments */
+            double da1 = aj - a_mean[j];   a_mean[j]  += da1 * inv_n; double da2 = aj  - a_mean[j];  a_m2[j]  += da1 * da2;
+            double dd1 = dj - d_mean[j];   d_mean[j]  += dd1 * inv_n; double dd2 = dj  - d_mean[j];  d_m2[j]  += dd1 * dd2;
+            double db1 = bhj - bh_mean[j]; bh_mean[j] += db1 * inv_n; double db2 = bhj - bh_mean[j]; bh_m2[j] += db1 * db2;
+            cov_abh_c[j] += da1 * db2;
+            cov_abv_c[j] += da1 * dd2;
             t1_mean[j] += t1j;
             t2_mean[j] += t2j;
         }
     }
     free(a_tmp);
 
-    const int PROV_MIN_N = 10;
-    const double PROV_MAX_SE = 1.0;
+    const int PROV_MIN_N = DEFAULT_PROV_MIN_N;
+    const double PROV_MAX_SE = DEFAULT_PROV_MAX_SE;
     double *b_normal = (double *)malloc((size_t)J * sizeof(double));
     double *b_hard   = (double *)malloc((size_t)J * sizeof(double));
     double *b_vhard  = (double *)malloc((size_t)J * sizeof(double));
+    if (!b_normal || !b_hard || !b_vhard) {
+        fprintf(stderr, "Error: out of memory allocating threshold arrays\n");
+        return 1;
+    }
     int n_prov = 0;
 
     for (int j = 0; j < J; j++) {
@@ -804,13 +970,16 @@ int main(int argc, char **argv) {
         t2_mean[j] /= (double)N_draws;
 
         ChartMeta *cm = &ds.charts[j];
-        cm->a          = a_mean[j];
-        cm->b_vhard    = d_mean[j];
-        cm->b_hard     = d_mean[j] - t2_mean[j];
-        cm->b_normal   = d_mean[j] - t2_mean[j] - t1_mean[j];
-        cm->se_a       = sqrt(a_m2[j] / (double)N_draws);
-        cm->se_b_vhard = sqrt(d_m2[j] / (double)N_draws);
-        cm->se_b_hard  = sqrt(bh_m2[j] / (double)N_draws);
+        cm->a                = a_mean[j];
+        cm->b_vhard          = d_mean[j];
+        cm->b_hard           = d_mean[j] - t2_mean[j];
+        cm->b_normal         = d_mean[j] - t2_mean[j] - t1_mean[j];
+        cm->se_a             = sqrt(a_m2[j] / (double)N_draws);
+        cm->se_b_vhard       = sqrt(d_m2[j] / (double)N_draws);
+        cm->se_b_hard        = sqrt(bh_m2[j] / (double)N_draws);
+        cm->cov_a_bh         = cov_abh_c[j] / (double)N_draws;
+        cm->cov_a_bv         = cov_abv_c[j] / (double)N_draws;
+        cm->max_played_theta = -INFINITY;
         cm->provisional = (cm->n < PROV_MIN_N || cm->se_b_hard > PROV_MAX_SE || !isfinite(cm->se_b_hard));
         if (cm->provisional) n_prov++;
 
@@ -822,7 +991,30 @@ int main(int argc, char **argv) {
     printf("[5/6] Recovering player theta via 101-point Gauss-Hermite EAP (%d provisional charts) ...\n", n_prov);
     double *th_eap = (double *)malloc((size_t)ds.n_players * sizeof(double));
     double *th_se  = (double *)malloc((size_t)ds.n_players * sizeof(double));
+    if (!th_eap || !th_se) {
+        fprintf(stderr, "Error: out of memory allocating player EAP buffers\n");
+        return 1;
+    }
     grm_eap_theta(&ds, a_mean, b_normal, b_hard, b_vhard, 101, th_eap, th_se);
+
+    /* Precompute max_played_theta per chart so Charts/Detail UI don't require players.json */
+    for (int p = 0; p < ds.n_players; p++) {
+        double pt = th_eap[p];
+        if (!isfinite(pt)) continue;
+        int s = ds.player_offsets[p];
+        int e = ds.player_offsets[p + 1];
+        for (int k = s; k < e; k++) {
+            int cj = ds.obs_chart[k];
+            if (pt > ds.charts[cj].max_played_theta) {
+                ds.charts[cj].max_played_theta = pt;
+            }
+        }
+    }
+    for (int j = 0; j < J; j++) {
+        if (!isfinite(ds.charts[j].max_played_theta)) {
+            ds.charts[j].max_played_theta = NAN;
+        }
+    }
 
     double th_mean = 0.0;
     for (int p = 0; p < ds.n_players; p++) th_mean += th_eap[p];
@@ -851,19 +1043,20 @@ int main(int argc, char **argv) {
               && write_players_json(&ds, th_eap, th_se, out_dir)
               && write_sha512_to_id_json(&ds, out_dir)
               && write_meta_json(&ds, &cfg, &nuts_res, &conv, n_quad,
-                                 PROV_MIN_N, PROV_MAX_SE, th_mean, th_std, total_sec, out_dir);
+                                 PROV_MIN_N, PROV_MAX_SE, th_eap, th_mean, th_std, total_sec, out_dir);
         if (!ok) {
             fprintf(stderr, "Error: failed writing one or more JSON artifacts\n");
             return 1;
         }
         printf("\n=== C11 Pipeline complete in %.2fs (%.2f min) ===\n", total_sec, total_sec / 60.0);
         printf("  Charts:  %d (valid %d, provisional %d)\n", ds.n_charts, ds.n_charts - n_prov, n_prov);
-        printf("  Players: %d | Clears: %d | R-hat max: %.4f | ESS min: %.0f\n",
-               ds.n_players, ds.n_obs, conv.r_hat_max, conv.ess_min);
+        printf("  Players: %d | Clears: %d | Split-rank R-hat max: %.4f | Bulk ESS min: %.0f | Tail ESS min: %.0f\n",
+               ds.n_players, ds.n_obs, conv.r_hat_max, conv.ess_min, conv.tail_ess_min);
     }
 
     free(a_mean); free(a_m2); free(d_mean); free(d_m2);
     free(t1_mean); free(t2_mean); free(bh_mean); free(bh_m2);
+    free(cov_abh_c); free(cov_abv_c);
     free(b_normal); free(b_hard); free(b_vhard);
     free(th_eap); free(th_se);
     nuts_result_free(&nuts_res);

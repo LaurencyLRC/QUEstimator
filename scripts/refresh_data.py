@@ -92,10 +92,12 @@ def fetch_ue_table() -> bool:
     else:
         print(f"  No existing table found — fresh download ({new_count} charts)")
 
-    # Write the new table
+    # Write the new table atomically
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    with open(UE_TABLE_PATH, "w", encoding="utf-8") as f:
+    tmp_path = UE_TABLE_PATH.with_suffix(".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(new_data, f, ensure_ascii=False, indent=2)
+    tmp_path.replace(UE_TABLE_PATH)
     print(f"  Saved raw table to {UE_TABLE_PATH}")
     return True
 
@@ -165,7 +167,9 @@ def main():
     print()
 
     # Step 1: Fetch latest U_E table
-    fetch_ue_table()
+    if not fetch_ue_table():
+        print("Aborting data refresh because fetching the U_E table failed.", file=sys.stderr)
+        sys.exit(1)
 
     # Step 2: Enrich with SHA-512 hashes
     enrich_hashes()

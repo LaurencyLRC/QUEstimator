@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import type { PlayerHistoryPoint } from "@/lib/questimator-types";
 import { useScale } from "@/lib/value-scale";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { TrendingUp, Calendar, Trophy } from "lucide-react";
+import { TrendingUp, Calendar } from "lucide-react";
 
 interface Props {
   history: PlayerHistoryPoint[];
@@ -22,6 +22,7 @@ export function SkillProgressionChart({
   const { mode, toScale } = useScale();
   const { t } = useLang();
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const gradId = useId();
 
   const formatVal = (v: number, digits: number) => {
     if (mode === "raw") {
@@ -137,7 +138,7 @@ export function SkillProgressionChart({
           }}
         >
           <defs>
-            <linearGradient id="skillProgressionGradient" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--color-telemetry-cyan)" stopOpacity="0.35" />
               <stop offset="100%" stopColor="var(--color-telemetry-cyan)" stopOpacity="0.0" />
             </linearGradient>
@@ -170,7 +171,7 @@ export function SkillProgressionChart({
           })}
 
           {/* Area Fill */}
-          <path d={areaPath} fill="url(#skillProgressionGradient)" />
+          <path d={areaPath} fill={`url(#${gradId})`} />
 
           {/* Progression Line */}
           <path

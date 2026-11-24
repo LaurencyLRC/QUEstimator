@@ -1,7 +1,6 @@
 "use client";
 
 import { useLang, type Lang } from "@/lib/i18n";
-import { Button } from "@/components/ui/button";
 
 const LANGS: { code: Lang; label: string }[] = [
   { code: "ko", label: "한" },

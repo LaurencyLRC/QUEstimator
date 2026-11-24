@@ -49,8 +49,6 @@ async function loadWasmBinary(): Promise<ArrayBuffer> {
     "/sql-wasm.wasm",
     "./sql-wasm.wasm",
     "sql-wasm.wasm",
-    "https://cdn.jsdelivr.net/npm/sql.js@1.14.2/dist/sql-wasm.wasm",
-    "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.wasm",
   ];
 
   for (const url of candidates) {
@@ -127,11 +125,15 @@ export async function getSha512ToIdMap(): Promise<Record<string, number>> {
  */
 export async function parseQwilightDb(
   buffer: ArrayBuffer,
-  charts?: Chart[]
+  charts?: Chart[],
+  options?: {
+    sqlStatic?: SqlJsStatic;
+    sha512ToIdMap?: Record<string, number>;
+  }
 ): Promise<QwilightImportResult> {
   const [SQL, sha512ToIdMap] = await Promise.all([
-    getSqlStatic(),
-    getSha512ToIdMap(),
+    options?.sqlStatic ? Promise.resolve(options.sqlStatic) : getSqlStatic(),
+    options?.sha512ToIdMap ? Promise.resolve(options.sha512ToIdMap) : getSha512ToIdMap(),
   ]);
 
   const db = new SQL.Database(new Uint8Array(buffer));
@@ -259,17 +261,25 @@ export async function parseQwilightDb(
             }
 
             if (events.length >= 10) {
-              // Group chronologically by month
+              // Group chronologically by month, snapshotting only at month boundaries (O(M * C))
+              events.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
               const monthMap = new Map<string, Record<string, number>>();
               const runningClears: Record<string, number> = {};
+              let currentMonth: string | null = null;
 
               for (const ev of events) {
+                if (currentMonth !== null && ev.dateStr !== currentMonth) {
+                  monthMap.set(currentMonth, { ...runningClears });
+                }
+                currentMonth = ev.dateStr;
                 const key = String(ev.chartId);
                 const prev = runningClears[key];
                 if (prev === undefined || ev.lamp > prev) {
                   runningClears[key] = ev.lamp;
                 }
-                monthMap.set(ev.dateStr, { ...runningClears });
+              }
+              if (currentMonth !== null) {
+                monthMap.set(currentMonth, { ...runningClears });
               }
 
               const historyPoints: PlayerHistoryPoint[] = [];

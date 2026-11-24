@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { type PlayerData, type Chart, estimateTheta } from "@/lib/questimator-types";
+import { type PlayerData, type Chart, estimateThetaWithSe } from "@/lib/questimator-types";
 
 export function useCustomProfiles(charts?: Chart[]) {
   const [profiles, setProfiles] = useState<Record<string, PlayerData>>({});
@@ -9,16 +9,20 @@ export function useCustomProfiles(charts?: Chart[]) {
     try {
       const stored = localStorage.getItem("questimator_custom_profiles");
       if (stored) {
-        const parsed = JSON.parse(stored);
+        const parsed: unknown = JSON.parse(stored);
         const normalized: Record<string, PlayerData> = {};
-        for (const [k, v] of Object.entries(parsed)) {
-          if (v && typeof v === "object") {
-            normalized[k] = {
-              c: (v as any).c || {},
-              n: (v as any).n,
-              t: (v as any).t ?? 0,
-              history: (v as any).history,
-            };
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+            if (v && typeof v === "object" && !Array.isArray(v)) {
+              const raw = v as Partial<PlayerData>;
+              normalized[k] = {
+                c: raw.c && typeof raw.c === "object" ? raw.c : {},
+                n: typeof raw.n === "string" ? raw.n : undefined,
+                t: typeof raw.t === "number" ? raw.t : 0,
+                se: typeof raw.se === "number" ? raw.se : undefined,
+                history: Array.isArray(raw.history) ? raw.history : undefined,
+              };
+            }
           }
         }
         setProfiles(normalized);
@@ -31,22 +35,22 @@ export function useCustomProfiles(charts?: Chart[]) {
 
   // When charts are available, recompute theta for all custom profiles so they reflect latest chart calibrations
   useEffect(() => {
-    if (!charts || charts.length === 0) return;
+    if (!loaded || !charts || charts.length === 0) return;
     setProfiles((prev) => {
       let changed = false;
       const updated: Record<string, PlayerData> = {};
       for (const [k, v] of Object.entries(prev)) {
-        const calculatedTheta = estimateTheta(charts, v.c || {});
-        if (Math.abs(calculatedTheta - v.t) > 0.0001) {
+        const { theta: calculatedTheta, se: calculatedSe } = estimateThetaWithSe(charts, v.c || {});
+        if (Math.abs(calculatedTheta - v.t) > 0.0001 || v.se == null || Math.abs(calculatedSe - v.se) > 0.0001) {
           changed = true;
-          updated[k] = { ...v, t: calculatedTheta };
+          updated[k] = { ...v, t: calculatedTheta, se: calculatedSe };
         } else {
           updated[k] = v;
         }
       }
       return changed ? updated : prev;
     });
-  }, [charts]);
+  }, [charts, loaded]);
 
   const saveProfile = useCallback((id: string, data: PlayerData) => {
     setProfiles((prev) => {
@@ -62,7 +66,11 @@ export function useCustomProfiles(charts?: Chart[]) {
           },
         ])
       );
-      localStorage.setItem("questimator_custom_profiles", JSON.stringify(toStore));
+      try {
+        localStorage.setItem("questimator_custom_profiles", JSON.stringify(toStore));
+      } catch (e) {
+        console.error("Failed to persist custom profiles", e);
+      }
       return next;
     });
   }, []);
@@ -81,7 +89,11 @@ export function useCustomProfiles(charts?: Chart[]) {
           },
         ])
       );
-      localStorage.setItem("questimator_custom_profiles", JSON.stringify(toStore));
+      try {
+        localStorage.setItem("questimator_custom_profiles", JSON.stringify(toStore));
+      } catch (e) {
+        console.error("Failed to persist custom profiles", e);
+      }
       return next;
     });
   }, []);

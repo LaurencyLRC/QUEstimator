@@ -483,17 +483,23 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
   // Load language from localStorage or browser preferences on mount
   useEffect(() => {
-    const saved = localStorage.getItem("questimator_lang") as Lang;
-    if (saved === "en" || saved === "ko") {
-      setLangState(saved);
-    } else if (navigator.language.startsWith("en")) {
+    try {
+      const saved = localStorage.getItem("questimator_lang") as Lang;
+      if (saved === "en" || saved === "ko") {
+        setLangState(saved);
+        return;
+      }
+    } catch {}
+    if (typeof navigator !== "undefined" && navigator.language.startsWith("en")) {
       setLangState("en");
     }
   }, []);
 
   const setLang = (l: Lang) => {
     setLangState(l);
-    localStorage.setItem("questimator_lang", l);
+    try {
+      localStorage.setItem("questimator_lang", l);
+    } catch {}
   };
 
   useEffect(() => {

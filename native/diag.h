@@ -7,6 +7,7 @@ typedef struct {
     const char *name;
     double r_hat_max;
     double n_eff_min;
+    double tail_ess_min;
     int n_bad_rhat;
     int n_low_ess;
 } BlockDiag;
@@ -14,6 +15,7 @@ typedef struct {
 typedef struct {
     double r_hat_max;
     double ess_min;
+    double tail_ess_min;
     int convergence_ok;
     int n_bad_rhat;
     int n_low_ess;

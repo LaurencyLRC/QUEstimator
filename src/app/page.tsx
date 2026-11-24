@@ -1,49 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BarChart3, ListTree, Sigma, Trophy, User } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { BoxPlot } from "@/components/questimator/BoxPlot";
-import { ChartTable, type SortKey, type SortDir } from "@/components/questimator/ChartTable";
+import { type SortDir, type SortKey } from "@/components/questimator/ChartTable";
 import { ChartDetailDialog } from "@/components/questimator/ChartDetailDialog";
 import { LangToggle } from "@/components/questimator/LangToggle";
 import { ScaleToggle } from "@/components/questimator/ScaleToggle";
-import { RankingTab } from "@/components/questimator/RankingTab";
+import { OverviewTab } from "@/components/questimator/OverviewTab";
+import { ChartsCatalogTab } from "@/components/questimator/ChartsCatalogTab";
 import { PlayerTab } from "@/components/questimator/PlayerTab";
+import { RankingTab } from "@/components/questimator/RankingTab";
+import { AboutTab } from "@/components/questimator/AboutTab";
 import { fetchPlayersData } from "@/lib/players-cache";
 import { useLang } from "@/lib/i18n";
-import { ScaleProvider, useScale } from "@/lib/value-scale";
+import { ScaleProvider } from "@/lib/value-scale";
 import { useCustomProfiles } from "@/hooks/use-custom-profiles";
-import { estimateTheta } from "@/lib/questimator-types";
-import type {
-  Chart,
-  LevelSummary,
-  Meta,
-  PlayerData,
-  PlayersDict,
-  SamplePlayers,
-  LeaderboardResult,
-} from "@/lib/questimator-types";
 import {
-  computeSamplePlayers,
   computeLeaderboard,
+  computeSamplePlayers,
+  estimateThetaWithSe,
+  isSpecialLevel,
   levelSortKey,
-  levelLabel,
-  isSpecialLevel
+  type Chart,
+  type LeaderboardResult,
+  type LevelSummary,
+  type Meta,
+  type PlayerData,
+  type PlayersDict,
+  type SamplePlayers,
 } from "@/lib/questimator-types";
-import {
-  BarChart3,
-  Layers,
-  ListTree,
-  RotateCw,
-  Sigma,
-  Trophy,
-  User
-} from "lucide-react";
 
 let appDataPromise: Promise<[Chart[], LevelSummary[], Meta]> | null = null;
 function fetchAppData(): Promise<[Chart[], LevelSummary[], Meta]> {
@@ -85,87 +72,128 @@ export default function Home() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const [playersData, setPlayersData] = useState<PlayersDict | null>(null);
-  const [playersLoading, setPlayersLoading] = useState(true);
+  const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState<string | null>(null);
+  const [needsPlayers, setNeedsPlayers] = useState(false);
 
-  useEffect(() => {
-    fetchPlayersData()
-      .then((data) => {
-        setPlayersData(data);
-        setPlayersError(null);
-      })
-      .catch((e) => {
-        console.error("Failed to load players.json", e);
-        setPlayersError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        setPlayersLoading(false);
-      });
+  const triggerPlayersLoad = useCallback(() => {
+    setNeedsPlayers(true);
   }, []);
 
+  // Lazily fetch 1.75 MB players.json only when needed (Player/Ranking tab, URL ?player=/?rival=, or saved rival)
+  useEffect(() => {
+    if (tab === "player" || tab === "ranking") {
+      setNeedsPlayers(true);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    if (!needsPlayers || playersData) return;
+    let cancelled = false;
+    setPlayersLoading(true);
+    fetchPlayersData()
+      .then((data) => {
+        if (!cancelled) {
+          setPlayersData(data);
+          setPlayersError(null);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          console.error("Failed to load players.json", e);
+          setPlayersError(e instanceof Error ? e.message : String(e));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPlayersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsPlayers, playersData]);
+
+  // Prefer precomputed max_played_theta on charts.json so Charts tab & ChartDetailDialog
+  // don't require loading the 1.75 MB players.json; fall back to playersData when available.
   const chartMaxTheta = useMemo(() => {
-    if (!playersData) return null;
     const max = new Map<number, number>();
-    for (const player of Object.values(playersData)) {
-      if (!player.c) continue;
-      for (const id of Object.keys(player.c)) {
-        const numId = Number(id);
-        const currentMax = max.get(numId) ?? -Infinity;
-        if (player.t > currentMax) {
-          max.set(numId, player.t);
+    for (const c of charts) {
+      if (c.max_played_theta != null && Number.isFinite(c.max_played_theta)) {
+        max.set(c.id, c.max_played_theta);
+      }
+    }
+    if (playersData) {
+      for (const player of Object.values(playersData)) {
+        if (!player.c) continue;
+        for (const id of Object.keys(player.c)) {
+          const numId = Number(id);
+          const currentMax = max.get(numId) ?? -Infinity;
+          if (player.t > currentMax) {
+            max.set(numId, player.t);
+          }
         }
       }
     }
-    return max;
-  }, [playersData]);
+    return max.size > 0 ? max : null;
+  }, [charts, playersData]);
 
   const samplePlayers = useMemo<SamplePlayers | null>(() => {
-    if (!playersData) return null;
-    return computeSamplePlayers(playersData);
-  }, [playersData]);
+    if (playersData) return computeSamplePlayers(playersData);
+    return meta?.player_distribution ?? null;
+  }, [playersData, meta]);
 
   const leaderboard = useMemo<LeaderboardResult | null>(() => {
     if (!playersData || charts.length === 0) return null;
     return computeLeaderboard(playersData, charts);
   }, [playersData, charts]);
 
-  const [activePlayer, setActivePlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
-  const [rivalPlayer, setRivalPlayer] = useState<{ id: string; data: PlayerData; isCustom?: boolean } | null>(null);
+  const [activePlayer, setActivePlayer] = useState<{
+    id: string;
+    data: PlayerData;
+    isCustom?: boolean;
+  } | null>(null);
+  const [rivalPlayer, setRivalPlayer] = useState<{
+    id: string;
+    data: PlayerData;
+    isCustom?: boolean;
+  } | null>(null);
   const [targetMode, setTargetMode] = useState<"HARD" | "V-HARD">("HARD");
   const { profiles: customProfiles, saveProfile, deleteProfile } = useCustomProfiles(charts);
 
-  const handleTargetModeChange = (mode: "HARD" | "V-HARD") => {
-    setTargetMode(mode);
+  const handleTargetModeChange = (nextMode: "HARD" | "V-HARD") => {
+    setTargetMode(nextMode);
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("questimator_target_mode", mode);
+        localStorage.setItem("questimator_target_mode", nextMode);
       } catch {}
     }
   };
 
-  const handleSetRival = (id: string | null, player?: PlayerData | null, isCustom?: boolean) => {
-    if (!id || !player) {
-      setRivalPlayer(null);
+  const handleSetRival = useCallback(
+    (id: string | null, player?: PlayerData | null, isCustom?: boolean) => {
+      if (!id || !player) {
+        setRivalPlayer(null);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("questimator_rival_id");
+            const url = new URL(window.location.href);
+            url.searchParams.delete("rival");
+            window.history.replaceState(null, "", url.toString());
+          } catch {}
+        }
+        return;
+      }
+      setRivalPlayer({ id, data: player, isCustom });
       if (typeof window !== "undefined") {
         try {
-          localStorage.removeItem("questimator_rival_id");
+          localStorage.setItem("questimator_rival_id", id);
           const url = new URL(window.location.href);
-          url.searchParams.delete("rival");
+          url.searchParams.set("rival", id);
           window.history.replaceState(null, "", url.toString());
         } catch {}
       }
-      return;
-    }
-    setRivalPlayer({ id, data: player, isCustom });
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("questimator_rival_id", id);
-        const url = new URL(window.location.href);
-        url.searchParams.set("rival", id);
-        window.history.replaceState(null, "", url.toString());
-      } catch {}
-    }
-  };
+    },
+    []
+  );
 
   const hasRestoredInitialState = useRef(false);
 
@@ -199,7 +227,7 @@ export default function Home() {
   useEffect(() => {
     if (activePlayer?.isCustom && customProfiles[activePlayer.id]) {
       const updated = customProfiles[activePlayer.id];
-      if (Math.abs(updated.t - activePlayer.data.t) > 0.0001) {
+      if (Math.abs(updated.t - activePlayer.data.t) > 0.0001 || updated.se !== activePlayer.data.se) {
         setActivePlayer({ id: activePlayer.id, data: updated, isCustom: true });
       }
     }
@@ -209,7 +237,7 @@ export default function Home() {
   useEffect(() => {
     if (rivalPlayer?.isCustom && customProfiles[rivalPlayer.id]) {
       const updated = customProfiles[rivalPlayer.id];
-      if (Math.abs(updated.t - rivalPlayer.data.t) > 0.0001) {
+      if (Math.abs(updated.t - rivalPlayer.data.t) > 0.0001 || updated.se !== rivalPlayer.data.se) {
         setRivalPlayer({ id: rivalPlayer.id, data: updated, isCustom: true });
       }
     }
@@ -218,25 +246,30 @@ export default function Home() {
   // Restore navigation state from URL search params on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const initialTab = params.get("tab");
-    if (initialTab && ["overview", "charts", "player", "ranking", "about"].includes(initialTab)) {
-      setTab(initialTab);
-    }
-    const initialLevel = params.get("level");
-    if (initialLevel) {
-      setSelectedLevel(initialLevel);
-    }
-    const targetParam = params.get("target")?.toLowerCase();
-    if (targetParam === "vhard" || targetParam === "v-hard") {
-      setTargetMode("V-HARD");
-    } else if (!params.has("target")) {
-      const savedTarget = localStorage.getItem("questimator_target_mode");
-      if (savedTarget === "V-HARD") {
-        setTargetMode("V-HARD");
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const initialTab = params.get("tab");
+      if (initialTab && ["overview", "charts", "player", "ranking", "about"].includes(initialTab)) {
+        setTab(initialTab);
       }
-    }
-  }, []);
+      const initialLevel = params.get("level");
+      if (initialLevel) {
+        setSelectedLevel(initialLevel);
+      }
+      const targetParam = params.get("target")?.toLowerCase();
+      if (targetParam === "vhard" || targetParam === "v-hard") {
+        setTargetMode("V-HARD");
+      } else if (!params.has("target")) {
+        const savedTarget = localStorage.getItem("questimator_target_mode");
+        if (savedTarget === "V-HARD") {
+          setTargetMode("V-HARD");
+        }
+      }
+      if (params.get("player") || params.get("rival") || localStorage.getItem("questimator_rival_id")) {
+        triggerPlayersLoad();
+      }
+    } catch {}
+  }, [triggerPlayersLoad]);
 
   const hasRestoredChart = useRef(false);
 
@@ -325,30 +358,48 @@ export default function Home() {
     return charts.filter((c) => c.level === selectedLevel);
   }, [charts, selectedLevel]);
 
-  const handleSelectChart = (c: Chart) => {
+  const handleSelectChart = useCallback((c: Chart) => {
     setSelectedChart(c);
     setDetailOpen(true);
-  };
+  }, []);
 
-  const handleSelectLevelFromPlot = (level: string) => {
+  const handleSelectLevelFromPlot = useCallback((level: string) => {
     setSelectedLevel(level);
     setTab("charts");
-  };
+  }, []);
 
-  const handleSelectPlayerFromRanking = (id: string, data: PlayerData) => {
+  const handleSelectPlayerFromRanking = useCallback((id: string, data: PlayerData) => {
     setActivePlayer({ id, data });
     setTab("player");
-  };
+  }, []);
 
-  const handleClearStatusChange = (chartId: number, status: number) => {
-    if (!activePlayer?.isCustom) return;
-    const newData = { ...activePlayer.data, c: { ...(activePlayer.data.c || {}) } };
-    if (status < 0) delete newData.c[String(chartId)];
-    else newData.c[String(chartId)] = status;
-    newData.t = estimateTheta(charts, newData.c);
-    setActivePlayer({ id: activePlayer.id, data: newData, isCustom: true });
-    saveProfile(activePlayer.id, newData);
-  };
+  const handlePlayerChange = useCallback(
+    (id: string | null, player: PlayerData | null, isCustom?: boolean) => {
+      setActivePlayer((prev) => {
+        if (!player) return prev === null ? prev : null;
+        if (prev?.id === id && prev?.data === player && prev?.isCustom === isCustom) return prev;
+        return { id: id!, data: player, isCustom };
+      });
+    },
+    []
+  );
+
+  const handleClearStatusChange = useCallback(
+    (chartId: number, status: number) => {
+      if (!activePlayer?.isCustom) return;
+      const newData = { ...activePlayer.data, c: { ...(activePlayer.data.c || {}) } };
+      if (status < 0) delete newData.c[String(chartId)];
+      else newData.c[String(chartId)] = status;
+      const { theta, se } = estimateThetaWithSe(charts, newData.c);
+      newData.t = theta;
+      newData.se = se;
+      setActivePlayer({ id: activePlayer.id, data: newData, isCustom: true });
+      saveProfile(activePlayer.id, newData);
+    },
+    [activePlayer, charts, saveProfile]
+  );
+
+  const playersCount = playersData ? Object.keys(playersData).length : (meta?.n_players ?? null);
 
   if (loading) {
     return (
@@ -390,9 +441,7 @@ export default function Home() {
                     U_E 6K
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground hidden sm:block">
-                  {t.subtitle}
-                </p>
+                <p className="text-xs text-muted-foreground hidden sm:block">{t.subtitle}</p>
               </div>
             </div>
 
@@ -405,7 +454,9 @@ export default function Home() {
               </div>
               <span className="w-px h-3.5 bg-border/80" />
               <div className="flex items-center gap-2">
-                <span className="text-foreground tabular-nums font-semibold">{playersData ? Object.keys(playersData).length.toLocaleString() : "..."}</span>
+                <span className="text-foreground tabular-nums font-semibold">
+                  {playersCount != null ? playersCount.toLocaleString() : "..."}
+                </span>
                 <span>PLAYERS</span>
               </div>
               <span className="w-px h-3.5 bg-border/80" />
@@ -417,7 +468,8 @@ export default function Home() {
                     : "text-amber-400"
                 )}
               >
-                MCMC NUTS {meta?.convergence?.r_hat_max ? `(R̂: ${meta.convergence.r_hat_max.toFixed(4)})` : ""}
+                MCMC NUTS{" "}
+                {meta?.convergence?.r_hat_max ? `(R̂: ${meta.convergence.r_hat_max.toFixed(4)})` : ""}
               </div>
             </div>
 
@@ -454,11 +506,12 @@ export default function Home() {
               >
                 <User className="w-3.5 h-3.5 text-amber-400" />
                 <span>{t.player}</span>
-                {activePlayer && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-telemetry-cyan" />
-                )}
+                {activePlayer && <span className="w-1.5 h-1.5 rounded-full bg-telemetry-cyan" />}
                 {rivalPlayer && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title={`Rival: ${rivalPlayer.data?.n || rivalPlayer.id}`} />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-amber-400"
+                    title={`Rival: ${rivalPlayer.data?.n || rivalPlayer.id}`}
+                  />
                 )}
               </TabsTrigger>
               <TabsTrigger
@@ -468,7 +521,7 @@ export default function Home() {
                 <Trophy className="w-3.5 h-3.5 text-yellow-400" />
                 <span>{t.ranking}</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-muted/80 text-muted-foreground font-mono tabular-nums">
-                  {playersData ? Object.keys(playersData).length : 0}
+                  {playersCount ?? 0}
                 </span>
               </TabsTrigger>
               <TabsTrigger
@@ -480,263 +533,36 @@ export default function Home() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-6 mt-0">
-              {/* Unified Console Telemetry Strip */}
-              <div className="rounded-lg border border-border/80 bg-card/60 divide-y lg:divide-y-0 lg:divide-x divide-border/60 grid grid-cols-2 lg:grid-cols-4">
-                <div className="p-4 flex flex-col justify-between">
-                  <div className="text-xs text-muted-foreground font-medium">
-                    {t.lang === "en" ? "Valid Charts" : "유효 채보"}
-                  </div>
-                  <div className="text-xl font-bold font-mono tabular-nums text-foreground mt-2">
-                    {meta?.n_charts_valid ?? charts.length}
-                    <span className="text-xs text-muted-foreground font-normal ml-1.5">
-                      (+{meta?.n_charts_provisional ?? 0} {t.lang === "en" ? "prov" : "잠정"})
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-4 flex flex-col justify-between">
-                  <div className="text-xs text-muted-foreground font-medium">
-                    {t.lang === "en" ? "Tracked Players" : "분석 플레이어"}
-                  </div>
-                  <div className="text-xl font-bold font-mono tabular-nums text-foreground mt-2">
-                    {playersData ? Object.keys(playersData).length.toLocaleString() : "..."}
-                    <span className="text-xs text-muted-foreground font-normal ml-1.5">
-                      (μ={samplePlayers?.theta_mean.toFixed(2) ?? "0.05"})
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-4 flex flex-col justify-between">
-                  <div className="text-xs text-muted-foreground font-medium flex items-center justify-between">
-                    <span>{t.lang === "en" ? "MCMC Convergence" : "MCMC 수렴도"}</span>
-                    <span
-                      className={cn(
-                        "text-[10px] font-mono font-semibold",
-                        (meta?.convergence?.convergence_ok ?? true)
-                          ? "text-emerald-400"
-                          : "text-amber-400"
-                      )}
-                    >
-                      {(meta?.convergence?.convergence_ok ?? true)
-                        ? `PASS (≤ ${meta?.convergence?.r_hat_threshold ?? 1.05})`
-                        : `WARN (> ${meta?.convergence?.r_hat_threshold ?? 1.05})`}
-                    </span>
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xl font-bold font-mono tabular-nums mt-2",
-                      (meta?.convergence?.convergence_ok ?? true)
-                        ? "text-emerald-400"
-                        : "text-amber-400"
-                    )}
-                  >
-                    R̂ = {meta?.convergence?.r_hat_max ? meta.convergence.r_hat_max.toFixed(4) : "–"}
-                  </div>
-                </div>
-
-                <div className="p-4 flex flex-col justify-between">
-                  <div className="text-xs text-muted-foreground font-medium">
-                    {t.lang === "en" ? "IRT Model" : "IRT 모델"}
-                  </div>
-                  <div className="text-sm font-bold text-telemetry-cyan mt-2">
-                    Graded Response (GRM)
-                  </div>
-                </div>
-              </div>
-
-              {/* BoxPlot Console */}
-              <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6">
-                <div className="flex items-center justify-between flex-wrap gap-3 mb-4 pb-3 border-b border-border/40">
-                  <div>
-                    <h3 className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-telemetry-cyan" />
-                      {t.levelDistribution}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {meta
-                        ? t.levelDistributionDesc(meta.n_charts_valid, meta.n_charts_provisional)
-                        : t.levelDistributionDesc(0, 0)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-muted/40 border border-border/60">
-                      <span className="w-2.5 h-2.5 rounded-sm bg-lamp-hard" />
-                      <span className="text-foreground text-xs font-mono">HARD (b_hard)</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-muted/40 border border-border/60">
-                      <span className="w-2.5 h-2.5 rounded-sm bg-lamp-vhard" />
-                      <span className="text-foreground text-xs font-mono">V-HARD (b_vhard)</span>
-                    </span>
-                  </div>
-                </div>
-
-                <BoxPlot
-                  data={plotLevels}
-                  onSelectLevel={handleSelectLevelFromPlot}
-                />
-              </div>
-
-              {/* Level Aggregates Table Panel */}
-              <div className="rounded-lg border border-border/80 bg-card p-4 sm:p-6">
-                <div className="mb-4 pb-3 border-b border-border/40 flex items-center justify-between flex-wrap gap-2">
-                  <div>
-                    <h3 className="text-base font-semibold tracking-tight text-foreground">
-                      {t.perLevelAggregates}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t.perLevelDesc}
-                    </p>
-                  </div>
-                </div>
-                <LevelAggregatesTable levels={plotLevels} onSelectLevel={handleSelectLevelFromPlot} />
-              </div>
+            <TabsContent value="overview" className="mt-0">
+              <OverviewTab
+                chartsCount={charts.length}
+                playersCount={playersCount}
+                meta={meta}
+                samplePlayers={samplePlayers}
+                plotLevels={plotLevels}
+                onSelectLevel={handleSelectLevelFromPlot}
+              />
             </TabsContent>
 
             <TabsContent value="charts" className="mt-0">
-              {/* Mobile horizontal folder pill bar */}
-              <div className="md:hidden rounded-lg border border-border/80 bg-card p-3 mb-4">
-                <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center justify-between">
-                  <span>{t.levels}</span>
-                  <span className="font-mono text-xs text-muted-foreground"><span className="text-foreground font-semibold">{sortedLevels.length}</span> {t.lang === "en" ? "folders" : "개 폴더"}</span>
-                </div>
-                <div className="flex overflow-x-auto gap-1.5 pb-1 no-scrollbar">
-                  <button
-                    onClick={() => setSelectedLevel("all")}
-                    className={`shrink-0 px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center gap-1.5 ${
-                      selectedLevel === "all"
-                        ? "bg-muted text-foreground border border-border font-semibold"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
-                    }`}
-                  >
-                    <span className="font-sans">{t.allCharts}</span>
-                    <span className="text-[10px] px-1 py-0.2 rounded bg-background/80 border border-border/40 tabular-nums">
-                      {charts.length}
-                    </span>
-                  </button>
-                  {sortedLevels.map((l) => (
-                    <button
-                      key={`mob-${l.level}`}
-                      onClick={() => setSelectedLevel(l.level)}
-                      className={`shrink-0 px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center gap-1.5 ${
-                        selectedLevel === l.level
-                          ? "bg-muted text-foreground border border-border font-semibold"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
-                      }`}
-                    >
-                      {isSpecialLevel(l.level) && <span className="text-amber-400 text-[10px]">●</span>}
-                      <span>{l.level}</span>
-                      <span className="text-[10px] px-1 py-0.2 rounded bg-background/80 border border-border/40 tabular-nums text-muted-foreground">
-                        {levelCounts.get(l.level) ?? 0}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-5">
-                {/* Desktop sticky sidebar */}
-                <div className="hidden md:block h-fit md:sticky md:top-[74px] rounded-lg border border-border/80 bg-card p-3">
-                  <div className="px-2 py-1.5 mb-2 border-b border-border/40 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground">{t.levels}</span>
-                    <span className="text-xs text-muted-foreground"><span className="font-mono tabular-nums font-semibold text-foreground">{sortedLevels.length}</span> {t.lang === "en" ? "folders" : "개 폴더"}</span>
-                  </div>
-                  <ScrollArea className="h-[calc(100vh-220px)] max-h-[640px] pr-2">
-                    <div className="space-y-1">
-                      <button
-                        onClick={() => setSelectedLevel("all")}
-                        className={`w-full text-left px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center justify-between ${
-                          selectedLevel === "all"
-                            ? "bg-muted text-foreground border border-border font-semibold"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
-                        }`}
-                      >
-                        <span className="font-sans">{t.allCharts}</span>
-                        <span className="text-xs px-1.5 py-0.2 rounded bg-background/80 border border-border/40 tabular-nums">
-                          {charts.length}
-                        </span>
-                      </button>
-                      {sortedLevels.map((l) => (
-                        <button
-                          key={l.level}
-                          onClick={() => setSelectedLevel(l.level)}
-                          className={`w-full text-left px-2.5 py-1.5 rounded text-xs font-mono transition-all flex items-center justify-between ${
-                            selectedLevel === l.level
-                              ? "bg-muted text-foreground border border-border font-semibold"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
-                          }`}
-                        >
-                          <span className="flex items-center gap-1.5">
-                            {isSpecialLevel(l.level) && (
-                              <span className="text-amber-400 text-xs">●</span>
-                            )}
-                            <span>{l.level}</span>
-                          </span>
-                          <span className="text-xs px-1.5 py-0.2 rounded bg-background/80 border border-border/40 tabular-nums">
-                            {levelCounts.get(l.level) ?? 0}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-
-                <div>
-                  <div className="mb-4 flex items-center justify-between flex-wrap gap-3 p-3 rounded-lg border border-border/80 bg-card">
-                    <div>
-                      <h2 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
-                        <span>{selectedLevel === "all" ? t.allChartsTitle : `${levelLabel(selectedLevel)}`}</span>
-                        <span className="text-xs px-2 py-0.5 rounded font-mono bg-muted border border-border/60 text-muted-foreground tabular-nums">
-                          {t.chartsCount(filteredCharts.length)}
-                        </span>
-                      </h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {t.sortBy(t.sortKeys[sortKey], t.sortDirs[sortDir])}
-                      </p>
-                    </div>
-
-                    {activePlayer && (
-                      <div className="flex items-center gap-2">
-                        {activePlayer.isCustom ? (
-                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-telemetry-cyan/10 border border-telemetry-cyan/40 text-xs">
-                            <span className="w-2 h-2 rounded-full bg-telemetry-cyan animate-pulse shrink-0" />
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-muted-foreground">{t.customProfileActive}:</span>
-                              <span className="font-semibold text-foreground">{activePlayer.id}</span>
-                              <span
-                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-telemetry-cyan/20 text-telemetry-cyan font-bold border border-telemetry-cyan/40 flex items-center gap-1"
-                                title={t.lampOverrideHint}
-                              >
-                                <RotateCw className="w-2.5 h-2.5 shrink-0" />
-                                <span>{t.lampOverrideActive}</span>
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/60 border border-border/60 text-xs text-muted-foreground">
-                            <span>{t.viewingPlayer}</span>
-                            <span className="font-semibold text-foreground">{activePlayer.id}</span>
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-background border border-border/60 text-muted-foreground">
-                              {t.readOnlyPlayer}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <ChartTable
-                    charts={filteredCharts}
-                    onSelectChart={handleSelectChart}
-                    sortKey={sortKey}
-                    sortDir={sortDir}
-                    onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
-                    activePlayer={activePlayer}
-                    chartMaxTheta={chartMaxTheta}
-                    onClearStatusChange={activePlayer?.isCustom ? handleClearStatusChange : undefined}
-                  />
-                </div>
-              </div>
+              <ChartsCatalogTab
+                charts={charts}
+                filteredCharts={filteredCharts}
+                sortedLevels={sortedLevels}
+                levelCounts={levelCounts}
+                selectedLevel={selectedLevel}
+                onSelectLevel={setSelectedLevel}
+                onSelectChart={handleSelectChart}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSortChange={(k, d) => {
+                  setSortKey(k);
+                  setSortDir(d);
+                }}
+                activePlayer={activePlayer}
+                chartMaxTheta={chartMaxTheta}
+                onClearStatusChange={activePlayer?.isCustom ? handleClearStatusChange : undefined}
+              />
             </TabsContent>
 
             <TabsContent value="player" className="mt-0 space-y-6">
@@ -759,13 +585,7 @@ export default function Home() {
                 onSetRival={handleSetRival}
                 targetStatus={targetMode}
                 onTargetStatusChange={handleTargetModeChange}
-                onPlayerChange={(id, player, isCustom) => {
-                  setActivePlayer((prev) => {
-                    if (!player) return prev === null ? prev : null;
-                    if (prev?.id === id) return prev;
-                    return { id: id!, data: player, isCustom };
-                  });
-                }}
+                onPlayerChange={handlePlayerChange}
               />
             </TabsContent>
 
@@ -779,11 +599,8 @@ export default function Home() {
                 onSelectPlayer={handleSelectPlayerFromRanking}
                 rivalId={rivalPlayer?.id}
                 onToggleRival={(id, data) => {
-                  if (rivalPlayer?.id === id) {
-                    handleSetRival(null);
-                  } else {
-                    handleSetRival(id, data, false);
-                  }
+                  if (rivalPlayer?.id === id) handleSetRival(null);
+                  else handleSetRival(id, data, false);
                 }}
               />
             </TabsContent>
@@ -805,217 +622,5 @@ export default function Home() {
         onClearStatusChange={handleClearStatusChange}
       />
     </ScaleProvider>
-  );
-}
-
-function LevelAggregatesTable({ levels, onSelectLevel }: { levels: LevelSummary[], onSelectLevel: (l: string) => void }) {
-  const { t } = useLang();
-  const { format } = useScale();
-
-  return (
-    <div className="max-h-[480px] overflow-y-auto rounded-md border border-border/80 text-xs">
-      <table className="w-full">
-        <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 font-sans">
-          <tr className="border-b border-border text-left">
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground">{t.level}</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">{t.chartsCol}</th>
-            <th className="px-3 py-2.5 font-semibold text-right text-lamp-hard">{t.hardMed}</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">{t.hardIQR}</th>
-            <th className="px-3 py-2.5 font-semibold text-right text-lamp-vhard">{t.vhardMed}</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">{t.vhardIQR}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/40 font-mono">
-          {levels.map((l) => (
-            <tr
-              key={l.level}
-              className="hover:bg-muted/40 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-telemetry-cyan focus-visible:bg-muted/30"
-              onClick={() => onSelectLevel(l.level)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelectLevel(l.level);
-                }
-              }}
-              tabIndex={0}
-              role="button"
-              aria-label={`Filter to level ${l.level}`}
-            >
-              <td className="px-3 py-2.5 font-semibold">
-                <span className={isSpecialLevel(l.level) ? "text-amber-400" : "text-foreground"}>
-                  {l.level}
-                </span>
-              </td>
-              <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">
-                {l.n_charts_valid} <span className="text-xs text-muted-foreground/80 font-sans">/ {l.n_charts_total}</span>
-              </td>
-              <td className="px-3 py-2.5 text-right font-semibold text-lamp-hard tabular-nums">
-                {format(l.hard_median)}
-              </td>
-              <td className="px-3 py-2.5 text-right text-xs text-muted-foreground tabular-nums">
-                {l.hard_q1 != null && l.hard_q3 != null
-                  ? `[${format(l.hard_q1)}, ${format(l.hard_q3)}]`
-                  : "–"}
-              </td>
-              <td className="px-3 py-2.5 text-right font-semibold text-lamp-vhard tabular-nums">
-                {format(l.vhard_median)}
-              </td>
-              <td className="px-3 py-2.5 text-right text-xs text-muted-foreground tabular-nums">
-                {l.vhard_q1 != null && l.vhard_q3 != null
-                  ? `[${format(l.vhard_q1)}, ${format(l.vhard_q3)}]`
-                  : "–"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function AboutTab({ meta }: { meta: Meta | null }) {
-  const { t } = useLang();
-  return (
-    <div className="max-w-4xl rounded-lg border border-border/80 bg-card divide-y divide-border/40 overflow-hidden">
-      {/* Overview section */}
-      <div className="p-5 sm:p-6 space-y-3">
-        <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
-          <Sigma className="w-4 h-4 text-telemetry-cyan" />
-          {t.projectOverview}
-        </h3>
-        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          {t.lang === "en" ? (
-            <>
-              <p>
-                <strong className="text-foreground">QUEstimator</strong> is an objective, data-driven difficulty estimation system for 6-key BMS charts on the U_E scale in <span className="text-foreground">Qwilight</span>. By fitting a Bayesian Graded Response Model (GRM), it evaluates the exact latent difficulty thresholds for HARD and V-HARD clears directly from actual Internet Ranking (IR) play logs.
-              </p>
-              <p>
-                Qwilight is uniquely suited for IRT estimation due to its <strong className="text-foreground">Gauge Auto-Shift (GAS)</strong> system: a failed V-HARD play automatically continues on the HARD gauge. The clear status recorded on the IR therefore represents a player&apos;s genuine organic peak survival threshold without requiring artificial gauge conversion guesses.
-              </p>
-              <p className="text-xs pt-1">
-                Inspired by{" "}
-                <a
-                  href="https://github.com/HorieYuuka"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-telemetry-cyan hover:underline"
-                >
-                  HorieYuuka&apos;s Scale Analyzer
-                </a>
-                .
-              </p>
-            </>
-          ) : (
-            <>
-              <p>
-                <strong className="text-foreground">QUEstimator</strong>는 <span className="text-foreground">Qwilight</span> U_E 6키 난이도표 수록 채보를 대상으로 한 베이지안 문항반응이론(IRT) 기반 난이도 추정 대시보드입니다. 인터넷 랭킹(IR) 플레이 기록을 바탕으로 Graded Response Model(GRM)을 피팅하여 각 패턴의 HARD 및 V-HARD 클리어 한계 난이도를 산출합니다.
-              </p>
-              <p>
-                Qwilight 특유의 <strong className="text-foreground">Gauge Auto-Shift(GAS)</strong> 시스템(V-HARD 폭사 시 HARD 게이지 자동 승계) 덕분에, IR에 기록된 클리어 상태는 별도의 추정 없이 유저의 유기적인 최고 게이지 생존 역치를 나타냅니다.
-              </p>
-              <p className="text-xs pt-1">
-                Inspired by{" "}
-                <a
-                  href="https://github.com/HorieYuuka"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-telemetry-cyan hover:underline"
-                >
-                  HorieYuuka&apos;s Scale Analyzer
-                </a>
-                .
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Math & Model Architecture */}
-      <div className="p-5 sm:p-6 space-y-4">
-        <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
-          <Layers className="w-4 h-4 text-emerald-400" />
-          {t.methodology}
-        </h3>
-        <div className="space-y-4 text-xs">
-          <div className="rounded border border-border/70 p-4 bg-muted/20">
-            <div className="text-foreground font-semibold text-sm mb-2 font-mono">
-              P*(θ, k) = 1 / (1 + exp(-a_i · (θ - b_ik)))
-            </div>
-            <p className="text-muted-foreground leading-relaxed font-sans text-xs">
-              {t.lang === "en"
-                ? "Samejima's Graded Response Model parameterizes the cumulative survival probability P* that a player with latent skill ability θ clears chart i on gauge tier k or higher."
-                : "Samejima의 Graded Response Model(GRM)을 채택하여, 잠재 실력 θ인 플레이어가 문항 i를 게이지 단계 k 이상으로 클리어할 누적 생존 확률 P*를 추정합니다."}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-3 rounded border border-border/60 bg-muted/20">
-              <div className="text-foreground font-semibold mb-1 font-mono">a_i (Discrimination)</div>
-              <div className="text-muted-foreground text-xs font-sans">
-                {t.lang === "en"
-                  ? "Indicates how strictly the chart tests pure skill vs randomness."
-                  : "패턴이 순수 실력을 얼마나 예리하게 판별하는지 나타냅니다."}
-              </div>
-            </div>
-            <div className="p-3 rounded border border-border/60 bg-muted/20">
-              <div className="text-foreground font-semibold mb-1 font-mono">b_k (Difficulty)</div>
-              <div className="text-muted-foreground text-xs font-sans">
-                {t.lang === "en"
-                  ? "Point where survival probability reaches 50%."
-                  : "생존 확률이 50%에 도달하는 임계 난이도."}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Pipeline & Diagnostics panel */}
-      <div className="p-5 sm:p-6 space-y-3">
-        <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-amber-400" />
-          {t.pipelineState}
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="rounded border border-border/60 p-3 bg-muted/20">
-            <div className="text-muted-foreground text-xs">{t.model}</div>
-            <div className="text-foreground font-semibold mt-1 font-mono">{meta?.model}</div>
-          </div>
-          <div className="rounded border border-border/60 p-3 bg-muted/20">
-            <div className="text-muted-foreground text-xs">{t.categories}</div>
-            <div className="text-foreground font-semibold mt-1 font-mono text-[11px]">{meta?.categories.join(" → ")}</div>
-          </div>
-          <div className="rounded border border-border/60 p-3 bg-muted/20">
-            <div className="text-muted-foreground text-xs">{t.provisionalRule}</div>
-            <div className="text-foreground font-semibold mt-1 font-mono text-[11px]">{meta?.provisional_rule}</div>
-          </div>
-          <div className="rounded border border-border/60 p-3 bg-muted/20">
-            <div className="text-muted-foreground text-xs">{t.runtimeLabel}</div>
-            <div className="text-foreground font-semibold mt-1 font-mono tabular-nums">{meta?.runtime_sec}s</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tech Stack */}
-      <div className="p-5 sm:p-6 space-y-2">
-        <h3 className="text-base font-bold text-foreground mb-2">
-          {t.techStack}
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-          <div>
-            <span className="text-foreground font-semibold">Inference Engine:</span>{" "}
-            {meta?.model?.includes("C11") ? "C11 + OpenMP NUTS MCMC" : "NumPyro NUTS MCMC · JAX"}
-            {meta?.mcmc_chains && meta?.mcmc_samples_per_chain
-              ? ` (${meta.mcmc_chains}×${meta.mcmc_samples_per_chain})`
-              : ""}
-          </div>
-          <div>
-            <span className="text-foreground font-semibold">Quadrature:</span>{" "}
-            {meta?.identification?.quadrature_nodes ?? 41}-node MCMC · 101-node EAP Gauss-Hermite
-          </div>
-          <div><span className="text-foreground font-semibold">Frontend:</span> Next.js 16 · React 19 · Tailwind CSS</div>
-          <div><span className="text-foreground font-semibold">Scale System:</span> Weighted Whittaker + PAVA Isotonic PCHIP</div>
-        </div>
-      </div>
-    </div>
   );
 }

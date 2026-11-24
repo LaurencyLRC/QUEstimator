@@ -1,28 +1,25 @@
 {
-  "generated_at": "2026-11-24T02:21:20Z",
+  "generated_at": "2026-11-24T04:14:43Z",
   "n_charts_total": 1544,
-  "n_charts_valid": 1381,
-  "n_charts_provisional": 163,
+  "n_charts_valid": 1379,
+  "n_charts_provisional": 165,
   "n_players": 3120,
   "n_clears": 191276,
-  "model": "Bayesian Graded Response Model (MCMC NUTS, θ marginalized, C11)",
-  "categories": [
-    "FAILED",
-    "NORMAL",
-    "HARD",
-    "V-HARD"
-  ],
+  "model": "Bayesian Graded Response Model (MCMC NUTS, \u03b8 marginalized, C11)",
+  "categories": ["FAILED", "NORMAL", "HARD", "V-HARD"],
   "provisional_rule": "n < 10 OR se_b_hard > 1.00",
-  "player_theta_mean": 0.0468290931,
-  "player_theta_std": 1.7357804194,
+  "player_theta_mean": 0.0467524372,
+  "player_theta_std": 1.7356353446,
   "data_source": "Qwilight IR leaderboards (real player data)",
-  "runtime_sec": 837.73,
+  "runtime_sec": 816.18,
   "mcmc_chains": 4,
   "mcmc_warmup": 500,
   "mcmc_samples_per_chain": 500,
   "convergence": {
-    "r_hat_max": 1.0046,
-    "ess_min": 1642,
+    "r_hat_method": "split-rank (Vehtari et al. 2021)",
+    "r_hat_max": 1.0130,
+    "ess_min": 1325,
+    "tail_ess_min": 528,
     "convergence_ok": true,
     "n_params_bad_rhat": 0,
     "n_params_low_ess": 0,
@@ -30,57 +27,70 @@
     "ess_threshold": 200,
     "by_parameter_block": {
       "prior_a": {
-        "r_hat_max": 0.999293,
-        "n_eff_min": 1686.4384,
+        "r_hat_max": 0.999209,
+        "n_eff_min": 1818.5878,
+        "tail_ess_min": 1497.8211,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "prior_b": {
-        "r_hat_max": 0.99932,
-        "n_eff_min": 1671.0337,
+        "r_hat_max": 0.999307,
+        "n_eff_min": 1856.8276,
+        "tail_ess_min": 1488.4240,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "delta": {
-        "r_hat_max": 1.002196,
-        "n_eff_min": 1797.776,
+        "r_hat_max": 1.013045,
+        "n_eff_min": 2000.0000,
+        "tail_ess_min": 903.5480,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "tau1": {
-        "r_hat_max": 1.003018,
-        "n_eff_min": 1642.7241,
+        "r_hat_max": 1.012352,
+        "n_eff_min": 1325.4273,
+        "tail_ess_min": 528.5882,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "tau2": {
-        "r_hat_max": 1.00228,
-        "n_eff_min": 1798.6866,
+        "r_hat_max": 1.012557,
+        "n_eff_min": 1407.3377,
+        "tail_ess_min": 630.6647,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       },
       "log_alpha_contrast": {
-        "r_hat_max": 1.004564,
-        "n_eff_min": 1871.156,
+        "r_hat_max": 1.012146,
+        "n_eff_min": 1975.6079,
+        "tail_ess_min": 1044.5381,
         "n_bad_rhat": 0,
         "n_low_ess": 0
       }
     },
     "nuts": {
       "divergences": 0,
-      "num_steps_mean": 63.0,
+      "num_steps_mean": 63.00,
       "num_steps_max": 63,
-      "tree_depth_mean": 6.0,
+      "tree_depth_mean": 6.00,
       "tree_depth_max": 6,
-      "accept_prob_mean": 0.9115
+      "accept_prob_mean": 0.9146
     }
   },
   "identification": {
     "method": "orthonormal zero-sum Householder log-alpha contrasts",
     "theta_prior": "Normal(0, 1), marginalized out of the sampler (recovered by EAP)",
-    "delta_parameterization": "centered (δ ~ Normal(loc, scale))",
+    "delta_parameterization": "centered (\u03b4 ~ Normal(loc, scale))",
     "tau_prior": "HalfNormal(1.0)",
     "log_alpha_prior": "isotropic Normal(0, 0.3) on the zero-sum subspace",
     "quadrature_nodes": 41
+  },
+  "player_distribution": {
+    "theta_histogram": [1, 3, 3, 14, 20, 16, 30, 50, 56, 78, 129, 167, 274, 350, 323, 645, 212, 167, 120, 105, 72, 68, 64, 35, 25, 24, 15, 15, 15, 6, 4, 4, 4, 2, 4],
+    "theta_edges": [-6.00, -5.60, -5.20, -4.80, -4.40, -4.00, -3.60, -3.20, -2.80, -2.40, -2.00, -1.60, -1.20, -0.80, -0.40, 0.00, 0.40, 0.80, 1.20, 1.60, 2.00, 2.40, 2.80, 3.20, 3.60, 4.00, 4.40, 4.80, 5.20, 5.60, 6.00, 6.40, 6.80, 7.20, 7.60, 8.00],
+    "theta_mean": 0.046752,
+    "theta_std": 1.735635,
+    "n_players": 3120
   }
 }

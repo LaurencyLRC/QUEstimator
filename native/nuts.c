@@ -126,11 +126,17 @@ typedef struct {
     double *m2;
 } Welford;
 
-static void welford_init(Welford *w, int dim) {
+static int welford_init(Welford *w, int dim) {
     w->dim = dim;
     w->n = 0;
     w->mean = (double *)calloc((size_t)dim, sizeof(double));
     w->m2   = (double *)calloc((size_t)dim, sizeof(double));
+    if (!w->mean || !w->m2) {
+        free(w->mean); free(w->m2);
+        w->mean = w->m2 = NULL;
+        return 0;
+    }
+    return 1;
 }
 
 static void welford_reset(Welford *w) {
@@ -190,7 +196,9 @@ typedef struct {
     int n_alpha;
 } Subtree;
 
-static void subtree_alloc(Subtree *st, int D) {
+static void subtree_free(Subtree *st);
+
+static int subtree_alloc(Subtree *st, int D) {
     memset(st, 0, sizeof(*st));
     st->q_l    = (double *)malloc((size_t)D * sizeof(double));
     st->p_l    = (double *)malloc((size_t)D * sizeof(double));
@@ -201,6 +209,12 @@ static void subtree_alloc(Subtree *st, int D) {
     st->q_prop = (double *)malloc((size_t)D * sizeof(double));
     st->g_prop = (double *)malloc((size_t)D * sizeof(double));
     st->rho    = (double *)malloc((size_t)D * sizeof(double));
+    if (!st->q_l || !st->p_l || !st->g_l || !st->q_r || !st->p_r ||
+        !st->g_r || !st->q_prop || !st->g_prop || !st->rho) {
+        subtree_free(st);
+        return 0;
+    }
+    return 1;
 }
 
 static void subtree_free(Subtree *st) {
@@ -647,19 +661,38 @@ int nuts_run(const GrmModel *model, const NutsConfig *cfg, NutsResult *out) {
         ctx.sqrt_mass = (double *)malloc((size_t)D * sizeof(double));
         ctx.rho_tmp   = (double *)malloc((size_t)D * sizeof(double));
         double *prior_inv_mass = (double *)malloc((size_t)D * sizeof(double));
-        grm_init_inv_mass(model, ctx.inv_mass, ctx.sqrt_mass);
-        memcpy(prior_inv_mass, ctx.inv_mass, (size_t)D * sizeof(double));
-
-        subtree_alloc(&ctx.tree, D);
-        ctx.s1 = (Subtree *)malloc((size_t)(cfg->max_tree_depth + 1) * sizeof(Subtree));
-        ctx.s2 = (Subtree *)malloc((size_t)(cfg->max_tree_depth + 1) * sizeof(Subtree));
-        for (int d = 0; d <= cfg->max_tree_depth; d++) {
-            subtree_alloc(&ctx.s1[d], D);
-            subtree_alloc(&ctx.s2[d], D);
-        }
-
         double *q = (double *)malloc((size_t)D * sizeof(double));
         double *g = (double *)malloc((size_t)D * sizeof(double));
+        ctx.s1 = (Subtree *)calloc((size_t)(cfg->max_tree_depth + 1), sizeof(Subtree));
+        ctx.s2 = (Subtree *)calloc((size_t)(cfg->max_tree_depth + 1), sizeof(Subtree));
+        Welford welf;
+        memset(&welf, 0, sizeof(welf));
+
+        int alloc_ok = (ctx.inv_mass && ctx.sqrt_mass && ctx.rho_tmp && prior_inv_mass &&
+                        q && g && ctx.s1 && ctx.s2 && subtree_alloc(&ctx.tree, D) && welford_init(&welf, D));
+        if (alloc_ok) {
+            for (int d = 0; d <= cfg->max_tree_depth; d++) {
+                if (!subtree_alloc(&ctx.s1[d], D) || !subtree_alloc(&ctx.s2[d], D)) {
+                    alloc_ok = 0;
+                    break;
+                }
+            }
+        }
+        if (!alloc_ok) {
+            #pragma omp atomic write
+            fail_flag = 1;
+            free(q); free(g); free(prior_inv_mass);
+            welford_free(&welf);
+            if (ctx.s1) { for (int d = 0; d <= cfg->max_tree_depth; d++) subtree_free(&ctx.s1[d]); free(ctx.s1); }
+            if (ctx.s2) { for (int d = 0; d <= cfg->max_tree_depth; d++) subtree_free(&ctx.s2[d]); free(ctx.s2); }
+            subtree_free(&ctx.tree);
+            free(ctx.inv_mass); free(ctx.sqrt_mass); free(ctx.rho_tmp);
+            grm_workspace_free(&ctx.ws);
+            continue;
+        }
+
+        grm_init_inv_mass(model, ctx.inv_mass, ctx.sqrt_mass);
+        memcpy(prior_inv_mass, ctx.inv_mass, (size_t)D * sizeof(double));
         grm_init_params(model, q);
         /* Scale-aware per-chain dispersion around init_strategy for honest R-hat */
         for (int i = 0; i < D; i++) {
@@ -671,8 +704,6 @@ int nuts_run(const GrmModel *model, const NutsConfig *cfg, NutsResult *out) {
 
         DualAvg da;
         da_init(&da, eps, cfg->target_accept);
-        Welford welf;
-        welford_init(&welf, D);
         WarmupSchedule sched;
         schedule_init(&sched, W);
 

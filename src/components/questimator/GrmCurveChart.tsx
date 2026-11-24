@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useId } from "react";
 import { pStar, itemInformation } from "@/lib/questimator-types";
 import { useScale } from "@/lib/value-scale";
 import { useLang } from "@/lib/i18n";
@@ -14,6 +14,8 @@ interface Props {
   se_a?: number | null;
   se_b_hard?: number | null;
   se_b_vhard?: number | null;
+  cov_a_bh?: number | null;
+  cov_a_bv?: number | null;
   showNormal?: boolean;
   width?: number;
   height?: number;
@@ -44,6 +46,8 @@ export function GrmCurveChart({
   se_a,
   se_b_hard,
   se_b_vhard,
+  cov_a_bh,
+  cov_a_bv,
   showNormal = false,
   playerTheta,
   rivalTheta,
@@ -55,8 +59,9 @@ export function GrmCurveChart({
   const { t } = useLang();
 
   const hasSE = (se_b_hard != null && se_b_hard > 0) || (se_b_vhard != null && se_b_vhard > 0);
-  const [showConfidenceBand, setShowConfidenceBand] = useState(hasSE);
+  const [showConfidenceBand, setShowConfidenceBand] = useState(true);
   const [showItemInfo, setShowItemInfo] = useState(false);
+  const infoGradId = useId();
 
   const PAD = { top: 16, right: 16, bottom: 36, left: 44 };
   const innerW = width - PAD.left - PAD.right;
@@ -99,6 +104,8 @@ export function GrmCurveChart({
     const se_disc = se_a ?? 0;
     const se_h = se_b_hard ?? 0;
     const se_v = se_b_vhard ?? 0;
+    const cov_h = cov_a_bh ?? 0;
+    const cov_v = cov_a_bv ?? 0;
 
     let peakI = 0;
     let peakT = (b_hard + b_vhard) / 2;
@@ -108,13 +115,18 @@ export function GrmCurveChart({
       const ph = pStar(curT, a, b_hard);
       const pv = pStar(curT, a, b_vhard);
 
-      // Delta method SE on log-odds z = a*(t - b):
-      // Var(z) ~= a^2 * Var(b) + (t - b)^2 * Var(a)
+      // Full delta-method SE on log-odds z = a*(t - b):
+      // Var(z) ~= a^2 * Var(b) + (t - b)^2 * Var(a) - 2*a*(t - b)*Cov(a, b)
       let ph_lower: number | undefined;
       let ph_upper: number | undefined;
       if (se_h > 0 || se_disc > 0) {
-        const se_z_h = Math.sqrt((a * se_h) ** 2 + ((curT - b_hard) * se_disc) ** 2);
-        const z_h = a * (curT - b_hard);
+        const dt_h = curT - b_hard;
+        const var_z_h = Math.max(
+          0,
+          (a * se_h) ** 2 + (dt_h * se_disc) ** 2 - 2 * a * dt_h * cov_h
+        );
+        const se_z_h = Math.sqrt(var_z_h);
+        const z_h = a * dt_h;
         ph_lower = sigmoid(z_h - 1.96 * se_z_h);
         ph_upper = sigmoid(z_h + 1.96 * se_z_h);
       }
@@ -122,8 +134,13 @@ export function GrmCurveChart({
       let pv_lower: number | undefined;
       let pv_upper: number | undefined;
       if (se_v > 0 || se_disc > 0) {
-        const se_z_v = Math.sqrt((a * se_v) ** 2 + ((curT - b_vhard) * se_disc) ** 2);
-        const z_v = a * (curT - b_vhard);
+        const dt_v = curT - b_vhard;
+        const var_z_v = Math.max(
+          0,
+          (a * se_v) ** 2 + (dt_v * se_disc) ** 2 - 2 * a * dt_v * cov_v
+        );
+        const se_z_v = Math.sqrt(var_z_v);
+        const z_v = a * dt_v;
         pv_lower = sigmoid(z_v - 1.96 * se_z_v);
         pv_upper = sigmoid(z_v + 1.96 * se_z_v);
       }
@@ -148,7 +165,7 @@ export function GrmCurveChart({
     }
 
     return { pts: arr, maxInfo: Math.max(0.1, peakI), peakInfoTheta: peakT };
-  }, [a, b_hard, b_vhard, bn, se_a, se_b_hard, se_b_vhard, showNormal, thetaMin, thetaMax]);
+  }, [a, b_hard, b_vhard, bn, se_a, se_b_hard, se_b_vhard, cov_a_bh, cov_a_bv, showNormal, thetaMin, thetaMax]);
 
   const pathFor = (key: "pn" | "ph" | "pv") =>
     pts
@@ -172,25 +189,29 @@ export function GrmCurveChart({
 
   const infoPath = useMemo(() => {
     if (!showItemInfo || maxInfo <= 0) return "";
+    const xs = (tk: number) => PAD.left + ((tk - thetaMin) / (thetaMax - thetaMin)) * innerW;
+    const ys = (p: number) => PAD.top + innerH - p * innerH;
     return pts
       .map((p, i) => {
         const normInfo = (p.info / maxInfo) * 0.85;
-        return `${i === 0 ? "M" : "L"} ${xScale(p.t).toFixed(2)} ${yScale(normInfo).toFixed(2)}`;
+        return `${i === 0 ? "M" : "L"} ${xs(p.t).toFixed(2)} ${ys(normInfo).toFixed(2)}`;
       })
       .join(" ");
-  }, [pts, showItemInfo, maxInfo, innerW, innerH]);
+  }, [pts, showItemInfo, maxInfo, thetaMin, thetaMax, innerW, innerH, PAD.left, PAD.top]);
 
   const infoAreaPath = useMemo(() => {
     if (!showItemInfo || maxInfo <= 0) return "";
+    const xs = (tk: number) => PAD.left + ((tk - thetaMin) / (thetaMax - thetaMin)) * innerW;
+    const ys = (p: number) => PAD.top + innerH - p * innerH;
     const line = pts
       .map((p, i) => {
         const normInfo = (p.info / maxInfo) * 0.85;
-        return `${i === 0 ? "M" : "L"} ${xScale(p.t).toFixed(2)} ${yScale(normInfo).toFixed(2)}`;
+        return `${i === 0 ? "M" : "L"} ${xs(p.t).toFixed(2)} ${ys(normInfo).toFixed(2)}`;
       })
       .join(" ");
-    const baseline = `L ${xScale(thetaMax).toFixed(2)} ${yScale(0).toFixed(2)} L ${xScale(thetaMin).toFixed(2)} ${yScale(0).toFixed(2)} Z`;
+    const baseline = `L ${xs(thetaMax).toFixed(2)} ${ys(0).toFixed(2)} L ${xs(thetaMin).toFixed(2)} ${ys(0).toFixed(2)} Z`;
     return `${line} ${baseline}`;
-  }, [pts, showItemInfo, maxInfo, thetaMin, thetaMax, innerW, innerH]);
+  }, [pts, showItemInfo, maxInfo, thetaMin, thetaMax, innerW, innerH, PAD.left, PAD.top]);
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1];
   const xTicks = useMemo(() => {
@@ -262,7 +283,7 @@ export function GrmCurveChart({
 
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
         <defs>
-          <linearGradient id="info-grad" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={infoGradId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.25" />
             <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.02" />
           </linearGradient>
@@ -354,7 +375,7 @@ export function GrmCurveChart({
         {/* Item Information Function I_i(θ) Area and Curve */}
         {showItemInfo && (
           <g>
-            <path d={infoAreaPath} fill="url(#info-grad)" />
+            <path d={infoAreaPath} fill={`url(#${infoGradId})`} />
             <path
               d={infoPath}
               fill="none"
@@ -375,7 +396,7 @@ export function GrmCurveChart({
         )}
 
         {/* Credible Interval Ribbons (±1.96 SE) */}
-        {showConfidenceBand && (
+        {hasSE && showConfidenceBand && (
           <g>
             <path
               d={ribbonFor("ph_lower", "ph_upper")}

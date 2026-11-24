@@ -133,12 +133,6 @@ export function ChartTable({ charts, onSelectChart, sortKey, sortDir, onSortChan
     0: "bg-lamp-failed/10",
   };
 
-  const STATUS_BADGE: Record<number, { label: string; className: string }> = {
-    3: { label: "VH", className: "bg-lamp-vhard/15 text-lamp-vhard border-lamp-vhard/40" },
-    2: { label: "H", className: "bg-lamp-hard/15 text-lamp-hard border-lamp-hard/40" },
-    1: { label: "N", className: "bg-lamp-normal/15 text-lamp-normal border-lamp-normal/40" },
-    0: { label: "F", className: "bg-lamp-failed/15 text-lamp-failed border-lamp-failed/40" },
-  };
 
   const allProvisional = useMemo(
     () => charts.length > 0 && charts.every((c) => c.provisional),

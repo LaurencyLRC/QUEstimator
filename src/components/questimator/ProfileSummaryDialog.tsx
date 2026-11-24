@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -63,21 +63,23 @@ export function ProfileSummaryDialog({
   levelStats = [],
 }: Props) {
   const { t } = useLang();
-  const { mode, toScale, format } = useScale();
+  const { mode, format } = useScale();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
 
   // Compute status counts
-  const statusCounts = { 3: 0, 2: 0, 1: 0, 0: 0 };
-  for (const s of Object.values(clears)) {
-    if (s in statusCounts) {
-      statusCounts[s as 0 | 1 | 2 | 3]++;
+  const { statusCounts, totalClears, totalPlayed } = useMemo(() => {
+    const counts = { 3: 0, 2: 0, 1: 0, 0: 0 };
+    for (const s of Object.values(clears)) {
+      if (s in counts) {
+        counts[s as 0 | 1 | 2 | 3]++;
+      }
     }
-  }
-  const totalClears = statusCounts[3] + statusCounts[2] + statusCounts[1];
-  const totalPlayed = totalClears + statusCounts[0];
+    const cleared = counts[3] + counts[2] + counts[1];
+    return { statusCounts: counts, totalClears: cleared, totalPlayed: cleared + counts[0] };
+  }, [clears]);
 
   const heroFormatted = format(playerTheta, mode === "lerp" ? 2 : 3);
   const heroUnit = mode === "lerp" ? "U_E LEVEL" : "LATENT SKILL θ";
@@ -481,7 +483,7 @@ export function ProfileSummaryDialog({
     ctx.fillStyle = "#06b6d4";
     ctx.fillText("QUEstimator // https://laurencylrc.github.io/QUEstimator", width - 48, 628);
     ctx.textAlign = "left";
-  }, [playerName, playerTheta, clears, isCustomProfile, rank, topPercentile, signatureClears, levelStats, mode, toScale, format]);
+  }, [playerName, charts.length, heroFormatted, heroUnit, statusCounts, totalClears, totalPlayed, isCustomProfile, rank, topPercentile, signatureClears, levelStats]);
 
   useEffect(() => {
     if (open) {

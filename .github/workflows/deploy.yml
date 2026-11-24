@@ -1,10 +1,10 @@
 # .github/workflows/deploy.yml
 #
-# Build + deploy ONLY — no MCMC/pipeline step, no data refresh.
-# The GRM pipeline (scripts/pipeline.py) and any data refresh are run LOCALLY
-# (e.g. on your Ryzen, where it converges in ~3 h with 0 divergences). Commit
-# the generated public/data/*.json and push; this workflow builds the static
-# site from those committed files and deploys to GitHub Pages.
+# Build + verify + deploy ONLY — no MCMC calibration or live scraping in CI.
+# Data refreshes and Bayesian GRM calibration run LOCALLY via scripts/update_all.py
+# (using the native C11 + OpenMP NUTS engine in native/, ~14 min with 0 divergences).
+# Commit the generated public/data/*.json and push; this workflow validates the data,
+# type-checks, tests, builds the static export, and deploys to GitHub Pages.
 name: Deploy to GitHub Pages
 
 on:
@@ -30,14 +30,17 @@ jobs:
       - name: Verify dashboard data is committed
         run: |
           set -e
-          for f in charts.json level-summary.json meta.json players.json; do
+          for f in charts.json level-summary.json meta.json players.json sha512-to-id.json; do
             if [ ! -f "public/data/$f" ]; then
               echo "ERROR: public/data/$f is missing."
-              echo "Run scripts/pipeline.py locally, then commit public/data/*.json before pushing."
+              echo "Run scripts/update_all.py locally, then commit public/data/*.json before pushing."
               exit 1
             fi
           done
           echo "All dashboard JSON files present."
+
+      - name: Run post-calibration data smell tests
+        run: python3 scripts/verify_data.py
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -49,6 +52,12 @@ jobs:
 
       - name: Install dependencies
         run: bun install
+
+      - name: Type-check, lint, and test
+        run: |
+          bunx tsc --noEmit
+          bun run lint
+          bun test
 
       - name: Build static export
         run: bun run build

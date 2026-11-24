@@ -101,7 +101,7 @@ The palette is "BMS Gauge Neon on Void Black"—an obsidian ground where functio
 - **Violet Magenta / V-HARD** (`oklch(0.70 0.22 305)`): Vivid electric purple representing the extreme achievement tier (Very Hard clear lamp, $b_{\text{vhard}}$ difficulty parameter).
 
 ### Telemetry & Chart Accents
-- **Cyan Rating Marker** (`oklch(0.68 0.15 200)`): Vibrant cyan reserved for the active player's latent ability ($	heta$), skill histogram bars, and target reference lines.
+- **Cyan Rating Marker** (`oklch(0.68 0.15 200)`): Vibrant cyan reserved for the active player's latent ability ($\theta$), skill histogram bars, and target reference lines.
 - **Championship Gold** (`oklch(0.80 0.15 85)`): Trophy and 1st-place leaderboard highlight.
 - **Silver Medalist** (`oklch(0.75 0.05 250)`): 2nd-place ranking indicator.
 - **Bronze Medalist** (`oklch(0.65 0.12 50)`): 3rd-place ranking indicator.
@@ -134,7 +134,7 @@ The palette is "BMS Gauge Neon on Void Black"—an obsidian ground where functio
 - **Label / Metric** (Medium 500, 12px / 0.75rem, letter-spacing 0.02em, Monospace): Difficulty values, clear counts, probabilities, timestamps, table cells.
 
 ### Named Rules
-**The Tabular Precision Rule.** All numerical ratings (latent ability $	heta$, item discrimination $a$, thresholds $b_{\text{hard}}$ / $b_{\text{vhard}}$, confidence intervals, percentages, and level numbers) must strictly render in `Geist Mono` (`font-mono`) with tabular figures.
+**The Tabular Precision Rule.** All numerical ratings (latent ability $\theta$, item discrimination $a$, thresholds $b_{\text{hard}}$ / $b_{\text{vhard}}$, confidence intervals, percentages, and level numbers) must strictly render in `Geist Mono` (`font-mono`) with tabular figures.
 
 **The CJK Unification Rule.** BMS chart titles, artist credits, and notemaker names must strictly include the `.font-jp` class (`Noto Sans JP`). This guarantees authentic Japanese glyph shaping for CJK ideographs and prevents Han-unification rendering glitches in Korean/English browser environments.
 
@@ -143,7 +143,7 @@ The palette is "BMS Gauge Neon on Void Black"—an obsidian ground where functio
 The application employs a single-screen responsive command layout designed for dense tabular data and interactive charting.
 
 - **Container:** Maximum content width constrained to `max-w-7xl` (`1280px`) with centered horizontal alignment and `px-4 sm:px-6` responsive padding.
-- **Tab Navigation:** Sticky or prominent header tabs (`TabsList`) organizing the interface into four core workspaces: Overview (Table & Distribution), Player (Profile & Recommendations), Ranking (Leaderboards), and About (IRT Documentation).
+- **Tab Navigation:** Sticky or prominent header tabs (`TabsList`) organizing the interface into five core workspaces: Overview (Table & Distribution), Charts (Searchable Catalog), Player (Profile & Recommendations), Ranking (Leaderboards), and About (IRT Documentation).
 - **Rhythm & Grid:** Strict 4px base spatial unit (`gap-1` = 4px, `gap-2` = 8px, `gap-3` = 12px, `gap-4` = 16px, `gap-6` = 24px).
 - **Table Virtualization:** TanStack Virtual utilized for long tables (Ranking and Catalog) to maintain instantaneous 60fps scrolling over 1,500+ items without DOM lag.
 - **Split Workspaces:** Responsive two-column split on desktop (`lg:grid-cols-2` or `lg:grid-cols-3`) for summary analytics and recommendation feeds.

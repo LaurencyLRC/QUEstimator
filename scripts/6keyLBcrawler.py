@@ -97,7 +97,7 @@ async def fetch_chart_leaderboard(
         )
 
 
-async def run_crawler(force: bool):
+async def run_crawler(force: bool) -> int:
     try:
         with open(ENRICHED_PATH, "r", encoding="utf-8") as f:
             ue_table = json.load(f)
@@ -140,7 +140,7 @@ async def run_crawler(force: bool):
     print(f"Charts to fetch: {len(tasks_to_run)} (Already present / skipped: {stats['skipped']})")
     if not tasks_to_run:
         print("All leaderboards are already up to date!")
-        return
+        return 0
 
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     headers = {"User-Agent": "QUEstimator Data Pipeline / 1.0"}
@@ -168,15 +168,28 @@ async def run_crawler(force: bool):
         f"Completed in {elapsed:.1f}s | Fetched: {stats['fetched']}, "
         f"Skipped: {stats['skipped']}, Errors: {stats['errors']}"
     )
+    return int(stats["errors"])
 
 
 def main():
     parser = argparse.ArgumentParser(description="Qwilight IR 6K Leaderboard Scraper")
     parser.add_argument("--force", action="store_true", help="Re-fetch all leaderboards (refresh mode)")
     parser.add_argument("--incremental", action="store_true", help="Fetch only missing leaderboards (default)")
+    parser.add_argument(
+        "--max-errors",
+        type=int,
+        default=0,
+        help="Maximum tolerated download errors before exiting non-zero (default: 0)",
+    )
     args = parser.parse_args()
 
-    asyncio.run(run_crawler(force=args.force))
+    errors = asyncio.run(run_crawler(force=args.force))
+    if errors > args.max_errors:
+        print(
+            f"ERROR: {errors} leaderboard download(s) failed (max tolerated: {args.max_errors}).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

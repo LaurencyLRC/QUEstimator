@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 import { LangProvider } from "@/lib/i18n";
 
 const geistSans = Geist({
@@ -61,7 +60,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansJP.variable} antialiased bg-background text-foreground min-h-screen`}
       >
         <LangProvider>{children}</LangProvider>
-        <Toaster />
       </body>
     </html>
   );

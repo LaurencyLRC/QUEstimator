@@ -28,6 +28,9 @@ export interface Chart {
   se_a: number | null;
   se_b_hard: number | null;
   se_b_vhard: number | null;
+  cov_a_bh?: number | null;
+  cov_a_bv?: number | null;
+  max_played_theta?: number | null;
   provisional: boolean;
 }
 
@@ -78,8 +81,10 @@ export interface Meta {
   mcmc_warmup?: number;
   mcmc_samples_per_chain?: number;
   convergence?: {
+    r_hat_method?: string;
     r_hat_max?: number;
     ess_min?: number;
+    tail_ess_min?: number;
     convergence_ok?: boolean;
     n_params_bad_rhat?: number;
     n_params_low_ess?: number;
@@ -94,6 +99,7 @@ export interface Meta {
     log_alpha_prior?: string;
     quadrature_nodes?: number;
   };
+  player_distribution?: SamplePlayers;
 }
 
 export interface SamplePlayers {
@@ -447,7 +453,48 @@ const LOG_EAP_WEIGHTS: number[] = [
   -182.62852347,
 ];
 
-const _sigmoid = (x: number) => (x >= 0 ? 1 / (1 + Math.exp(-x)) : Math.exp(x) / (1 + Math.exp(x)));
+function _logSigmoidPos(u: number): number {
+  return u >= 0 ? -Math.log1p(Math.exp(-u)) : u - Math.log1p(Math.exp(u));
+}
+
+function _logSigmoidNeg(u: number): number {
+  return u >= 0 ? -u - Math.log1p(Math.exp(-u)) : -Math.log1p(Math.exp(u));
+}
+
+function _logExpm1Pos(d: number): number {
+  if (d <= 1e-15) return -69.07755278982137; // log(1e-30)
+  if (d > 35.0) return d;
+  return Math.log(Math.expm1(d));
+}
+
+/**
+ * Cancellation-free GRM log category probability matching native/grm.c:
+ *   log P(y=0) = log sigmoid(u1)
+ *   log P(y=1) = log sigmoid(u1) + log sigmoid(-u2) + log(expm1(a*(b2-b1)))
+ *   log P(y=2) = log sigmoid(u2) + log sigmoid(-u3) + log(expm1(a*(b3-b2)))
+ *   log P(y=3) = log sigmoid(-u3)
+ */
+function _grmLogCatProb(
+  theta: number,
+  a: number,
+  bNorm: number,
+  bHard: number,
+  bVhard: number,
+  le1: number,
+  le2: number,
+  status: number
+): number {
+  if (status === 0) {
+    return _logSigmoidPos(a * (bNorm - theta));
+  }
+  if (status === 1) {
+    return _logSigmoidPos(a * (bNorm - theta)) + _logSigmoidNeg(a * (bHard - theta)) + le1;
+  }
+  if (status === 2) {
+    return _logSigmoidPos(a * (bHard - theta)) + _logSigmoidNeg(a * (bVhard - theta)) + le2;
+  }
+  return _logSigmoidNeg(a * (bVhard - theta));
+}
 
 export function computeBaseLogLik(
   charts: Chart[],
@@ -468,29 +515,20 @@ export function computeBaseLogLik(
     const s = clears[String(c.id)];
     const bHard = c.b_hard as number;
     const bVhard = c.b_vhard as number;
-    const bNorm = c.b_normal != null && !Number.isNaN(c.b_normal)
-      ? (c.b_normal as number)
-      : bHard - (bVhard - bHard);
-    const cp1 = a * bNorm;
-    const cp2 = a * bHard;
-    const cp3 = a * bVhard;
+    const bNorm =
+      c.b_normal != null && !Number.isNaN(c.b_normal)
+        ? (c.b_normal as number)
+        : bHard - (bVhard - bHard);
+    const le1 = _logExpm1Pos(a * (bHard - bNorm));
+    const le2 = _logExpm1Pos(a * (bVhard - bHard));
     for (let q = 0; q < EAP_NODES.length; q++) {
-      const loc = a * EAP_NODES[q];
-      const c1 = _sigmoid(cp1 - loc);
-      const c2 = _sigmoid(cp2 - loc);
-      const c3 = _sigmoid(cp3 - loc);
-      let p: number;
-      if (s === 0) p = c1;            // FAILED
-      else if (s === 1) p = c2 - c1;  // NORMAL
-      else if (s === 2) p = c3 - c2;  // HARD
-      else p = 1 - c3;                // V-HARD
-      logLik[q] += Math.log(Math.max(p, 1e-30));
+      logLik[q] += _grmLogCatProb(EAP_NODES[q], a, bNorm, bHard, bVhard, le1, le2, s);
     }
   }
   return logLik;
 }
 
-export function eapFromLogLik(logLik: Float64Array | number[]): number {
+export function eapWithSeFromLogLik(logLik: Float64Array | number[]): { theta: number; se: number } {
   let maxLogL = -Infinity;
   const logL = new Float64Array(EAP_NODES.length);
   for (let q = 0; q < EAP_NODES.length; q++) {
@@ -500,12 +538,26 @@ export function eapFromLogLik(logLik: Float64Array | number[]): number {
   }
   let num = 0;
   let den = 0;
+  const weights = new Float64Array(EAP_NODES.length);
   for (let q = 0; q < EAP_NODES.length; q++) {
     const w = Math.exp(logL[q] - maxLogL);
+    weights[q] = w;
     num += EAP_NODES[q] * w;
     den += w;
   }
-  return den > 0 ? num / den : 0;
+  if (den <= 0) return { theta: 0, se: 1 };
+  const theta = num / den;
+  let varNum = 0;
+  for (let q = 0; q < EAP_NODES.length; q++) {
+    const d = EAP_NODES[q] - theta;
+    varNum += weights[q] * d * d;
+  }
+  const se = Math.sqrt(Math.max(0, varNum / den));
+  return { theta, se };
+}
+
+export function eapFromLogLik(logLik: Float64Array | number[]): number {
+  return eapWithSeFromLogLik(logLik).theta;
 }
 
 export function estimateThetaWithBase(
@@ -520,38 +572,23 @@ export function estimateThetaWithBase(
   const a = chart.a;
   const bHard = chart.b_hard;
   const bVhard = chart.b_vhard;
-  const bNorm = chart.b_normal != null && !Number.isNaN(chart.b_normal)
-    ? chart.b_normal
-    : bHard - (bVhard - bHard);
-  const cp1 = a * bNorm;
-  const cp2 = a * bHard;
-  const cp3 = a * bVhard;
+  const bNorm =
+    chart.b_normal != null && !Number.isNaN(chart.b_normal)
+      ? chart.b_normal
+      : bHard - (bVhard - bHard);
+  const le1 = _logExpm1Pos(a * (bHard - bNorm));
+  const le2 = _logExpm1Pos(a * (bVhard - bHard));
 
   let maxLogL = -Infinity;
   const logL = new Float64Array(EAP_NODES.length);
 
   for (let q = 0; q < EAP_NODES.length; q++) {
-    const loc = a * EAP_NODES[q];
-    const c1 = _sigmoid(cp1 - loc);
-    const c2 = _sigmoid(cp2 - loc);
-    const c3 = _sigmoid(cp3 - loc);
-
+    const th = EAP_NODES[q];
     let delta = 0;
     if (currentStatus !== undefined && currentStatus >= 0 && currentStatus <= 3) {
-      let pOld: number;
-      if (currentStatus === 0) pOld = c1;
-      else if (currentStatus === 1) pOld = c2 - c1;
-      else if (currentStatus === 2) pOld = c3 - c2;
-      else pOld = 1 - c3;
-      delta -= Math.log(Math.max(pOld, 1e-30));
+      delta -= _grmLogCatProb(th, a, bNorm, bHard, bVhard, le1, le2, currentStatus);
     }
-
-    let pNew: number;
-    if (targetStatus === 0) pNew = c1;
-    else if (targetStatus === 1) pNew = c2 - c1;
-    else if (targetStatus === 2) pNew = c3 - c2;
-    else pNew = 1 - c3;
-    delta += Math.log(Math.max(pNew, 1e-30));
+    delta += _grmLogCatProb(th, a, bNorm, bHard, bVhard, le1, le2, targetStatus);
 
     const val = baseLogLik[q] + delta + LOG_EAP_WEIGHTS[q];
     logL[q] = val;
@@ -568,14 +605,20 @@ export function estimateThetaWithBase(
   return den > 0 ? num / den : 0;
 }
 
+export function estimateThetaWithSe(
+  charts: Chart[],
+  clears: Record<string, number>
+): { theta: number; se: number } {
+  if (Object.keys(clears).length === 0) return { theta: 0, se: 1 };
+  const base = computeBaseLogLik(charts, clears);
+  return eapWithSeFromLogLik(base);
+}
+
 export function estimateTheta(
   charts: Chart[],
   clears: Record<string, number>
 ): number {
-  const hasPlayed = Object.keys(clears).length > 0;
-  if (!hasPlayed) return 0;
-  const base = computeBaseLogLik(charts, clears);
-  return eapFromLogLik(base);
+  return estimateThetaWithSe(charts, clears).theta;
 }
 
 export interface SignatureClear {

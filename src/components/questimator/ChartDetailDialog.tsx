@@ -276,11 +276,14 @@ export function ChartDetailDialog({ chart, open, onOpenChange, activePlayer, riv
               </div>
               <GrmCurveChart
                 a={chart.a}
+                b_normal={chart.b_normal ?? undefined}
                 b_hard={effBHard ?? chart.b_hard}
                 b_vhard={effBVhard ?? chart.b_vhard}
                 se_a={chart.se_a}
                 se_b_hard={isHardCensored ? null : chart.se_b_hard}
                 se_b_vhard={isVhardCensored ? null : chart.se_b_vhard}
+                cov_a_bh={isHardCensored ? null : chart.cov_a_bh}
+                cov_a_bv={isVhardCensored ? null : chart.cov_a_bv}
                 playerTheta={activePlayer?.data.t}
                 rivalTheta={rivalPlayer?.data.t}
                 rivalName={rivalPlayer?.data.n || rivalPlayer?.id}

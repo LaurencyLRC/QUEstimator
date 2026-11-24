@@ -12,12 +12,39 @@
 #endif
 
 /* --------------------------------------------------------------------------
- * String utilities
+ * Checked allocation & string utilities
  * -------------------------------------------------------------------------- */
+static void *xmalloc(size_t n) {
+    void *p = malloc(n ? n : 1);
+    if (!p) {
+        fprintf(stderr, "Fatal: out of memory allocating %zu bytes\n", n);
+        exit(1);
+    }
+    return p;
+}
+
+static void *xcalloc(size_t nmemb, size_t size) {
+    void *p = calloc(nmemb ? nmemb : 1, size ? size : 1);
+    if (!p) {
+        fprintf(stderr, "Fatal: out of memory allocating %zu x %zu bytes\n", nmemb, size);
+        exit(1);
+    }
+    return p;
+}
+
+static void *xrealloc(void *ptr, size_t n) {
+    void *p = realloc(ptr, n ? n : 1);
+    if (!p) {
+        fprintf(stderr, "Fatal: out of memory reallocating %zu bytes\n", n);
+        exit(1);
+    }
+    return p;
+}
+
 static char *str_dup_trim(const char *s) {
     if (!s) {
-        char *e = (char *)malloc(1);
-        if (e) e[0] = '\0';
+        char *e = (char *)xmalloc(1);
+        e[0] = '\0';
         return e;
     }
     const char *start = s;
@@ -25,8 +52,7 @@ static char *str_dup_trim(const char *s) {
     const char *end = start + strlen(start);
     while (end > start && isspace((unsigned char)*(end - 1))) end--;
     size_t len = (size_t)(end - start);
-    char *out = (char *)malloc(len + 1);
-    if (!out) return NULL;
+    char *out = (char *)xmalloc(len + 1);
     memcpy(out, start, len);
     out[len] = '\0';
     return out;
@@ -35,8 +61,7 @@ static char *str_dup_trim(const char *s) {
 static char *str_dup(const char *s) {
     if (!s) s = "";
     size_t len = strlen(s);
-    char *out = (char *)malloc(len + 1);
-    if (!out) return NULL;
+    char *out = (char *)xmalloc(len + 1);
     memcpy(out, s, len + 1);
     return out;
 }
@@ -67,7 +92,7 @@ static uint64_t fnv1a_str(const char *s) {
 static void strmap_init(StrMap *m, size_t init_cap) {
     size_t c = 64;
     while (c < init_cap) c <<= 1;
-    m->slots = (StrMapSlot *)calloc(c, sizeof(StrMapSlot));
+    m->slots = (StrMapSlot *)xcalloc(c, sizeof(StrMapSlot));
     m->cap = c;
     m->count = 0;
 }
@@ -83,7 +108,7 @@ static void strmap_free(StrMap *m, int free_keys) {
 
 static void strmap_grow(StrMap *m) {
     size_t ncap = m->cap << 1;
-    StrMapSlot *ns = (StrMapSlot *)calloc(ncap, sizeof(StrMapSlot));
+    StrMapSlot *ns = (StrMapSlot *)xcalloc(ncap, sizeof(StrMapSlot));
     size_t mask = ncap - 1;
     for (size_t i = 0; i < m->cap; i++) {
         if (m->slots[i].key) {
@@ -154,14 +179,14 @@ static uint64_t mix64(uint64_t x) {
 static void pairmap_init(PairMap *m, size_t init_cap) {
     size_t c = 1024;
     while (c < init_cap) c <<= 1;
-    m->slots = (PairSlot *)calloc(c, sizeof(PairSlot));
+    m->slots = (PairSlot *)xcalloc(c, sizeof(PairSlot));
     m->cap = c;
     m->count = 0;
 }
 
 static void pairmap_grow(PairMap *m) {
     size_t ncap = m->cap << 1;
-    PairSlot *ns = (PairSlot *)calloc(ncap, sizeof(PairSlot));
+    PairSlot *ns = (PairSlot *)xcalloc(ncap, sizeof(PairSlot));
     size_t mask = ncap - 1;
     for (size_t i = 0; i < m->cap; i++) {
         if (m->slots[i].key) {
@@ -424,14 +449,14 @@ int dataset_load(Dataset *ds, const char *enriched_json_path, const char *lb_dir
     }
 
     size_t fcap = 2048, fcount = 0;
-    char **fnames = (char **)malloc(fcap * sizeof(char *));
+    char **fnames = (char **)xmalloc(fcap * sizeof(char *));
     struct dirent *de;
     while ((de = readdir(dir)) != NULL) {
         size_t flen = strlen(de->d_name);
         if (flen > 5 && strcmp(de->d_name + flen - 5, ".json") == 0) {
             if (fcount == fcap) {
                 fcap *= 2;
-                fnames = (char **)realloc(fnames, fcap * sizeof(char *));
+                fnames = (char **)xrealloc(fnames, fcap * sizeof(char *));
             }
             fnames[fcount++] = str_dup(de->d_name);
         }
@@ -442,11 +467,11 @@ int dataset_load(Dataset *ds, const char *enriched_json_path, const char *lb_dir
     ds->total_files = (int)fcount;
 
     /* Match filenames to charts */
-    int *matched_chart = (int *)malloc(fcount * sizeof(int));
+    int *matched_chart = (int *)xmalloc(fcount * sizeof(int));
     int matched_count = 0;
     for (size_t i = 0; i < fcount; i++) {
         size_t flen = strlen(fnames[i]);
-        char *stem = (char *)malloc(flen - 4);
+        char *stem = (char *)xmalloc(flen - 4);
         memcpy(stem, fnames[i], flen - 5);
         stem[flen - 5] = '\0';
         int cidx = -1;
@@ -462,14 +487,14 @@ int dataset_load(Dataset *ds, const char *enriched_json_path, const char *lb_dir
     strmap_free(&sha512_to_idx, 0);
 
     /* 3. Parse all matched leaderboard JSONs in parallel */
-    FileBatch *batches = (FileBatch *)calloc(fcount, sizeof(FileBatch));
+    FileBatch *batches = (FileBatch *)xcalloc(fcount, sizeof(FileBatch));
     size_t dir_len = strlen(lb_dir_path);
 
     #pragma omp parallel for schedule(dynamic, 16)
     for (int i = 0; i < (int)fcount; i++) {
         if (matched_chart[i] < 0) continue;
         size_t flen = strlen(fnames[i]);
-        char *full = (char *)malloc(dir_len + flen + 2);
+        char *full = (char *)xmalloc(dir_len + flen + 2);
         memcpy(full, lb_dir_path, dir_len);
         full[dir_len] = '/';
         memcpy(full + dir_len + 1, fnames[i], flen + 1);
@@ -486,8 +511,8 @@ int dataset_load(Dataset *ds, const char *enriched_json_path, const char *lb_dir
     strmap_init(&player_map, 8192);
     size_t pcap = 4096;
     int n_players = 0;
-    char **player_ids = (char **)malloc(pcap * sizeof(char *));
-    char **player_names = (char **)malloc(pcap * sizeof(char *));
+    char **player_ids = (char **)xmalloc(pcap * sizeof(char *));
+    char **player_names = (char **)xmalloc(pcap * sizeof(char *));
 
     PairMap best_clears;
     pairmap_init(&best_clears, 524288);
@@ -505,8 +530,8 @@ int dataset_load(Dataset *ds, const char *enriched_json_path, const char *lb_dir
                 pid = n_players++;
                 if ((size_t)n_players > pcap) {
                     pcap *= 2;
-                    player_ids = (char **)realloc(player_ids, pcap * sizeof(char *));
-                    player_names = (char **)realloc(player_names, pcap * sizeof(char *));
+                    player_ids = (char **)xrealloc(player_ids, pcap * sizeof(char *));
+                    player_names = (char **)xrealloc(player_names, pcap * sizeof(char *));
                 }
                 player_ids[pid] = re->avatar_id;      /* take ownership */
                 player_names[pid] = re->avatar_name;  /* take ownership */

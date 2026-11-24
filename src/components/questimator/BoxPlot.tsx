@@ -59,8 +59,6 @@ export function BoxPlot({ data, onSelectLevel }: Props) {
 
   const slotW = innerW / mapped.length;
   const xCenter = (i: number) => PAD.left + slotW * (i + 0.5);
-  
-  const boxW = Math.min(slotW * 0.64, 32);
 
   const yTicks = useMemo(() => {
     const ticks: number[] = [];

@@ -24,7 +24,7 @@ Players use QUEstimator in a web browser alongside running Qwilight or BMS clien
 - **Custom / Offline Profiles**: Local offline profile creation and editing stored in browser storage for unranked or offline players.
 - **Global Leaderboard**: Tracked player rankings filtered by activity and clear counts.
 - **Language & Scale Modes**: Full bilingual support (English and Korean) and dual scale representation (`lerp` folder-relative level vs `raw` latent theta).
-- **Technical Constraints**: Client-side static export (Next.js App Router deployed to GitHub Pages). Heavy MCMC sampling runs offline via NumPyro/JAX; dashboard consumes precomputed JSON artifacts in `public/data/`.
+- **Technical Constraints**: Client-side static export (Next.js App Router deployed to GitHub Pages). Heavy MCMC sampling runs offline via the standalone C11 + OpenMP NUTS engine (`native/`); dashboard consumes precomputed JSON artifacts in `public/data/`.
 
 ## Brand Commitments
 - Name: **QUEstimator**
@@ -36,7 +36,7 @@ Players use QUEstimator in a web browser alongside running Qwilight or BMS clien
 - Tone: Analytical, authoritative, precise, respectful of competitive rhythm gaming culture.
 
 ## Evidence on Hand
-- Complete dataset in `public/data/`: `charts.json` (1,544 charts), `players.json` (2,946 players), `level-summary.json` (folder benchmarks), and `meta.json` (MCMC sampling diagnostics).
+- Complete dataset in `public/data/`: `charts.json` (1,544 charts), `players.json` (3,120 players), `level-summary.json` (folder benchmarks), `sha512-to-id.json` (hash index), and `meta.json` (MCMC sampling diagnostics).
 - Upstream table source: [U_E Difficulty Table](https://classmaterma.github.io/UE/table.html).
 - IR clear data: [Qwilight Internet Ranking](https://taehui.net).
 - Hash resolution: [EZ2PATTERN](https://ez2pattern.kr).
