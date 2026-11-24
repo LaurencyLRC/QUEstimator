@@ -53,7 +53,7 @@ async def fetch_chart_leaderboard(
     total: int,
     stats: dict,
 ):
-    url = f"https://taehui.net/qwilight/www/comment?noteID={sha512}:0"
+    url = f"https://taehui.net/qwilight/www/comment?noteID={sha512}:0&loadUnit=-1"
 
     async with semaphore:
         for attempt in range(1, MAX_RETRIES + 1):

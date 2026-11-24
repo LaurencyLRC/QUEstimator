@@ -60,3 +60,8 @@ DB.db
 # python
 __pycache__/
 *.pyc
+
+# native C build artifacts
+native/*.o
+native/questimator_calc
+native/questimator_calc.exe
